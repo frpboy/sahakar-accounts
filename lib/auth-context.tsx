@@ -30,7 +30,7 @@ export type AuthUser = {
 type AuthContextType = {
     user: AuthUser | null;
     loading: boolean;
-    signIn: () => Promise<void>;
+    signIn: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
 };
 
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 },
             },
             loading: false,
-            signIn: async () => { },
+            signIn: async (email: string, password: string) => { },
             signOut: async () => { },
         }), []);
 
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const value = useMemo<AuthContextType>(() => ({
         user: null,
         loading: false,
-        signIn: async () => { },
+        signIn: async (email: string, password: string) => { },
         signOut: async () => { },
     }), []);
 
