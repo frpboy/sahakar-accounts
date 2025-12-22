@@ -33,24 +33,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const loadUser = async () => {
         try {
+            console.log('[AuthContext] Loading user...');
             const {
                 data: { user: authUser },
             } = await supabase.auth.getUser();
 
+            console.log('[AuthContext] Auth user:', authUser ? 'Found' : 'Not found');
+
             if (authUser) {
+                console.log('[AuthContext] Fetching profile for:', authUser.id);
                 const profile = await fetchUserProfile(authUser);
+                console.log('[AuthContext] Profile loaded:', profile ? 'Success' : 'Failed');
                 setUser({
                     id: authUser.id,
                     email: authUser.email || '',
                     profile,
                 });
             } else {
+                console.log('[AuthContext] No auth user, setting to null');
                 setUser(null);
             }
         } catch (error) {
-            console.error('Error loading user:', error);
+            console.error('[AuthContext] Error loading user:', error);
             setUser(null);
         } finally {
+            console.log('[AuthContext] Setting loading to false');
             setLoading(false);
         }
     };
