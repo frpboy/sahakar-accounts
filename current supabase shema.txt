@@ -1,0 +1,100 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.audit_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  action text,
+  entity text,
+  entity_id uuid,
+  old_data jsonb,
+  new_data jsonb,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT audit_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.auditor_outlets (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  outlet_id uuid,
+  CONSTRAINT auditor_outlets_pkey PRIMARY KEY (id),
+  CONSTRAINT auditor_outlets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT auditor_outlets_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
+CREATE TABLE public.business_days (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid,
+  date date NOT NULL,
+  opening_cash numeric NOT NULL,
+  opening_upi numeric NOT NULL,
+  closing_cash numeric,
+  closing_upi numeric,
+  status USER-DEFINED DEFAULT 'DRAFT'::day_status,
+  submitted_by uuid,
+  submitted_at timestamp without time zone,
+  locked_by uuid,
+  locked_at timestamp without time zone,
+  CONSTRAINT business_days_pkey PRIMARY KEY (id),
+  CONSTRAINT business_days_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT business_days_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id),
+  CONSTRAINT business_days_locked_by_fkey FOREIGN KEY (locked_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.daily_totals (
+  business_day_id uuid NOT NULL,
+  income_cash numeric,
+  income_upi numeric,
+  expense_cash numeric,
+  expense_upi numeric,
+  CONSTRAINT daily_totals_pkey PRIMARY KEY (business_day_id),
+  CONSTRAINT daily_totals_business_day_id_fkey FOREIGN KEY (business_day_id) REFERENCES public.business_days(id)
+);
+CREATE TABLE public.outlets (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  code text NOT NULL UNIQUE,
+  name text NOT NULL,
+  location text,
+  is_active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT outlets_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.roles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL UNIQUE,
+  CONSTRAINT roles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  business_day_id uuid,
+  type USER-DEFINED NOT NULL,
+  category text NOT NULL,
+  payment_mode USER-DEFINED NOT NULL,
+  amount numeric NOT NULL CHECK (amount > 0::numeric),
+  description text,
+  created_by uuid,
+  created_at timestamp without time zone DEFAULT now(),
+  gst_rate numeric,
+  gst_amount numeric,
+  hsn_sac text,
+  CONSTRAINT transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT transactions_business_day_id_fkey FOREIGN KEY (business_day_id) REFERENCES public.business_days(id),
+  CONSTRAINT transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_outlets (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  outlet_id uuid,
+  CONSTRAINT user_outlets_pkey PRIMARY KEY (id),
+  CONSTRAINT user_outlets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT user_outlets_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  full_name text NOT NULL,
+  role_id uuid,
+  is_active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  email text,
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
+  CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id)
+);
