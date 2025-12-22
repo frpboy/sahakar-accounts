@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase';
 import { DashboardNav } from '@/components/dashboard-nav';
 import { UserMenu } from '@/components/user-menu';
+import type { UserProfile } from '@/lib/auth-context';
 
 export default async function DashboardLayout({
     children,
@@ -25,6 +26,8 @@ export default async function DashboardLayout({
         redirect('/login');
     }
 
+    const typedUserData = userData as UserProfile & { id: string; email: string };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
@@ -36,7 +39,7 @@ export default async function DashboardLayout({
                                 Sahakar Accounts
                             </h1>
                         </div>
-                        <UserMenu user={userData} />
+                        <UserMenu user={typedUserData} />
                     </div>
                 </div>
             </header>
@@ -44,7 +47,7 @@ export default async function DashboardLayout({
             <div className="flex">
                 {/* Sidebar */}
                 <aside className="w-64 bg-white border-r min-h-[calc(100vh-4rem)] hidden lg:block">
-                    <DashboardNav role={userData.role} />
+                    <DashboardNav role={typedUserData.role} />
                 </aside>
 
                 {/* Main content */}

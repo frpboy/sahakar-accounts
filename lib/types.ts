@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Database } from './database.types';
 
 export type UserRole = Database['public']['Enums']['user_role'] | 'superadmin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff';

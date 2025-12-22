@@ -2,9 +2,16 @@
 
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import type { User } from '@/lib/db';
 
-export function UserMenu({ user }: { user: User }) {
+interface UserMenuProps {
+    user: {
+        full_name?: string;
+        name?: string;
+        role: string;
+    };
+}
+
+export function UserMenu({ user }: UserMenuProps) {
     const router = useRouter();
 
     const handleLogout = async () => {
@@ -13,10 +20,12 @@ export function UserMenu({ user }: { user: User }) {
         router.refresh();
     };
 
+    const displayName = user.full_name || user.name || 'User';
+
     return (
         <div className="flex items-center space-x-4">
             <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
+                <p className="text-sm font-medium text-gray-900">{displayName}</p>
                 <p className="text-xs text-gray-500">
                     {user.role.replace('_', ' ').toUpperCase()}
                 </p>
