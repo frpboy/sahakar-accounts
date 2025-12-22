@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getRoleDashboard } from '@/lib/utils';
@@ -92,15 +92,18 @@ function LoginForm() {
 export default function LoginPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const hasRedirected = useRef(false);
 
-    // Redirect authenticated users automatically
+    // Redirect authenticated users automatically (ONCE only)
     useEffect(() => {
-        if (!loading && user?.profile?.role) {
-            const dashboardPath = getRoleDashboard(user.profile.role);
-            console.log('[LoginPage] Auto-redirecting to:', dashboardPath);
-            router.replace(dashboardPath);
-        }
-    }, [loading, user?.profile?.role, router]);
+        if (!user?.profile?.role) return;
+        if (hasRedirected.current) return;
+
+        const dashboardPath = getRoleDashboard(user.profile.role);
+        hasRedirected.current = true;
+        console.log('[LoginPage] Auto-redirecting to:', dashboardPath);
+        router.replace(dashboardPath);
+    }, [user?.profile?.role, router]);
 
     // Show loading while checking auth
     if (loading) {
