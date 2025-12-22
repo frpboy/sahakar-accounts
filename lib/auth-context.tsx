@@ -38,7 +38,7 @@ type AuthContextType = {
    CONFIG
 ====================================================== */
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_AUTH === 'true';
+const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === 'true';
 
 /* ======================================================
    CONTEXT
