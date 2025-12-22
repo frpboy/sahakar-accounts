@@ -460,4 +460,20 @@ The application cannot connect to Supabase Auth API, causing infinite loading on
 
 ---
 
+### 2025-12-22 22:53 IST - AUTH CONTEXT ROOT CAUSE FIX ✅
+
+**Status:** Fixed root cause of infinite redirect loop
+
+**Changes Made:**
+- Created mock DEV_MODE user once via `useState` initializer
+- Removed dev-mode `useEffect` that caused repeated `setUser`
+- Memoized context value with `useMemo` to prevent rerenders
+- Production `useEffect` runs only once on mount, no dev-mode listener
+- Added `useRef` guard and cleaned dependencies
+
+**Result:**
+- Single `[AuthContext] 🔧 DEV MODE: Using mock staff user` log
+- Single `[LoginPage] Auto-redirecting to: /dashboard/staff` log
+- No maximum update depth errors or router throttling
+
 *This log will be updated with all future errors, fixes, and progress.*

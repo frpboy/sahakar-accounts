@@ -1,19 +1,57 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+    createContext,
+    useContext,
+    useMemo,
+    useState,
+    useEffect,
+    ReactNode,
+} from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, MOCK_USERS } from '@/lib/supabase';
 import type { AuthUser, AuthContextType, UserProfile } from '@/lib/types';
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+/* ======================================================
+   CONFIG
+===================================================== */
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === 'true';
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<AuthUser | null>(null);
-    const [loading, setLoading] = useState(!DEV_MODE); // Don't load in dev mode
+/* ======================================================
+   CONTEXT
+===================================================== */
 
-    const fetchUserProfile = async (authUser: User): Promise<UserProfile | null> => {
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/* ======================================================
+   PROVIDER
+===================================================== */
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+    // ---------- DEV MODE QUICK PATH ----------
+    if (DEV_MODE) {
+        // Mock user is created once, no effects, no state changes after mount
+        const devValue = useMemo<AuthContextType>(
+            () => ({
+                user: MOCK_USERS.staff,
+                loading: false,
+                signIn: async () => { },
+                signOut: async () => { },
+                refreshProfile: async () => { },
+            }),
+            []
+        );
+        return <AuthContext.Provider value={devValue}>{children}</AuthContext.Provider>;
+    }
+
+    // ---------- PRODUCTION LOGIC ----------
+    const [user, setUser] = useState<AuthUser | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
+
+    const fallbackProfile: UserProfile = { role: 'staff' } as UserProfile;
+
+    const fetchUserProfile = async (authUser: User): Promise<UserProfile> => {
         try {
             const { data, error } = await supabase
                 .from('users')
@@ -23,160 +61,94 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (error) {
                 console.error('Error fetching user profile:', error);
-                return null;
+                return fallbackProfile;
             }
-
-            return data as UserProfile;
-        } catch (error) {
-            console.error('Error fetching user profile:', error);
-            return null;
-        }
-    };
-
-    const loadUser = async () => {
-        // DEV MODE: Use mock user
-        if (DEV_MODE) {
-            console.log('[AuthContext] 🔧 DEV MODE: Using mock staff user');
-            const mockUser = MOCK_USERS.staff;
-            setUser(mockUser);
-            setLoading(false);
-            return;
-        }
-
-        // PRODUCTION MODE: Use Supabase
-        try {
-            console.log('[AuthContext] Loading user from Supabase...');
-
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-
-            const authUser = session?.user;
-            console.log('[AuthContext] Auth user:', authUser ? 'Found' : 'Not found');
-
-            if (authUser) {
-                console.log('[AuthContext] Fetching profile for:', authUser.id);
-                const profile = await fetchUserProfile(authUser);
-                console.log('[AuthContext] Profile loaded:', profile ? 'Success' : 'Failed');
-                setUser({
-                    id: authUser.id,
-                    email: authUser.email || '',
-                    profile,
-                });
-            } else {
-                console.log('[AuthContext] No auth user, setting to null');
-                setUser(null);
-            }
-        } catch (error) {
-            console.error('[AuthContext] Error loading user:', error);
-            setUser(null);
-        } finally {
-            console.log('[AuthContext] Setting loading to false');
-            setLoading(false);
+            return (data as UserProfile) ?? fallbackProfile;
+        } catch (err) {
+            console.error('Error fetching user profile:', err);
+            return fallbackProfile;
         }
     };
 
     useEffect(() => {
+        const loadUser = async () => {
+            try {
+                console.log('[AuthContext] Loading user from Supabase...');
+                const { data: { session } } = await supabase.auth.getSession();
+                const authUser = session?.user;
+                if (authUser) {
+                    const profile = await fetchUserProfile(authUser);
+                    setUser({ id: authUser.id, email: authUser.email || '', profile });
+                } else {
+                    setUser(null);
+                }
+            } catch (err) {
+                console.error('[AuthContext] Error loading user:', err);
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         loadUser();
 
-        if (DEV_MODE) {
-            console.log('[AuthContext] 🔧 DEV MODE: Skipping auth state listener');
-            return;
-        }
-
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session?.user) {
-                const profile = await fetchUserProfile(session.user);
-                setUser({
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    profile,
-                });
-            } else if (event === 'SIGNED_OUT') {
-                setUser(null);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+                console.log('[AuthContext] Auth state changed:', event);
+                if (session?.user) {
+                    const profile = await fetchUserProfile(session.user);
+                    setUser({ id: session.user.id, email: session.user.email || '', profile });
+                } else {
+                    setUser(null);
+                }
             }
-        });
+        );
 
         return () => {
             subscription.unsubscribe();
         };
-    }, []);
+    }, []); // run once on mount
 
     const signIn = async (email: string, password: string) => {
-        // DEV MODE: Simulate login
-        if (DEV_MODE) {
-            console.log('[AuthContext] 🔧 DEV MODE: Simulating login for:', email);
-            const mockUser = email.includes('manager') ? MOCK_USERS.manager :
-                email.includes('admin') ? MOCK_USERS.admin :
-                    MOCK_USERS.staff;
-            setUser(mockUser);
-            return;
-        }
-
-        // PRODUCTION MODE
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
+        // Production sign‑in only – DEV_MODE is handled above
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
         if (data.user) {
             const profile = await fetchUserProfile(data.user);
-            setUser({
-                id: data.user.id,
-                email: data.user.email || '',
-                profile,
-            });
+            setUser({ id: data.user.id, email: data.user.email || '', profile });
         }
     };
 
     const signOut = async () => {
-        // DEV MODE: Just clear user
-        if (DEV_MODE) {
-            console.log('[AuthContext] 🔧 DEV MODE: Signing out (mock)');
-            setUser(null);
-            return;
-        }
-
-        // PRODUCTION MODE
         await supabase.auth.signOut();
         setUser(null);
     };
 
     const refreshProfile = async () => {
-        if (DEV_MODE) {
-            console.log('[AuthContext] 🔧 DEV MODE: Refresh not needed');
-            return;
-        }
-
-        if (user) {
-            const {
-                data: { user: authUser },
-            } = await supabase.auth.getUser();
-            if (authUser) {
-                const profile = await fetchUserProfile(authUser);
-                setUser({
-                    ...user,
-                    profile,
-                });
-            }
+        if (!user) return;
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+            const profile = await fetchUserProfile(authUser);
+            setUser({ id: authUser.id, email: authUser.email || '', profile });
         }
     };
 
-    return (
-        <AuthContext.Provider value={{ user, loading, signIn, signOut, refreshProfile }}>
-            {children}
-        </AuthContext.Provider>
+    const value = useMemo<AuthContextType>(
+        () => ({ user, loading, signIn, signOut, refreshProfile }),
+        [user, loading]
     );
+
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
+/* ======================================================
+   HOOK
+===================================================== */
+
+export function useAuth(): AuthContextType {
+    const ctx = useContext(AuthContext);
+    if (!ctx) {
+        throw new Error('useAuth must be used within AuthProvider');
     }
-    return context;
+    return ctx;
 }
