@@ -31,11 +31,13 @@
 - ✅ Configure categories, GST rates, system rules
 - ✅ Export any data (with watermark)
 - ✅ Emergency unlock capability
+- ✅ Edit past days data (ONLY role with this permission)
 
 **Restrictions**:
 - ❌ Should NOT perform daily data entry
 - ❌ Overrides MUST always be logged with reason
 - ❌ Cannot delete locked days (only soft delete with reason)
+- ❌ Can only edit past data during locking window (2 AM - 6:59 AM IST)
 
 **Accountability**:
 - All Super Admin actions logged with timestamp, IP, reason
@@ -58,8 +60,8 @@
 **Permissions**:
 - ✅ View all stores (read-only)
 - ✅ View all daily entries across stores
-- ✅ Lock daily accounts (after verification)
-- ✅ Unlock days (within 48 hours of lock, with reason)
+- ✅ Lock daily accounts (during locking window: 2 AM - 6:59 AM IST)
+- ✅ Unlock days (within 48 hours of lock, with reason, during locking window only)
 - ✅ Flag entries for Manager review
 - ✅ Generate reports (daily/monthly/custom range)
 - ✅ Export data (PDF/Excel) with watermark
@@ -72,16 +74,18 @@
 - ❌ Cannot create stores
 - ❌ Cannot override locks (must request Super Admin)
 - ❌ Cannot delete data
+- ❌ Cannot edit past days data
+- ❌ Can only lock/unlock during locking window (2 AM - 6:59 AM IST)
 
 **Daily Workflow**:
-1. Log in by 9 AM
-2. Review "Pending Verification" queue
+1. Log in during locking window (2 AM - 6:59 AM IST)
+2. Review "Pending Verification" queue from previous day
 3. For each submitted day:
    - Verify opening balance = previous closing
    - Check totals are reasonable
    - Compare cash/UPI split
    - Flag if discrepancies found
-4. Lock verified days
+4. Lock verified days (must complete before 6:59 AM)
 5. Send daily summary email to management
 
 **What They See**:
@@ -111,30 +115,32 @@
 
 **Permissions**:
 - ✅ View only assigned store(s)
-- ✅ Add/edit transactions (before day is submitted)
-- ✅ Delete transactions (before day is submitted, with reason)
-- ✅ Set opening balances (if previous day missing)
-- ✅ Review daily summary
-- ✅ Submit day for HO review
+- ✅ Add/edit transactions (current day only, before submission)
+- ✅ Delete transactions (current day only, before submission, with reason)
+- ✅ Set opening balances (current day only, if previous day missing)
+- ✅ Review daily summary (current day)
+- ✅ Submit day for HO review (before 1:59 AM)
 - ✅ View past locked days (read-only, last 90 days)
 - ✅ Export own store data (last 90 days)
 - ✅ View Store User activity logs
-- ✅ Unsubmit day (within 2 hours, if not yet locked)
+- ✅ Unsubmit day (within 30 minutes of submission, if not yet locked)
 
 **Restrictions**:
-- ❌ Cannot lock day (only HO Accountant)
-- ❌ Cannot edit after submission (unless unlocked by HO)
+- ❌ Cannot lock day (only HO Accountant during locking window)
+- ❌ Cannot edit after submission (unless unlocked by HO during locking window)
+- ❌ Cannot edit past days data (only current day editable)
 - ❌ Cannot export bulk data (>90 days)
 - ❌ Cannot access other stores
 - ❌ Cannot create users (request Super Admin)
+- ❌ Cannot submit after 1:59 AM (day auto-closes)
 
 **Daily Workflow**:
-1. Check opening balances (auto-filled from yesterday)
-2. Monitor transaction entry throughout day
-3. Review totals at 7 PM
+1. Check opening balances at 7 AM (auto-filled from yesterday)
+2. Monitor transaction entry throughout day (7 AM - 1:59 AM)
+3. Review totals at 11 PM
 4. Verify closing balances match physical count
-5. Submit day by 8 PM
-6. Respond to HO flags next morning
+5. Submit day by 1:30 AM (before 1:59 AM deadline)
+6. Respond to HO flags during next locking window
 
 **What They See**:
 - Today's entry form
@@ -147,8 +153,9 @@
 **Accountability**:
 - Submission = declaration of correctness
 - Manager name stamped on submission
-- Late submissions flagged (>8 PM)
+- Late submissions flagged (>1:30 AM, critical if >1:59 AM)
 - Unsubmit actions are audited
+- Cannot edit past days (only Super Admin can)
 
 ---
 
@@ -157,7 +164,7 @@
 **Purpose**: Operational data entry only
 
 **Daily Responsibilities**:
-- Enter transactions as they occur
+- Enter transactions as they occur (7 AM - 1:59 AM)
 - Tag category, payment mode correctly
 - Add brief description
 - Physical cash/UPI verification
@@ -171,7 +178,8 @@
 
 **Restrictions**:
 - ❌ Cannot submit day (only Manager)
-- ❌ Cannot view past days
+- ❌ Cannot view past days (only current day visible)
+- ❌ Cannot edit past days data (only current day)
 - ❌ Cannot edit opening/closing balances
 - ❌ Cannot export data
 - ❌ Cannot edit after Manager submission
@@ -498,9 +506,9 @@ closing_upi = opening_upi + upi_income - upi_expense
 
 ## 3️⃣ DAILY WORKFLOW
 
-### Store Level (8 AM - 8 PM)
+### Store Level (7 AM - 1:59 AM)
 
-**8:00 AM - Day Start**
+**7:00 AM - Day Start**
 1. Manager logs in
 2. System checks for today's `daily_record`:
    - If NOT exists → create with status = `draft`
@@ -512,7 +520,7 @@ closing_upi = opening_upi + upi_income - upi_expense
 4. Manager verifies opening balances match physical count
 5. Store opens
 
-**Throughout Day**
+**Throughout Day (7 AM - 1:59 AM)**
 1. Store User logs in on mobile/desktop
 2. Enters transaction as it occurs:
    - Select type (Income/Expense)
@@ -525,13 +533,13 @@ closing_upi = opening_upi + upi_income - upi_expense
 4. Live totals update automatically
 5. Manager can view all transactions
 
-**6:00 PM - Pre-Close Review**
+**11:00 PM - Pre-Close Review**
 1. Manager reviews transaction list
 2. Checks for errors (duplicates, wrong amounts)
 3. Edits/deletes if needed (with reason)
 4. Physical cash/UPI count
 
-**7:30 PM - Final Review**
+**1:00 AM - Final Review**
 1. Manager clicks "Review Day"
 2. System shows summary:
    - Opening balances
@@ -543,7 +551,16 @@ closing_upi = opening_upi + upi_income - upi_expense
 3. Manager verifies closing balances match physical count
 4. If mismatch → investigate and fix
 
-**7:45 PM - Submit**
+### System Rules
+- Minimum transactions per day: 1
+- Opening balance validation: Warning if ≠ previous closing
+- Large transaction threshold: ₹10,000 (configurable)
+- Working hours: 7 AM - 1:59 AM (19 hours)
+- Submission deadline: 1:59 AM daily (hard cutoff)
+- Locking window: 2 AM - 6:59 AM IST (HO Accountant only)
+- Past data edits: Super Admin only (with audit trail)
+- System downtime: 2 AM - 6:59 AM for store operations (locking period)
+**1:30 AM - Submit**
 1. Manager clicks "Submit Day"
 2. System validation:
    - At least 1 transaction exists ✅
@@ -559,15 +576,17 @@ closing_upi = opening_upi + upi_income - upi_expense
    - Locks form (no edits)
    - Triggers notification to HO Accountant
 
-**8:00 PM - Store Closes**
-- Late submissions flagged
-- Auto-reminder sent to Manager if not submitted
+**1:59 AM - Day Auto-Closes**
+- Late submissions flagged (after 1:30 AM)
+- Critical alert if not submitted by 1:59 AM
+- System locks day entry at 2:00 AM sharp
+- Auto-reminder sent to Manager at 1:00 AM if not submitted
 
 ---
 
-### HO Level (9 AM - 5 PM Next Day)
+### HO Level (2 AM - 6:59 AM IST - Locking Window)
 
-**9:00 AM - Review Queue**
+**2:00 AM - Review Queue Opens**
 1. HO Accountant logs in
 2. Dashboard shows:
    - Pending verifications (submitted, not locked)
@@ -576,7 +595,7 @@ closing_upi = opening_upi + upi_income - upi_expense
    - Late submissions
 3. Sorts by store/date
 
-**9:15 AM - Verify Each Store**
+**2:15 AM - Verify Each Store**
 For each submitted day:
 1. Open day details
 2. Check opening balance = previous closing
@@ -613,15 +632,16 @@ For each submitted day:
    - Sets `locked_by = current_user_id`
    - Triggers sync to Google Sheets
 
-**12:00 PM - Mid-day Check**
+**4:00 AM - Mid-window Check**
 - Review newly submitted days
 - Lock verified days
 - Follow up on flagged entries
 
-**4:00 PM - End of Day**
-- Lock all verified days
+**6:30 AM - End of Locking Window**
+- Lock all verified days (must complete before 6:59 AM)
 - Send daily summary email to management
 - Unresolved flags → escalate to Super Admin
+- System auto-closes locking functions at 7:00 AM
 
 ---
 
