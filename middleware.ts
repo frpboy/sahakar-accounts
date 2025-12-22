@@ -84,12 +84,12 @@ export function middleware(request: NextRequest) {
         }
     }
 
-    // Check DEV_MODE in production
+    // Check DEV_AUTH in production
     const isDev = process.env.NODE_ENV === 'development';
-    const devMode = process.env.NEXT_PUBLIC_DEV_MODE === 'true';
+    const devMode = process.env.NEXT_PUBLIC_DEV_AUTH === 'true';
 
     if (!isDev && devMode) {
-        console.error('🚨 CRITICAL: DEV_MODE enabled in production! Disabling immediately.');
+        console.error('🚨 CRITICAL: DEV_AUTH enabled in production! Disabling immediately.');
         // In production, redirect to error page
         return NextResponse.json(
             { error: 'Configuration error. Please contact administrator.' },
