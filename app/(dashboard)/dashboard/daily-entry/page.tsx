@@ -165,7 +165,7 @@ export default function DailyEntryPage() {
             if (error) throw error;
 
             // Add to local state
-            setTransactions([..transactions, data]);
+            setTransactions([...transactions, data]);
 
             // Recalculate totals
             await recalculateTotals([...transactions, data]);

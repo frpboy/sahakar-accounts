@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { getRoleDashboard } from '@/components/protected-route';
+import { getRoleDashboard } from '@/lib/utils';
 
 function LoginForm() {
     const [email, setEmail] = useState('');

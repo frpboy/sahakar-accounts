@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { getRoleDashboard } from '@/lib/utils';
 import type { UserRole } from '@/lib/types';
 
 interface ProtectedRouteProps {
@@ -88,20 +89,4 @@ export function ProtectedRoute({
 
     console.log('[ProtectedRoute] 🎉 Rendering protected content');
     return <>{children}</>;
-}
-
-// Helper function to get dashboard route based on role
-export function getRoleDashboard(role: UserRole): string {
-    switch (role) {
-        case 'superadmin':
-            return '/dashboard/admin';
-        case 'ho_accountant':
-            return '/dashboard/accountant';
-        case 'outlet_manager':
-            return '/dashboard/manager';
-        case 'outlet_staff':
-            return '/dashboard/staff';
-        default:
-            return '/dashboard';
-    }
 }
