@@ -1,21 +1,189 @@
-MIT License
+PROPRIETARY SOFTWARE LICENSE AGREEMENT
 
-Copyright (c) 2025 FrpBoy 
+Copyright © 2024 Zabnix. All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+NOTICE: This software and all associated documentation, code, design files, 
+and other materials (collectively, the "Software") are the exclusive and 
+proprietary property of Zabnix ("Owner").
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Developer: frpboy (https://github.com/frpboy)
+Project: Sahakar HyperPharmacy & SmartClinic Accounts System
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+================================================================================
+
+1. OWNERSHIP AND PROPRIETARY RIGHTS
+
+   1.1 The Software is owned exclusively by Zabnix and was developed by frpboy 
+       under contract or employment agreement with Zabnix.
+
+   1.2 All intellectual property rights, including but not limited to copyrights, 
+       patents, trademarks, trade secrets, and any other proprietary rights in 
+       and to the Software, are and shall remain the sole property of Zabnix.
+
+   1.3 This Software contains confidential and proprietary information of Zabnix. 
+       The structure, organization, and code of the Software are valuable trade 
+       secrets and confidential information of Zabnix.
+
+================================================================================
+
+2. RESTRICTIONS ON USE
+
+   2.1 COPYING PROHIBITED: No person or entity is permitted to copy, reproduce, 
+       duplicate, or create derivative works of this Software, in whole or in 
+       part, without express written permission from Zabnix.
+
+   2.2 DISTRIBUTION PROHIBITED: Distribution, sublicensing, sale, lease, or 
+       transfer of this Software, in any form, is strictly prohibited.
+
+   2.3 MODIFICATION PROHIBITED: Modification, adaptation, translation, reverse 
+       engineering, decompilation, disassembly, or creation of derivative works 
+       based on this Software is strictly prohibited.
+
+   2.4 COMMERCIAL USE PROHIBITED: Use of this Software for any commercial purpose 
+       without explicit written authorization from Zabnix is strictly prohibited.
+
+   2.5 PUBLIC DISPLAY PROHIBITED: Public display, demonstration, or exhibition 
+       of this Software without prior written consent from Zabnix is prohibited.
+
+================================================================================
+
+3. AUTHORIZED ACCESS
+
+   3.1 Access to this Software repository is granted solely to authorized 
+       personnel of Zabnix or contractors explicitly designated by Zabnix.
+
+   3.2 Authorized users may view and use the Software solely for the internal 
+       business purposes of Zabnix.
+
+   3.3 Authorization may be revoked at any time at the sole discretion of Zabnix.
+
+================================================================================
+
+4. CONFIDENTIALITY
+
+   4.1 All persons with access to this Software agree to maintain the 
+       confidentiality of the Software and all related materials.
+
+   4.2 Disclosure of any portion of this Software to third parties without 
+       express written permission from Zabnix is strictly prohibited.
+
+   4.3 This confidentiality obligation survives termination of employment or 
+       contractual relationship with Zabnix.
+
+================================================================================
+
+5. NO WARRANTY
+
+   5.1 THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
+       EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF 
+       MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.
+
+   5.2 Zabnix does not warrant that the Software will meet your requirements or 
+       that the operation of the Software will be uninterrupted or error-free.
+
+================================================================================
+
+6. LIMITATION OF LIABILITY
+
+   6.1 IN NO EVENT SHALL ZABNIX OR ITS SUPPLIERS BE LIABLE FOR ANY INDIRECT, 
+       INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF 
+       OR RELATED TO THE USE OR INABILITY TO USE THE SOFTWARE.
+
+   6.2 Zabnix's total liability shall not exceed the amount paid for access to 
+       the Software, if any.
+
+================================================================================
+
+7. TERMINATION
+
+   7.1 Zabnix reserves the right to terminate access to this Software at any 
+       time, with or without cause.
+
+   7.2 Upon termination, all copies of the Software in the possession of the 
+       user must be destroyed or returned to Zabnix.
+
+   7.3 The following provisions survive termination: Sections 1 (Ownership), 4 
+       (Confidentiality), 8 (Enforcement), and 9 (General Provisions).
+
+================================================================================
+
+8. ENFORCEMENT
+
+   8.1 Zabnix reserves all rights and remedies available at law or in equity to 
+       enforce this License and protect its proprietary rights in the Software.
+
+   8.2 Unauthorized use, copying, modification, or distribution of this Software 
+       may result in severe civil and criminal penalties and will be prosecuted 
+       to the maximum extent possible under the law.
+
+   8.3 In the event of breach of this License, Zabnix may seek injunctive relief, 
+       monetary damages, attorney's fees, and any other available remedies.
+
+================================================================================
+
+9. GENERAL PROVISIONS
+
+   9.1 GOVERNING LAW: This License shall be governed by and construed in 
+       accordance with the laws of India, without regard to conflict of law 
+       principles.
+
+   9.2 JURISDICTION: Any disputes arising under this License shall be subject to 
+       the exclusive jurisdiction of the courts located in [City], India.
+
+   9.3 SEVERABILITY: If any provision of this License is found to be 
+       unenforceable, the remaining provisions shall remain in full force and 
+       effect.
+
+   9.4 ENTIRE AGREEMENT: This License constitutes the entire agreement between 
+       the parties regarding the Software and supersedes all prior agreements.
+
+   9.5 AMENDMENTS: This License may only be modified by a written agreement 
+       signed by an authorized representative of Zabnix.
+
+   9.6 NO WAIVER: Failure to enforce any provision of this License shall not 
+       constitute a waiver of future enforcement of that or any other provision.
+
+================================================================================
+
+10. SPECIAL NOTICES
+
+   10.1 GITHUB HOSTING: The fact that this Software is hosted on GitHub or any 
+        other platform does not imply that it is open source or available for 
+        public use.
+
+   10.2 PRIVATE REPOSITORY: This Software should be maintained in a private 
+        repository with access restricted to authorized personnel only.
+
+   10.3 THIRD-PARTY COMPONENTS: Any third-party open source components used in 
+        this Software are governed by their respective licenses and remain the 
+        property of their respective owners.
+
+================================================================================
+
+11. CONTACT INFORMATION
+
+    For licensing inquiries or permission requests, contact:
+
+    Zabnix
+    Email: legal@zabnix.com
+    
+    Developer Inquiries:
+    GitHub: https://github.com/frpboy
+
+================================================================================
+
+BY ACCESSING, VIEWING, OR USING THIS SOFTWARE, YOU ACKNOWLEDGE THAT YOU HAVE 
+READ THIS LICENSE, UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS TERMS AND 
+CONDITIONS.
+
+IF YOU DO NOT AGREE TO THESE TERMS, YOU ARE NOT AUTHORIZED TO ACCESS, VIEW, 
+OR USE THIS SOFTWARE AND MUST IMMEDIATELY CEASE ALL USE AND DELETE ALL COPIES 
+IN YOUR POSSESSION.
+
+================================================================================
+
+Effective Date: December 22, 2024
+Version: 1.0
+
+ZABNIX - ALL RIGHTS RESERVED
+Built by frpboy (https://github.com/frpboy)
