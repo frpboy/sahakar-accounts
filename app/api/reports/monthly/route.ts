@@ -1,10 +1,9 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createServerClient();
+        const supabase = createAdminClient();
         const searchParams = request.nextUrl.searchParams;
         const outletId = searchParams.get('outletId') || '9e0c4614-53cf-40d3-abdd-a1d0183c3909';
         const month = searchParams.get('month'); // Format: YYYY-MM

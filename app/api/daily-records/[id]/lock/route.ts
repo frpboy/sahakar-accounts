@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase';
 import type { DailyRecord } from '@/lib/temp-types';
 
 export async function POST(
@@ -8,7 +7,7 @@ export async function POST(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createServerClient();
+        const supabase = createAdminClient();
         const { id } = params;
 
         // Get the daily record

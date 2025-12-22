@@ -1,10 +1,9 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createServerClient();
+        const supabase = createAdminClient();
 
         const { data, error } = await supabase
             .from('outlets')
@@ -24,7 +23,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createServerClient();
+        const supabase = createAdminClient();
         const body = await request.json();
 
         const { name, code, location, phone, email } = body;
