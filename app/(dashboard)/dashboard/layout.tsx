@@ -12,6 +12,8 @@ export default async function DashboardLayout({
     const supabase = createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Redirection to /login is handled by middleware, 
+    // but we still check here for type safety and edge cases.
     if (!user) {
         redirect('/login');
     }
@@ -23,6 +25,8 @@ export default async function DashboardLayout({
         .single();
 
     if (!userData) {
+        // If user exists in auth but not in profiles, redirect to login
+        // (or we could show an error)
         redirect('/login');
     }
 

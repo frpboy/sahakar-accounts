@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 
 // Simple rate limiting using in-memory store (for development)
 // In production, use Redis or similar
@@ -42,7 +43,7 @@ setInterval(() => {
     }
 }, 5 * 60 * 1000);
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     // Skip rate limiting for static files
     if (
         request.nextUrl.pathname.startsWith('/_next') ||
@@ -90,11 +91,27 @@ export function middleware(request: NextRequest) {
 
     if (!isDev && devMode) {
         console.error('🚨 CRITICAL: DEV_AUTH enabled in production! Disabling immediately.');
-        // In production, redirect to error page
         return NextResponse.json(
             { error: 'Configuration error. Please contact administrator.' },
             { status: 503 }
         );
+    }
+
+    // Supabase Session management
+    const supabase = createMiddlewareClient({ req: request, res: NextResponse.next() });
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const isLoginPage = request.nextUrl.pathname === '/login';
+    const isDashboardPage = request.nextUrl.pathname.startsWith('/dashboard');
+
+    // Redirect authenticated users away from login page
+    if (isLoginPage && session) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // Redirect unauthenticated users to login page
+    if (isDashboardPage && !session) {
+        return NextResponse.redirect(new URL('/login', request.url));
     }
 
     return NextResponse.next();

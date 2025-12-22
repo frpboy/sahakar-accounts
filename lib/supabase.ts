@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import type { Database } from './database.types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -14,8 +16,13 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     },
 });
 
-// Server-side client with service role
+// Server-side client with session capability (Server Components)
 export function createServerClient() {
+    return createServerComponentClient<Database>({ cookies });
+}
+
+// Admin client with service role (Bypass RLS)
+export function createAdminClient() {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseServiceKey) {

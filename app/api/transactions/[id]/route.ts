@@ -1,13 +1,12 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase';
 
 export async function PATCH(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createServerClient();
+        const supabase = createAdminClient();
         const body = await request.json();
         const { id } = params;
 
@@ -44,7 +43,7 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createServerClient();
+        const supabase = createAdminClient();
         const { id } = params;
 
         const { error } = await supabase

@@ -96,16 +96,7 @@ export default function LoginPage() {
     const router = useRouter();
     const hasRedirected = useRef(false);
 
-    // Redirect authenticated users automatically (ONCE only)
-    useEffect(() => {
-        if (!user?.profile?.role) return;
-        if (hasRedirected.current) return;
-
-        const dashboardPath = getRoleDashboard(user.profile.role);
-        hasRedirected.current = true;
-        console.log('[LoginPage] Auto-redirecting to:', dashboardPath);
-        router.replace(dashboardPath);
-    }, [user?.profile?.role, router]);
+    // Redirection is now handled by server-side middleware for better stability
 
     // Show loading while checking auth
     if (loading) {
