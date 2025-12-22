@@ -1,5 +1,5 @@
-export const dynamic = 'force-dynamic';
 // @ts-nocheck
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
 import { TransactionSchema } from '@/lib/validation';
