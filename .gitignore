@@ -77,6 +77,8 @@ temp/
 service-account-key.json
 google-credentials.json
 *-credentials.json
+sahakar-accounts-production-*.json
+*-production-*.json
 
 # Sensitive data
 secrets/

@@ -77,21 +77,23 @@ A secure, scalable, multi-tenant web application designed to replace manual Exce
 
 ### 2. HO Accountant
 - Daily financial monitoring across all outlets
-- Verify and lock submitted daily records
+- Verify and lock submitted daily records (during locking window: 2 AM - 6:59 AM IST)
 - Generate consolidated reports
 - Read-only Google Sheets access
+- Cannot edit past days data
 
 ### 3. Store Manager
 - Responsible for single outlet accuracy
-- Oversee daily data entry and submission
-- Review and submit daily records by 8 PM
-- Access to 90-day historical data
+- Oversee daily data entry and submission (7 AM - 1:59 AM)
+- Review and submit daily records by 1:59 AM
+- Access to 90-day historical data (read-only)
+- Cannot edit past days data (only current day)
 
 ### 4. Store User
-- Operational data entry only
+- Operational data entry only (7 AM - 1:59 AM)
 - Simple mobile-first transaction entry
 - Current day access only
-- Cannot submit or view historical data
+- Cannot submit, view past days, or edit historical data
 
 ### 5. CA / Auditor
 - Time-bound, read-only access for compliance
@@ -251,40 +253,42 @@ sahakar-accounts/
 
 ## 📊 Daily Operations Workflow
 
-### Store Level (8 AM - 8 PM)
+### Store Level (7 AM - 1:59 AM)
 
-1. **Morning (8 AM)**
+1. **Morning (7 AM)**
    - Manager verifies opening balances (auto-filled from previous day)
    - System validates against previous closing balance
 
-2. **Throughout Day**
+2. **Throughout Day (7 AM - 1:59 AM)**
    - Store Users enter transactions as they occur
    - Live totals update automatically
    - Mobile-optimized quick entry form
 
-3. **Pre-Close (6-7 PM)**
+3. **Pre-Close (11 PM - 1 AM)**
    - Manager reviews all transactions
    - Edits/deletes if needed (with reason logged)
    - Physical cash/UPI count verification
 
-4. **Submission (7:45 PM)**
+4. **Submission (1:30 AM)**
    - Manager submits day (declaration of accuracy)
    - System validates and locks entry form
    - HO Accountant receives notification
+   - **HARD DEADLINE: 1:59 AM** (day auto-closes at 2:00 AM)
 
-### HO Level (9 AM - 5 PM Next Day)
+### HO Level (2 AM - 6:59 AM IST - Locking Window)
 
-1. **Morning Review (9 AM)**
-   - Review "Pending Verification" queue
+1. **Morning Review (2 AM)**
+   - Review "Pending Verification" queue from previous day (7 AM - 1:59 AM)
    - Check opening/closing balance consistency
    - Verify totals against historical averages
 
-2. **Verification**
+2. **Verification (2 AM - 6:30 AM)**
    - Flag discrepancies for Manager review
    - Lock verified days (makes data immutable)
    - Triggers Google Sheets sync
+   - **MUST COMPLETE BY 6:59 AM**
 
-3. **End of Day (4 PM)**
+3. **End of Window (6:30 AM)**
    - Lock all verified days
    - Send daily summary to management
    - Escalate unresolved flags
@@ -431,8 +435,11 @@ npm run db:studio    # Open Drizzle Studio
 - Minimum transactions per day: 1
 - Opening balance validation: Warning if ≠ previous closing
 - Large transaction threshold: ₹10,000 (configurable)
-- Submission deadline: 8 PM daily
-- HO lock deadline: 24 hours post-submission
+- **Working hours: 7 AM - 1:59 AM** (19 hours operational)
+- **Submission deadline: 1:59 AM daily** (hard cutoff)
+- **Locking window: 2 AM - 6:59 AM IST** (HO Accountant only)
+- **Past data edits: Super Admin only** (during locking window, with audit trail)
+- System maintenance: 2 AM - 6:59 AM (no store operations)
 
 ---
 
