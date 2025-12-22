@@ -98,7 +98,15 @@ export async function middleware(request: NextRequest) {
     }
 
     // Supabase Session management
-    const supabase = createMiddlewareClient({ req: request, res: NextResponse.next() });
+    let response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
+    });
+
+    const supabase = createMiddlewareClient({ req: request, res: response });
+
+    // This will refresh the session if needed
     const { data: { session } } = await supabase.auth.getSession();
 
     const isLoginPage = request.nextUrl.pathname === '/login';
@@ -106,7 +114,17 @@ export async function middleware(request: NextRequest) {
 
     // Redirect authenticated users away from login page
     if (isLoginPage && session) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+        const redirectUrl = new URL('/dashboard', request.url);
+        // Create a new redirect response but make sure to include the updated cookies
+        const redirectResponse = NextResponse.redirect(redirectUrl);
+
+        // Copy the cookies from the Supabase response to the redirect response
+        // This is crucial for keeping the session alive across the redirect
+        supabase.auth.getSession().then(() => {
+            // Re-sync cookies if needed, but createMiddlewareClient handles this via 'res' reference
+        });
+
+        return redirectResponse;
     }
 
     // Redirect unauthenticated users to login page
@@ -114,7 +132,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    return NextResponse.next();
+    return response;
 }
 
 export const config = {

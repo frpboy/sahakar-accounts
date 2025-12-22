@@ -1,9 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { getRoleDashboard } from '@/lib/utils';
 
 function LoginForm() {
     const [email, setEmail] = useState('');
@@ -18,9 +16,11 @@ function LoginForm() {
         setLoading(true);
 
         try {
+            console.log('[LoginForm] Attempting sign in for:', email);
             await signIn(email, password);
-            // Router will handle redirect via useEffect in parent
+            console.log('[LoginForm] Sign in successful, middleware will handle redirect');
         } catch (err: any) {
+            console.error('[LoginForm] Sign in error:', err);
             setError(err.message || 'Failed to sign in');
             setLoading(false);
         }
@@ -90,15 +90,12 @@ function LoginForm() {
     );
 }
 
-
 export default function LoginPage() {
     const { user, loading } = useAuth();
-    const router = useRouter();
-    const hasRedirected = useRef(false);
 
-    // Redirection is now handled by server-side middleware for better stability
+    // Redirection is handled by server-side middleware for stability.
+    // This client component only shows the UI.
 
-    // Show loading while checking auth
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -107,19 +104,18 @@ export default function LoginPage() {
         );
     }
 
-    // If already logged in, show redirecting message
-    if (user?.profile?.role) {
+    if (user) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                     <p className="text-gray-700 font-medium">Redirecting to dashboard...</p>
+                    <p className="text-xs text-gray-400 mt-2">Authenticated as {user.email}</p>
                 </div>
             </div>
         );
     }
 
-    // Show login form for non-authenticated users
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
             <LoginForm />

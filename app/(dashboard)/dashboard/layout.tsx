@@ -10,25 +10,37 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }) {
     const supabase = createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    // Redirection to /login is handled by middleware, 
-    // but we still check here for type safety and edge cases.
+    console.log('[DashboardLayout] Fetching user...');
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+        console.error('[DashboardLayout] Auth error:', authError);
+    }
+
     if (!user) {
+        console.log('[DashboardLayout] No user found, redirecting to login');
         redirect('/login');
     }
 
-    const { data: userData } = await supabase
+    console.log('[DashboardLayout] User found:', user.email, 'Fetching profile...');
+
+    const { data: userData, error: dbError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
         .single();
 
+    if (dbError) {
+        console.error('[DashboardLayout] Database error fetching profile:', dbError);
+    }
+
     if (!userData) {
-        // If user exists in auth but not in profiles, redirect to login
-        // (or we could show an error)
+        console.log('[DashboardLayout] No profile found for user, redirecting to login');
         redirect('/login');
     }
+
+    console.log('[DashboardLayout] Profile loaded successfully for:', (userData as any)?.email);
 
     const typedUserData = userData as UserProfile & { id: string; email: string };
 
