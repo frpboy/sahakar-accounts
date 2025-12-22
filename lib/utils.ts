@@ -21,3 +21,19 @@ export function formatDate(date: Date | string): string {
         day: 'numeric',
     }).format(dateObj);
 }
+
+export function getRoleDashboard(role: string): string {
+    switch (role) {
+        case 'superadmin':
+        case 'master_admin':
+            return '/dashboard/admin';
+        case 'ho_accountant':
+            return '/dashboard/accountant';
+        case 'outlet_manager':
+            return '/dashboard/manager';
+        case 'outlet_staff':
+            return '/dashboard/staff';
+        default:
+            return '/dashboard';
+    }
+}

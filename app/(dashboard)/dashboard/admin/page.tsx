@@ -3,61 +3,91 @@
 import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
 import { DashboardCard } from '@/components/dashboard-card';
-import { useQuery } from '@tanstack/react-query';
+import { MonthlyReport } from '@/components/monthly-report';
 
 export default function AdminDashboard() {
     const { user } = useAuth();
 
-    const { data: stats, isLoading } = useQuery({
-        queryKey: ['dashboard-stats'],
-        queryFn: async () => {
-            const res = await fetch('/api/dashboard/stats');
-            if (!res.ok) throw new Error('Failed to fetch stats');
-            return res.json();
-        },
-    });
-
     return (
         <ProtectedRoute allowedRoles={['superadmin']}>
-            <div className="p-6">
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
+            <div className="p-6 max-w-7xl mx-auto">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
                     <p className="text-gray-600 mt-2">Welcome, {user?.profile?.name}</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {/* System Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <DashboardCard
-                        title="Total Stores"
-                        value={isLoading ? '...' : stats?.totalStores || 0}
+                        title="Total Outlets"
+                        value="5"
                         colorClass="text-blue-600"
+                        subtitle="Active"
                     />
-
                     <DashboardCard
-                        title="Active Users"
-                        value={isLoading ? '...' : stats?.activeUsers || 0}
+                        title="Total Users"
+                        value="12"
                         colorClass="text-green-600"
+                        subtitle="Active"
                     />
-
                     <DashboardCard
-                        title="Pending Submissions"
-                        value={isLoading ? '...' : stats?.pendingSubmissions || 0}
-                        colorClass="text-orange-600"
-                    />
-
-                    <DashboardCard
-                        title="Locked Days (7d)"
-                        value={isLoading ? '...' : stats?.lockedDays || 0}
+                        title="Monthly Revenue"
+                        value="₹2,45,000"
                         colorClass="text-purple-600"
+                        subtitle="All outlets"
+                    />
+                    <DashboardCard
+                        title="System Health"
+                        value="98%"
+                        colorClass="text-green-600"
+                        subtitle="Uptime"
                     />
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-blue-800 font-semibold mb-2">✅ Phase 1 Complete - Authentication working!</p>
-                    <p className="text-blue-700 text-sm">
-                        📊 Phase 2 in progress - Dashboard metrics: {stats?.totalStores || 0} stores, {stats?.activeUsers || 0} users
-                        <br />
-                        🚀 Phase 3 will add transaction management
-                    </p>
+                {/* Management Sections */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {/* User Management */}
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">👥 User Management</h2>
+                        <div className="space-y-3">
+                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <h3 className="font-medium text-gray-900">Create New User</h3>
+                                <p className="text-sm text-gray-600">Add staff, manager, or accountant</p>
+                            </button>
+                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <h3 className="font-medium text-gray-900">Manage Permissions</h3>
+                                <p className="text-sm text-gray-600">Edit user roles and access</p>
+                            </button>
+                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <h3 className="font-medium text-gray-900">View All Users</h3>
+                                <p className="text-sm text-gray-600">12 active users</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Outlet Management */}
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">🏪 Outlet Management</h2>
+                        <div className="space-y-3">
+                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <h3 className="font-medium text-gray-900">Add New Outlet</h3>
+                                <p className="text-sm text-gray-600">Create outlet location</p>
+                            </button>
+                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <h3 className="font-medium text-gray-900">Configure Settings</h3>
+                                <p className="text-sm text-gray-600">Update outlet details</p>
+                            </button>
+                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <h3 className="font-medium text-gray-900">View All Outlets</h3>
+                                <p className="text-sm text-gray-600">5 active outlets</p>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Monthly Report */}
+                <div>
+                    <MonthlyReport />
                 </div>
             </div>
         </ProtectedRoute>

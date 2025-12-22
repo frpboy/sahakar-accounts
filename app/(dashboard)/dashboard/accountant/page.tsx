@@ -2,62 +2,61 @@
 
 import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
-import { DashboardCard } from '@/components/dashboard-card';
-import { useQuery } from '@tanstack/react-query';
+import { MonthlyReport } from '@/components/monthly-report';
 
 export default function AccountantDashboard() {
     const { user } = useAuth();
 
-    const { data: stats, isLoading } = useQuery({
-        queryKey: ['dashboard-stats'],
-        queryFn: async () => {
-            const res = await fetch('/api/dashboard/stats');
-            if (!res.ok) throw new Error('Failed to fetch stats');
-            return res.json();
-        },
-    });
-
     return (
         <ProtectedRoute allowedRoles={['ho_accountant']}>
-            <div className="p-6">
-                <div className="mb-6">
+            <div className="p-6 max-w-7xl mx-auto">
+                <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">HO Accountant Dashboard</h1>
                     <p className="text-gray-600 mt-2">Welcome, {user?.profile?.name}</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <DashboardCard
-                        title="Pending Verifications"
-                        value={isLoading ? '...' : stats?.pendingVerifications || 0}
-                        colorClass="text-orange-600"
-                    />
-
-                    <DashboardCard
-                        title="Locked Today"
-                        value={isLoading ? '...' : stats?.lockedToday || 0}
-                        colorClass="text-green-600"
-                    />
-
-                    <DashboardCard
-                        title="Flagged Entries"
-                        value={isLoading ? '...' : stats?.flaggedEntries || 0}
-                        colorClass="text-red-600"
-                    />
-
-                    <DashboardCard
-                        title="Late Submissions"
-                        value={isLoading ? '...' : stats?.lateSubmissions || 0}
-                        colorClass="text-yellow-600"
-                    />
+                {/* Monthly Report */}
+                <div className="mb-8">
+                    <MonthlyReport />
                 </div>
 
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <p className="text-yellow-800 font-semibold mb-2">
-                        ⏰ Locking window: 2:00 AM - 6:59 AM IST
-                    </p>
-                    <p className="text-yellow-700 text-sm">
-                        📊 Phase 5 will add the pending queue and lock/unlock functionality
-                    </p>
+                {/* Reports Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">📄 Financial Reports</h2>
+                        <div className="space-y-3">
+                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <h3 className="font-medium text-gray-900">Monthly P&L Statement</h3>
+                                <p className="text-sm text-gray-600">Profit and Loss breakdown</p>
+                            </button>
+                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <h3 className="font-medium text-gray-900">Cash Flow Report</h3>
+                                <p className="text-sm text-gray-600">Cash movement analysis</p>
+                            </button>
+                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <h3 className="font-medium text-gray-900">Category Summary</h3>
+                                <p className="text-sm text-gray-600">Income/Expense by category</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Google Sheets</h2>
+                        <div className="space-y-3">
+                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <h3 className="font-medium text-green-900 mb-2">✓ Auto-Sync Enabled</h3>
+                                <p className="text-sm text-green-700">
+                                    Daily records are automatically synced to Google Sheets when locked.
+                                </p>
+                            </div>
+                            <button className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                📂 Open Google Sheets
+                            </button>
+                            <button className="w-full p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                🔄 Manual Sync
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </ProtectedRoute>

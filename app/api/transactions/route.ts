@@ -1,84 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
+import { TransactionSchema } from '@/lib/validation';
 
-// GET - Fetch transactions for a specific date
 export async function GET(request: NextRequest) {
     try {
         const supabase = createServerClient();
-        const { searchParams } = new URL(request.url);
-        const date = searchParams.get('date');
+        const searchParams = request.nextUrl.searchParams;
         const dailyRecordId = searchParams.get('dailyRecordId');
 
-        if (!dailyRecordId) {
-            return NextResponse.json({ error: 'dailyRecordId is required' }, { status: 400 });
-        }
-
-        const { data, error } = await supabase
+        let query = supabase
             .from('transactions')
             .select('*')
-            .eq('daily_record_id', dailyRecordId)
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (dailyRecordId) {
+            query = query.eq('daily_record_id', dailyRecordId);
+        }
 
-        return NextResponse.json(data || []);
-    } catch (error) {
-        console.error('Error fetching transactions:', error);
-        return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 500 });
+        const { data, error } = await query;
+
+        if (error) {
+            console.error('Error fetching transactions:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json(data);
+    } catch (error: any) {
+        console.error('Error in GET /api/transactions:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-// POST - Create a new transaction
 export async function POST(request: NextRequest) {
     try {
         const supabase = createServerClient();
         const body = await request.json();
 
-        const { dailyRecordId, type, category, paymentMode, amount, description } = body;
+        // Idempotency check - prevents duplicate transactions on retry
+        const idempotencyKey = request.headers.get('x-idempotency-key');
+        if (idempotencyKey) {
+            const { data: existing } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('idempotency_key', idempotencyKey)
+                .maybeSingle();
 
-        // Validation
-        if (!dailyRecordId || !type || !category || !paymentMode || !amount) {
-            return NextResponse.json(
-                { error: 'Missing required fields' },
-                { status: 400 }
-            );
+            if (existing) {
+                console.log('[Transactions] Duplicate request detected, returning existing');
+                return NextResponse.json(existing);
+            }
         }
 
-        if (amount <= 0) {
-            return NextResponse.json(
-                { error: 'Amount must be greater than 0' },
-                { status: 400 }
-            );
-        }
-
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        // Validate input with Zod schema - prevents injection & invalid data
+        const validated = TransactionSchema.parse({
+            dailyRecordId: body.dailyRecordId,
+            type: body.type,
+            category: body.category,
+            paymentMode: body.paymentMode,
+            amount: typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount,
+            description: body.description,
+            createdBy: body.createdBy,
+        });
 
         // Insert transaction
         const { data, error } = await supabase
             .from('transactions')
             .insert({
-                daily_record_id: dailyRecordId,
-                type,
-                category,
-                payment_mode: paymentMode,
-                amount: parseFloat(amount),
-                description: description || null,
-                created_by: user.id,
+                daily_record_id: validated.dailyRecordId,
+                type: validated.type,
+                category: validated.category,
+                payment_mode: validated.paymentMode,
+                amount: validated.amount,
+                description: validated.description || null,
+                created_by: validated.createdBy || null,
+                idempotency_key: idempotencyKey || null,
             })
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Error creating transaction:', error);
+            return NextResponse.json(
+                { error: 'Failed to create transaction', details: error.message },
+                { status: 500 }
+            );
+        }
 
         return NextResponse.json(data, { status: 201 });
     } catch (error: any) {
-        console.error('Error creating transaction:', error);
+        // Zod validation error
+        if (error.name === 'ZodError') {
+            return NextResponse.json(
+                {
+                    error: 'Validation failed',
+                    details: error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+                },
+                { status: 400 }
+            );
+        }
+
+        // Sanitized error logging - never log sensitive data
+        console.error('Error in POST /api/transactions:', {
+            message: error.message,
+            code: error.code,
+        });
+
         return NextResponse.json(
-            { error: error.message || 'Failed to create transaction' },
+            { error: 'An unexpected error occurred' },
             { status: 500 }
         );
     }
