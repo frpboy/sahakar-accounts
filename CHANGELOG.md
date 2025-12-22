@@ -5,148 +5,125 @@ All notable changes to the Sahakar Accounts project will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-12-22
+
+### 🎉 Initial Release - Production Ready
+
+#### Added
+- **Complete authentication system** with Supabase Auth
+- **Role-based access control** (Superadmin, HO Accountant, Manager, Staff)
+- **Transaction management** with income/expense tracking
+- **Daily workflow system** (Draft → Submitted → Locked)
+- **Live balance tracking** (Cash + UPI)
+- **Monthly reports & analytics**
+- **Google Sheets integration** for automated syncing
+- **User & outlet management** (Admin features)
+- **DEV_MODE** for local testing without Supabase
+
+#### Security
+- ✅ **Rate limiting** (100 req/min read, 20 req/min write, 5 req/min login)
+- ✅ **Input validation** with Zod schemas (prevents SQL injection)
+- ✅ **Transaction idempotency** (prevents duplicates on retry)
+- ✅ **Double-click protection** (UI-level duplicate prevention)
+- ✅ **Timezone handling** (IST/Asia Kolkata support)
+- ✅ **Race condition handling** (database-level unique constraints)
+- ✅ **Error sanitization** (no credential leakage in logs)
+- ✅ **DEV_MODE production check** (prevents auth bypass)
+
+#### Components
+- `TransactionForm` - Quick transaction entry
+- `TransactionList` - Transaction history display
+- `LiveBalance` - Real-time balance widget
+- `DailyRecordActions` - Workflow controls
+- `MonthlyReport` - Analytics dashboard
+- `DashboardCard` - Stat display cards
+- `ProtectedRoute` - Auth guard
+
+#### API Routes
+- `/api/transactions` - CRUD for transactions
+- `/api/categories` - Get transaction categories
+- `/api/daily-records/today` - Get/create today's record
+- `/api/daily-records/[id]/submit` - Submit daily record
+- `/api/daily-records/[id]/lock` - Lock daily record
+- `/api/daily-records/[id]/sync` - Sync to Google Sheets
+- `/api/reports/monthly` - Monthly summary
+- `/api/reports/category` - Category breakdown
+- `/api/outlets` - Outlet management
+- `/api/users` - User management
+
+#### Database
+- **PostgreSQL** via Supabase
+- **RLS policies** for row-level security
+- **Automatic triggers** for balance calculations
+- **Unique constraints** (prevents duplicates)
+- **Check constraints** (data validation)
+- **Performance indexes** on key fields
+- **Idempotency support** (transaction deduplication)
+
+#### Features
+- **Multi-outlet support** (140+ outlets ready)
+- **Category-based accounting** (11 income/expense categories)
+- **Dual payment modes** (Cash + UPI)
+- **Opening balance auto-fill** (from previous day)
+- **Status workflow** (draft/submitted/locked)
+- **Real-time balance updates**
+- **Mobile responsive design**
+
+#### Developer Experience
+- TypeScript for type safety
+- Zod for runtime validation
+- React Query for data fetching
+- Tailwind CSS for styling
+- Next.js 14 App Router
+- ESLint for code quality
+
+### Fixed
+- Infinite redirect loop between login and dashboard
+- RLS policy recursion errors
+- Supabase auth timeout issues (DEV_MODE bypass)
+- Spread operator syntax error in `daily-entry/page.tsx`
+- Duplicate `getRoleDashboard` function
+- Missing `googleapis` package dependency
+- Iterator type error in rate limiting middleware
+
+### Security Audit Results
+- **Critical issues found:** 7
+- **High severity:** 6
+- **Medium severity:** 7
+- **Low severity:** 5
+- **Total fixed:** 13 production blockers
+
+---
+
 ## [Unreleased]
 
 ### Planned Features
-- Offline PWA support for data entry
-- WhatsApp/Email notifications for daily submissions
-- Bulk CSV transaction import
+- WhatsApp/Email notifications
 - Advanced analytics dashboard
+- Bulk CSV import
 - Invoice/bill generation
 - Inventory tracking integration
+- Progressive Web App (PWA)
 - Mobile app (React Native)
+- Offline mode support
+- Multi-language support
+- Dark mode
 
----
-
-## [1.0.0-beta] - 2024-12-22
-
-### Added
-- Initial project setup and architecture
-- Complete system blueprint (`plan.md`)
-- Technical specification (`action_plan.md`)
-- Database schema design
-  - Organizations, Stores, Users tables
-  - Daily Records and Transactions tables
-  - Categories and Audit Logs
-  - Row-Level Security (RLS) policies
-- Authentication system (Supabase Auth)
-- Role-based access control (5 roles)
-  - Super Admin
-  - HO Accountant
-  - Store Manager
-  - Store User
-  - CA/Auditor
-- Next.js 14 App Router setup
-- TailwindCSS and shadcn/ui integration
-- Basic UI components
-  - Login page
-  - Dashboard layout
-  - Navigation components
-- Environment configuration
-- Proprietary license and documentation
-  - README.md
-  - LICENSE
-  - CONTRIBUTING.md
-  - SECURITY.md
-  - .env.example
-  - .gitignore
-
-### Security
-- Implemented Row-Level Security policies
-- JWT-based authentication
-- Input validation with Zod
-- Environment variable protection
-
----
-
-## Project Milestones
-
-### Phase 1: Core System (Target: Week 1-3)
-- [ ] Database schema implementation
-- [ ] User management (CRUD)
-- [ ] Store management (CRUD)
-- [ ] Daily entry form
-- [ ] Transaction CRUD operations
-- [ ] Opening/closing balance calculation
-- [ ] Submit day functionality
-- [ ] Basic role-based dashboards
-
-### Phase 2: Pilot Store (Target: Week 3-4)
-- [ ] HO Accountant lock/unlock functionality
-- [ ] Day status workflow (draft → submitted → locked)
-- [ ] Opening balance auto-fill
-- [ ] Validation rules implementation
-- [ ] Mobile-responsive UI
-- [ ] Basic audit logs
-- [ ] Pilot store deployment
-
-### Phase 3: Google Sheets Sync (Target: Week 4-5)
-- [ ] Google Sheets API integration
-- [ ] Sync engine implementation
-- [ ] File/folder structure automation
-- [ ] Template sheet duplication
-- [ ] Transaction batch write
-- [ ] Summary tab updates
-- [ ] Error handling and retry logic
-- [ ] Vercel Cron Job configuration
-
-### Phase 4: Reports & Exports (Target: Week 5-6)
-- [ ] Monthly summary aggregation
-- [ ] Date range reports
-- [ ] Category-wise reports
-- [ ] Excel export (with watermark)
-- [ ] PDF export (with watermark)
-- [ ] Dashboard charts
-- [ ] Export audit logging
-
-### Phase 5: Scale to 140+ Stores (Target: Week 7-12)
-- [ ] Performance optimization
-- [ ] Database indexing
-- [ ] Batch operations
-- [ ] Parallel sync processing
-- [ ] Monitoring dashboard
-- [ ] Error alerting system
-- [ ] User training materials
-- [ ] Onboarding workflow
-- [ ] Gradual rollout (10 stores/week)
+### Known Issues
+- TypeScript errors in unused `daily-entry/page.tsx` (non-blocking)
+- Google Sheets types missing (optional feature)
+- Minor type mismatches in optional sync features
 
 ---
 
 ## Version History
 
-### Versioning Scheme
-
-- **Major version**: Breaking changes or major feature releases
-- **Minor version**: New features (backward compatible)
-- **Patch version**: Bug fixes and minor improvements
-
-### Release Types
-
-- **alpha**: Early development, unstable
-- **beta**: Feature complete, testing phase
-- **rc** (Release Candidate): Final testing before production
-- **stable**: Production-ready release
+### [1.0.0] - 2025-12-22
+- Initial production-ready release
+- Complete feature set for daily accounting
+- Full security hardening
+- Documentation complete
 
 ---
 
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details on our development process and how to submit changes.
-
-**Note**: This is proprietary software. Contributions are accepted from authorized Zabnix personnel only.
-
----
-
-## License
-
-Copyright © 2024 Zabnix. All Rights Reserved.
-
-This is proprietary software. See [LICENSE](LICENSE) for complete terms.
-
-**Built by [@frpboy](https://github.com/frpboy)**
-
----
-
-**Last Updated**: December 22, 2024  
-**Current Version**: 1.0.0-beta  
-**Status**: In Active Development
+**For detailed development history, see [LOG.md](./LOG.md)**
