@@ -36,10 +36,10 @@ export default function AccountantDashboard() {
                                 <h3 className="font-medium text-gray-900">Monthly P&L Statement</h3>
                                 <p className="text-sm text-gray-600">Profit and Loss breakdown</p>
                             </a>
-                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            <a href="/dashboard/cash-flow" className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block">
                                 <h3 className="font-medium text-gray-900">Cash Flow Report</h3>
                                 <p className="text-sm text-gray-600">Cash movement analysis</p>
-                            </button>
+                            </a>
                             <a href="/dashboard/reports" className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block">
                                 <h3 className="font-medium text-gray-900">Category Summary</h3>
                                 <p className="text-sm text-gray-600">Income/Expense by category</p>
@@ -56,10 +56,30 @@ export default function AccountantDashboard() {
                                     Daily records are automatically synced to Google Sheets when locked.
                                 </p>
                             </div>
-                            <button className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <a
+                                href={process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center block"
+                            >
                                 📂 Open Google Sheets
-                            </button>
-                            <button className="w-full p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            </a>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const res = await fetch('/api/sync/google-sheets', { method: 'POST' });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                            alert(`✅ Synced ${data.recordCount} records successfully!`);
+                                        } else {
+                                            alert(`⚠️ ${data.message || 'Sync failed'}`);
+                                        }
+                                    } catch (error) {
+                                        alert('❌ Sync error. Please check configuration.');
+                                    }
+                                }}
+                                className="w-full p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
                                 🔄 Manual Sync
                             </button>
                         </div>
