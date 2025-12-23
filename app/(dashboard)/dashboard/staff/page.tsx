@@ -8,6 +8,7 @@ import { TransactionList } from '@/components/transaction-list';
 import { LiveBalance } from '@/components/live-balance';
 import { DailyRecordActions } from '@/components/daily-record-actions';
 import { useQuery } from '@tanstack/react-query';
+import { Building2 } from 'lucide-react';
 
 export default function StaffDashboard() {
     const { user } = useAuth();
@@ -22,6 +23,19 @@ export default function StaffDashboard() {
         },
     });
 
+    // Fetch outlet information
+    const { data: outlet } = useQuery({
+        queryKey: ['outlet', user?.profile?.outlet_id],
+        queryFn: async () => {
+            if (!user?.profile?.outlet_id) return null;
+            const res = await fetch(`/api/outlets?id=${user.profile.outlet_id}`);
+            if (!res.ok) return null;
+            const outlets = await res.json();
+            return outlets[0] || null;
+        },
+        enabled: !!user?.profile?.outlet_id,
+    });
+
     const cashBalance = dailyRecord?.closing_cash ?? dailyRecord?.opening_cash ?? 0;
     const upiBalance = dailyRecord?.closing_upi ?? dailyRecord?.opening_upi ?? 0;
 
@@ -31,13 +45,11 @@ export default function StaffDashboard() {
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold text-gray-900">Staff Dashboard</h1>
                     <p className="text-gray-600 mt-2">Welcome, {user?.profile?.name}</p>
-                    {dailyRecord && (
+                    {outlet && (
                         <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
+                            <Building2 className="w-4 h-4 text-blue-600" />
                             <span className="text-sm font-medium text-blue-800">
-                                Outlet ID: {dailyRecord.outlet_id || 'Not Assigned'}
+                                {outlet.name} ({outlet.code})
                             </span>
                         </div>
                     )}

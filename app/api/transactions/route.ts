@@ -12,8 +12,9 @@ export async function GET(request: NextRequest) {
 
         let query = supabase
             .from('transactions')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('id,daily_record_id,type,category,payment_mode,amount,description,date,created_at')
+            .order('created_at', { ascending: false })
+            .limit(50); // Limit to recent 50 transactions
 
         if (dailyRecordId) {
             query = query.eq('daily_record_id', dailyRecordId);
@@ -43,8 +44,9 @@ export async function POST(request: NextRequest) {
         if (idempotencyKey) {
             const { data: existing } = await supabase
                 .from('transactions')
-                .select('*')
+                .select('id,daily_record_id,type,category,payment_mode,amount,description,date,created_at')
                 .eq('idempotency_key', idempotencyKey)
+                .limit(1)
                 .maybeSingle();
 
             if (existing) {

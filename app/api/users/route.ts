@@ -9,8 +9,9 @@ export async function GET(request: NextRequest) {
 
         const { data, error } = await supabase
             .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('id,email,name,full_name,role,outlet_id,phone,created_at')
+            .order('created_at', { ascending: false })
+            .limit(100); // Limit to 100 users
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });
