@@ -4,6 +4,8 @@ import { DashboardNav } from '@/components/dashboard-nav';
 import { UserMenu } from '@/components/user-menu';
 import type { UserProfile } from '@/lib/auth-context';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardLayout({
     children,
 }: {
