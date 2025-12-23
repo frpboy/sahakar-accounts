@@ -16,7 +16,7 @@ export default async function AuditorDashboard() {
         .eq('id', user.id)
         .single();
 
-    if (profile?.role !== 'auditor') {
+    if ((profile as any)?.role !== 'auditor') {
         return <div className="p-8 text-red-600">Unauthorized: Auditor access only.</div>;
     }
 
