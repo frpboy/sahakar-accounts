@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 interface UserMenuProps {
     user: {
@@ -13,6 +13,7 @@ interface UserMenuProps {
 
 export function UserMenu({ user }: UserMenuProps) {
     const router = useRouter();
+    const supabase = createClientComponentClient();
 
     const handleLogout = async () => {
         await supabase.auth.signOut();

@@ -1,13 +1,38 @@
 // @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
         const searchParams = request.nextUrl.searchParams;
-        const outletId = searchParams.get('outletId') || '9e0c4614-53cf-40d3-abdd-a1d0183c3909';
+        let outletId = searchParams.get('outletId');
+
+        // If no outletId provided, try to get from logged-in user
+        if (!outletId && session) {
+            const adminDb = createAdminClient();
+            const { data: user } = await adminDb
+                .from('users')
+                .select('outlet_id')
+                .eq('id', session.user.id)
+                .single();
+            outletId = user?.outlet_id;
+        }
+
+        if (!outletId) {
+            // Fallback for dev/testing only or error
+            // outletId = '9e0c4614-53cf-40d3-abdd-a1d0183c3909'; 
+            return NextResponse.json({ error: 'Outlet ID is required or not assigned to user' }, { status: 400 });
+        }
+
+        // Use admin client for reliable data fetching (bypassing potentially broken RLS for temporary fix)
+        const adminSupabase = createAdminClient();
+
 
         // Get today's date in Asia/Kolkata timezone (IST = UTC+5:30)
         const now = new Date();
