@@ -221,11 +221,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signOut = async () => {
         try {
             console.log('[Auth] Signing out...');
+
+            // Clear user state immediately for instant feedback
+            setUser(null);
+
+            // Sign out from Supabase
             await supabase.auth.signOut();
+
+            console.log('[Auth] Sign out successful');
+
+            // Redirect to login
+            router.push('/login');
+            router.refresh();
         } catch (error) {
             console.error('[Auth] Error signing out:', error);
-        } finally {
-            console.log('[Auth] Sign out complete/bypassed, clearing state');
+
+            // Even if signOut fails, clear local state and redirect
             setUser(null);
             router.push('/login');
             router.refresh();

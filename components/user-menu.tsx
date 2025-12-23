@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useState } from 'react';
 
 interface UserMenuProps {
     user: {
@@ -14,9 +15,18 @@ interface UserMenuProps {
 export function UserMenu({ user }: UserMenuProps) {
     const router = useRouter();
     const { signOut } = useAuth();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const handleLogout = async () => {
-        await signOut();
+        setIsLoggingOut(true);
+        try {
+            await signOut();
+            // Redirect is handled in auth-context, but we can also force it here
+            router.push('/login');
+        } catch (error) {
+            console.error('Logout error:', error);
+            setIsLoggingOut(false);
+        }
     };
 
     const displayName = user.full_name || user.name || 'User';
@@ -31,9 +41,10 @@ export function UserMenu({ user }: UserMenuProps) {
             </div>
             <button
                 onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                disabled={isLoggingOut}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                Logout
+                {isLoggingOut ? 'Logging out...' : 'Logout'}
             </button>
         </div>
     );
