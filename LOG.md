@@ -677,3 +677,21 @@ The production build was created when `NEXT_PUBLIC_DEV_MODE=true` existed in `.e
 - Finalizing the `README.md` for project handoff.
 
 **(Update 13:25 IST):** `npm run build` executed successfully (Exit Code 0). All pages generated statically or dynamically as expected.
+
+## Test Report - 2025-12-23 (3 PM IST)
+**Status:** Partial Success (Infrastructure Functional, Critical Logic/Data Gaps)
+
+### Working Features
+- **Dashboard:** Loads correctly with "No outlets assigned" message.
+- **Login:** Works for Manager role.
+- **Access Control:** Correctly blocks daily entry when no outlet is assigned.
+
+### Critical Issues
+1.  **Logout Broken:** Button shows spinner but hangs indefinitely.
+2.  **No Outlets:** Manager account missing `outlet_id` in database (blocking entry).
+3.  **Missing Pages:** Reports, Monthly View, and Users pages return 404.
+
+### Actions Taken
+- **Logout:** Updating `AuthContext` to force redirect even if Supabase signout hangs.
+- **Navigation:** Hiding 404 links (Reports, Monthly) until implemented.
+- **Data:** Providing SQL fix for missing outlet assignment.

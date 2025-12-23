@@ -219,10 +219,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Sign out function
     const signOut = async () => {
-        await supabase.auth.signOut();
-        setUser(null);
-        router.push('/login');
-        router.refresh();
+        try {
+            console.log('[Auth] Signing out...');
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error('[Auth] Error signing out:', error);
+        } finally {
+            console.log('[Auth] Sign out complete/bypassed, clearing state');
+            setUser(null);
+            router.push('/login');
+            router.refresh();
+        }
     };
 
     const value = useMemo<AuthContextType>(
