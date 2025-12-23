@@ -191,13 +191,14 @@ CREATE POLICY "Staff can insert entries for their outlet" ON daily_entries
 - [x] **Verify** role-based access control (Staff restricted correctly, Manager access fixed)
 
 ### Testing Steps (To Be Performed by User)
-1.  **Manager Test**: Login as `manager.test@sahakar.com` (Pass: `Zabnix@2025`).
-    *   Verify Dashboard loads "Main Outlet".
-    *   Click "Daily Entry" or "Enter Transactions".
-    *   Create a test transaction (Income -> Medicine Sale -> Cash -> 100).
-    *   Submit the day.
-2.  **Sync Test**: Verify submitted entry appears in Drive folder `Sahakar Accounts/MAIN/2025/December.xlsx`.
-3.  **Accountant Test**: Login as `paymentstarlexpmna@gmail.com`, verify "Read Only" view of entry.
+1.  **Wait for Deployment**: Ensure the latest commit ("Add debug route and fix logout logic") is live (approx. 2-3 mins).
+2.  **Debug Check (Optional)**: If you still see "No outlets", visit `/api/debug/manager` to see raw user data.
+3.  **Manager Test**: Login as `manager.test@sahakar.com` (Pass: `Zabnix@2025`).
+    *   **Verify**: Dashboard shows "Main Outlet".
+    *   **Verify**: "Daily Entry" loads the form.
+    *   **Execute**: Create transaction -> Submit Day.
+    *   **Verify**: Logout button redirects to login.
+4.  **Sync Test**: Verify submitted entry appears in Drive folder `Sahakar Accounts/MAIN/2025/December.xlsx`.
 
 ## 7. Documentation
 
@@ -235,5 +236,5 @@ NODE_ENV=development
 ## 📋 Next Steps
 
 1.  **Execute the Manual Validation** above.
-2.  **Report any specific errors** (e.g., if Sync fails).
+2.  **Report any specific errors**.
 3.  **Finalize Documentation**.
