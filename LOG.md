@@ -819,3 +819,47 @@ This implementation follows the governance policy defined in `ROLE_GOVERNANCE.md
 
 **Auditor Mode Status:** 🟢 **PRODUCTION READY** (pending test account verification)
 
+---
+
+## 2025-12-23 19:12 IST - CRITICAL RLS FIX: User Profile Access 🚨✅
+
+### Problem Identified
+**Status:** Production login causing infinite redirect loop
+
+**Symptoms:**
+- Login succeeds (`[Auth] Sign in successful`)
+- Profile fetch fails (`[Auth] Error fetching profile: Object`)
+- Browser throttles navigation (infinite redirect loop)
+- Users cannot access any dashboard
+
+**Root Cause:**
+Missing RLS policy on `users` table preventing authenticated users from reading their own profile row. After successful authentication, the app attempts to fetch user role/name from the database but gets blocked by RLS, causing the auth context to repeatedly refresh.
+
+### Solution Applied
+**File:** `database/fix-users-profile-rls.sql`
+
+```sql
+-- Allow users to read their own profile
+CREATE POLICY "Users can read own profile" ON users
+    FOR SELECT
+    USING (auth.uid() = id);
+
+-- Allow service role full access
+CREATE POLICY "Service role full access" ON users
+    FOR ALL
+    USING (auth.role() = 'service_role');
+```
+
+**Execution Result:** ✅ Success. No rows returned (policies created)
+
+### Impact
+- **Before:** Users could authenticate but not access dashboards (redirect loop)
+- **After:** Users can complete full login flow and access their role-based dashboards
+
+### Verification Required
+- [ ] Login as `staff.test@sahakar.com` - Should complete without redirect loop
+- [ ] Dashboard should load with user profile data
+- [ ] No browser throttling warnings in console
+
+**Status:** 🟡 **AWAITING USER VERIFICATION**
+
