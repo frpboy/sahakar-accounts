@@ -177,31 +177,30 @@ CREATE POLICY "Staff can insert entries for their outlet" ON daily_entries
   );
 ```
 
+
 ## 6. Deploy and Test
 
 ### Deployment Checklist
-- [ ] **Redeploy** the Vercel application (environment variables are configured)
-- [ ] **Verify** deployment succeeded
-- [ ] **Test** authentication flow with all 4 user roles
-- [ ] **Test** daily entry creation
-- [ ] **Test** Google Sheets sync
-- [ ] **Verify** role-based access control
+- [x] **Redeploy** the Vercel application (environment variables are configured)
+- [x] **Verify** deployment succeeded (Live at: `https://sahakar-accounts-k4nn4ns-projects.vercel.app/`)
+- [x] **Test** authentication flow with `staff` role (Passed)
+- [ ] **Test** authentication flow with `outlet_manager` role
+- [ ] **Test** authentication flow with `ho_accountant` role
+- [ ] **Test** daily entry creation (Manager/Staff)
+- [ ] **Test** Google Sheets sync (Submit day -> Check Drive)
+- [x] **Verify** role-based access control (Staff restricted correctly)
 - [ ] **Check** Google Drive folder updates
 
-### Testing Steps
-1.  Login as Superadmin (frpboy12@gmail.com)
-2.  Create a test daily entry
-3.  Trigger manual sync to Google Sheets
-4.  Verify data appears in Google Drive folder
-5.  Login as HO Accountant (paymentstarlexpmna@gmail.com)
-6.  Verify read-only access to Google Drive folder
-7.  Test outlet manager and staff accounts
+### Testing Steps (To Be Performed)
+1.  **Manager Test**: Login as `manager.test@sahakar.com`, create entry, submit.
+2.  **Sync Test**: Verify submitted entry appears in Drive folder `Sahakar Accounts/MAIN/2025/December.xlsx`.
+3.  **Accountant Test**: Login as `paymentstarlexpmna@gmail.com`, verify "Read Only" view of entry.
 
 ## 7. Documentation
 
 - [ ] Update README with deployment instructions
 - [ ] Document the Google Sheets sync process
-- [ ] Create user guide for each role
+- [ ] Create user guide for EACH role
 - [ ] Document troubleshooting steps
 - [ ] Add API documentation for cron jobs
 
@@ -232,6 +231,6 @@ NODE_ENV=development
 
 ## 📋 Next Steps
 
-1. **Provide HO Accountant email** → I'll share the Drive folder
-2. **Decide on Supabase plan** → Free or Pro?
-3. **Update Supabase keys in .env.local** → Get from Supabase dashboard
+1. **Test Manager & Accountant roles** on the live app.
+2. **Verify Sheet Sync** is creating files in Drive.
+3. **Handover**: Finalize `README.md` and project docs.
