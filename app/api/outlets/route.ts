@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await supabase
             .from('outlets')
             .select('*')
-            .eq('is_active', true)
+            // .eq('is_active', true) // Temporarily disabled due to schema mismatch
             .order('name');
 
         if (error) {
