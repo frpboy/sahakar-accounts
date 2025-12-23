@@ -132,6 +132,21 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
+    // Role-based Access Control
+    if (session) {
+        const userRole = session.user.user_metadata.role;
+
+        // Auditor strict read-only enforcement
+        if (userRole === 'auditor') {
+            if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+                return NextResponse.json(
+                    { error: 'Auditors have read-only access.' },
+                    { status: 403 }
+                );
+            }
+        }
+    }
+
     return response;
 }
 

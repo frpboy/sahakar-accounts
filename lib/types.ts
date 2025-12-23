@@ -1,7 +1,7 @@
 // @ts-nocheck
 import type { Database } from './database.types';
 
-export type UserRole = Database['public']['Enums']['user_role'] | 'superadmin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff';
+export type UserRole = 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff' | 'auditor' | 'superadmin';
 
 export interface UserProfile {
     id: string;
