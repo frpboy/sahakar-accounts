@@ -41,26 +41,122 @@ export async function POST(request: NextRequest) {
 
         // Check if Google Sheets credentials are configured
         const sheetsConfigured = !!(
-            process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-            process.env.GOOGLE_PRIVATE_KEY &&
-            process.env.GOOGLE_SHEET_ID
+            process.env.GOOGLE_SHEETS_CLIENT_EMAIL &&
+            process.env.GOOGLE_SHEETS_PRIVATE_KEY
         );
 
         if (!sheetsConfigured) {
             return NextResponse.json({
                 success: false,
                 error: 'Google Sheets not configured',
-                message: 'Please add GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, and GOOGLE_SHEET_ID to environment variables',
+                message: 'Please add GOOGLE_SHEETS_CLIENT_EMAIL and GOOGLE_SHEETS_PRIVATE_KEY to environment variables',
                 recordCount: records?.length || 0,
             }, { status: 503 });
         }
 
-        // TODO: Implement actual Google Sheets API integration
-        // For now, return success with record count
+        // Initialize Google Sheets API
+        const { google } = require('googleapis');
+        const auth = new google.auth.GoogleAuth({
+            credentials: {
+                client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
+                private_key: process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            },
+            scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'],
+        });
+
+        const sheets = google.sheets({ version: 'v4', auth });
+        const drive = google.drive({ version: 'v3', auth });
+
+        // Get or create the spreadsheet
+        const folderID = process.env.GOOGLE_DRIVE_FOLDER_ID;
+        const spreadsheetName = 'Sahakar Accounts - Daily Records';
+
+        let spreadsheetId: string | undefined;
+
+        // Try to find existing sheet in folder
+        if (folderID) {
+            const listResponse = await drive.files.list({
+                q: `name='${spreadsheetName}' and '${folderID}' in parents and mimeType='application/vnd.google-apps.spreadsheet'`,
+                fields: 'files(id, name)',
+            });
+
+            if (listResponse.data.files && listResponse.data.files.length > 0) {
+                spreadsheetId = listResponse.data.files[0].id || undefined;
+            }
+        }
+
+        // Create new spreadsheet if not found
+        if (!spreadsheetId) {
+            const createResponse = await sheets.spreadsheets.create({
+                requestBody: {
+                    properties: {
+                        title: spreadsheetName,
+                    },
+                    sheets: [{
+                        properties: {
+                            title: 'Daily Records',
+                        }
+                    }]
+                },
+            });
+
+            spreadsheetId = createResponse.data.spreadsheetId || undefined;
+
+            // Move to folder if specified
+            if (spreadsheetId && folderID) {
+                await drive.files.update({
+                    fileId: spreadsheetId,
+                    addParents: folderID,
+                    fields: 'id, parents',
+                });
+            }
+
+            // Add headers
+            await sheets.spreadsheets.values.update({
+                spreadsheetId,
+                range: 'Daily Records!A1:J1',
+                valueInputOption: 'RAW',
+                requestBody: {
+                    values: [[
+                        'Date', 'Outlet Code', 'Outlet Name', 'Opening Cash', 'Opening UPI',
+                        'Total Income', 'Total Expense', 'Closing Cash', 'Closing UPI', 'Status'
+                    ]],
+                },
+            });
+        }
+
+        // Prepare data rows
+        const rows = records?.map(record => [
+            record.date,
+            record.outlets?.code || 'N/A',
+            record.outlets?.name || 'N/A',
+            record.opening_cash || 0,
+            record.opening_upi || 0,
+            record.total_income || 0,
+            record.total_expense || 0,
+            record.closing_cash || 0,
+            record.closing_upi || 0,
+            record.status,
+        ]) || [];
+
+        // Append data to sheet
+        if (rows.length > 0 && spreadsheetId) {
+            await sheets.spreadsheets.values.append({
+                spreadsheetId,
+                range: 'Daily Records!A2',
+                valueInputOption: 'RAW',
+                requestBody: {
+                    values: rows,
+                },
+            });
+        }
+
         return NextResponse.json({
             success: true,
-            message: `Successfully synced ${records?.length || 0} records`,
+            message: `Successfully synced ${records?.length || 0} records to Google Sheets`,
             recordCount: records?.length || 0,
+            spreadsheetId,
+            spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
             synced_at: new Date().toISOString(),
         });
 
@@ -89,15 +185,14 @@ export async function GET(request: NextRequest) {
         }
 
         const sheetsConfigured = !!(
-            process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-            process.env.GOOGLE_PRIVATE_KEY &&
-            process.env.GOOGLE_SHEET_ID
+            process.env.GOOGLE_SHEETS_CLIENT_EMAIL &&
+            process.env.GOOGLE_SHEETS_PRIVATE_KEY
         );
 
         return NextResponse.json({
             configured: sheetsConfigured,
             locked_records_count: count || 0,
-            sheet_id: sheetsConfigured ? process.env.GOOGLE_SHEET_ID : null,
+            folder_id: process.env.GOOGLE_DRIVE_FOLDER_ID || null,
         });
 
     } catch (error) {
