@@ -24,8 +24,10 @@ export type UserProfile = {
     | 'master_admin'
     | 'ho_accountant'
     | 'outlet_manager'
-    | 'outlet_staff';
+    | 'outlet_staff'
+    | 'auditor';
     name?: string;
+    outlet_id?: string;
 };
 
 export type AuthUser = {
