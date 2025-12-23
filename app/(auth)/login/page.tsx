@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { Crown, Briefcase, BarChart3, User, Shield, Beaker } from 'lucide-react';
 
 function LoginForm() {
     const [email, setEmail] = useState('');
@@ -85,14 +86,16 @@ function LoginForm() {
 
             {/* Demo Accounts */}
             <div className="mt-8 border-t border-gray-200 pt-6">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4 text-center">🧪 Demo Accounts</h3>
+                <h3 className="text-sm font-semibold text-gray-700 mb-4 text-center flex items-center justify-center gap-2">
+                    <Beaker className="w-4 h-4" /> Demo Accounts
+                </h3>
                 <div className="space-y-2">
                     {[
-                        { email: 'frpboy12@gmail.com', role: '👑 Superadmin', color: 'bg-purple-50 border-purple-200 text-purple-900' },
-                        { email: 'paymentstarlexpmna@gmail.com', role: '💼 HO Accountant', color: 'bg-green-50 border-green-200 text-green-900' },
-                        { email: 'manager.test@sahakar.com', role: '📊 Manager', color: 'bg-blue-50 border-blue-200 text-blue-900' },
-                        { email: 'staff.test@sahakar.com', role: '👤 Staff', color: 'bg-orange-50 border-orange-200 text-orange-900' },
-                        { email: 'auditor.test@sahakar.com', role: '🛡️ Auditor', color: 'bg-gray-50 border-gray-200 text-gray-900' },
+                        { email: 'frpboy12@gmail.com', role: 'Superadmin', Icon: Crown, color: 'bg-purple-50 border-purple-200 text-purple-900' },
+                        { email: 'paymentstarlexpmna@gmail.com', role: 'HO Accountant', Icon: Briefcase, color: 'bg-green-50 border-green-200 text-green-900' },
+                        { email: 'manager.test@sahakar.com', role: 'Manager', Icon: BarChart3, color: 'bg-blue-50 border-blue-200 text-blue-900' },
+                        { email: 'staff.test@sahakar.com', role: 'Staff', Icon: User, color: 'bg-orange-50 border-orange-200 text-orange-900' },
+                        { email: 'auditor.test@sahakar.com', role: 'Auditor', Icon: Shield, color: 'bg-gray-50 border-gray-200 text-gray-900' },
                     ].map((account) => (
                         <button
                             key={account.email}
@@ -103,9 +106,12 @@ function LoginForm() {
                             className={`w-full text-left p-3 border rounded-lg hover:shadow-md transition-all ${account.color}`}
                         >
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs font-medium opacity-75">{account.role}</p>
-                                    <p className="text-sm font-mono">{account.email}</p>
+                                <div className="flex items-center gap-2">
+                                    <account.Icon className="w-4 h-4" />
+                                    <div>
+                                        <p className="text-xs font-medium opacity-75">{account.role}</p>
+                                        <p className="text-sm font-mono">{account.email}</p>
+                                    </div>
                                 </div>
                                 <span className="text-xs opacity-50">Click to fill</span>
                             </div>

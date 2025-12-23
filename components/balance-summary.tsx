@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Flag, TrendingUp, TrendingDown, Target, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface BalanceSummaryProps {
     outletId?: string;
@@ -62,28 +63,28 @@ export function BalanceSummary({ outletId }: BalanceSummaryProps) {
         {
             label: 'Opening Balance',
             value: openingTotal,
-            icon: '🏁',
+            Icon: Flag,
             color: 'from-green-500 to-emerald-600',
             breakdown: `Cash: ₹${dailyRecord.opening_cash.toLocaleString('en-IN')} | UPI: ₹${dailyRecord.opening_upi.toLocaleString('en-IN')}`,
         },
         {
             label: 'Total Income',
             value: dailyRecord.total_income,
-            icon: '💰',
+            Icon: TrendingUp,
             color: 'from-blue-500 to-cyan-600',
             breakdown: null,
         },
         {
             label: 'Total Expense',
             value: dailyRecord.total_expense,
-            icon: '💸',
+            Icon: TrendingDown,
             color: 'from-red-500 to-pink-600',
             breakdown: null,
         },
         {
             label: 'Closing Balance',
             value: closingTotal,
-            icon: '🎯',
+            Icon: Target,
             color: 'from-purple-500 to-indigo-600',
             breakdown: `Cash: ₹${dailyRecord.closing_cash.toLocaleString('en-IN')} | UPI: ₹${dailyRecord.closing_upi.toLocaleString('en-IN')}`,
         },
@@ -100,7 +101,7 @@ export function BalanceSummary({ outletId }: BalanceSummaryProps) {
                     >
                         <div className="flex items-center justify-between mb-2">
                             <p className="text-sm opacity-90 font-medium">{card.label}</p>
-                            <span className="text-2xl">{card.icon}</span>
+                            <card.Icon className="w-6 h-6" />
                         </div>
                         <p className="text-3xl font-bold mb-1">
                             ₹{card.value.toLocaleString('en-IN', {
@@ -119,7 +120,11 @@ export function BalanceSummary({ outletId }: BalanceSummaryProps) {
             <div className={`rounded-lg p-4 ${netChange >= 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <span className="text-2xl">{netChange >= 0 ? '📈' : '📉'}</span>
+                        {netChange >= 0 ? (
+                            <ArrowUp className="w-6 h-6 text-green-600" />
+                        ) : (
+                            <ArrowDown className="w-6 h-6 text-red-600" />
+                        )}
                         <span className={`font-medium ${netChange >= 0 ? 'text-green-800' : 'text-red-800'}`}>
                             Net Change Today
                         </span>
@@ -139,8 +144,8 @@ export function BalanceSummary({ outletId }: BalanceSummaryProps) {
             {/* Status Badge */}
             <div className="flex justify-end">
                 <span className={`px-4 py-2 rounded-full text-sm font-medium ${dailyRecord.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                        dailyRecord.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
-                            'bg-green-100 text-green-800'
+                    dailyRecord.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                        'bg-green-100 text-green-800'
                     }`}>
                     Status: {dailyRecord.status.toUpperCase()}
                 </span>
