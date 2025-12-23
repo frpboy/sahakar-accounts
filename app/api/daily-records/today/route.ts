@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         const today = istTime.toISOString().split('T')[0];
 
         // Try to get existing record for today
-        const { data: existingRecord } = await supabase
+        const { data: existingRecord } = await adminSupabase
             .from('daily_records')
             .select('*')
             .eq('outlet_id', outletId)
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-        const { data: previousRecord } = await supabase
+        const { data: previousRecord } = await adminSupabase
             .from('daily_records')
             .select('closing_cash, closing_upi')
             .eq('outlet_id', outletId)
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
             .maybeSingle();
 
         // Create new record - handles race conditions at database level
-        const { data: newRecord, error: insertError } = await supabase
+        const { data: newRecord, error: insertError } = await adminSupabase
             .from('daily_records')
             .insert({
                 outlet_id: outletId,
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
             if (insertError.code === '23505') {
                 // Another request created it, fetch and return
                 console.log('[DailyRecords] Race condition detected, fetching existing record');
-                const { data: raceRecord } = await supabase
+                const { data: raceRecord } = await adminSupabase
                     .from('daily_records')
                     .select('*')
                     .eq('outlet_id', outletId)
