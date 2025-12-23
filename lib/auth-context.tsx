@@ -10,7 +10,9 @@ import React, {
     ReactNode,
 } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+// Replace explicit supabase import with client component client
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from 'next/navigation';
 
 /* ======================================================
    TYPES
@@ -56,11 +58,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 ====================================================== */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+    // initialize cookie-aware supabase client
+    const supabase = createClientComponentClient();
+    const router = useRouter();
+
     /* ======================================================
        🔧 DEV MODE — HARD EXIT (NO EFFECTS, NO STATE)
     ====================================================== */
 
     if (DEV_MODE) {
+        // ... (Development mode logic typically unchanged, omitting for brevity in this focused fix if it was working, but keeping structure)
         const value = useMemo<AuthContextType>(() => ({
             user: {
                 id: 'dev-staff',
@@ -73,11 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             loading: false,
             signIn: async (email: string, password: string) => {
                 console.log('[DEV_MODE] Mock signIn called for:', email);
+                router.push('/dashboard');
             },
             signOut: async () => {
                 console.log('[DEV_MODE] Mock signOut called');
+                router.push('/login');
             },
-        }), []);
+        }), [router]);
 
         return (
             <AuthContext.Provider value={value}>
@@ -122,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const loadUser = async () => {
             try {
+                // Get session from cookie-aware client
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (session?.user) {
@@ -153,8 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         email: session.user.email || '',
                         profile,
                     });
+                    // Use router.refresh() on sign-in related events to update Server Components
+                    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+                        router.refresh();
+                    }
                 } else {
                     setUser(null);
+                    // Force refresh on sign out to clear server state
+                    if (event === 'SIGNED_OUT') {
+                        router.refresh();
+                    }
                 }
             }
         );
@@ -162,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => {
             subscription.unsubscribe();
         };
-    }, []);
+    }, [supabase, router]);
 
     // Sign in function
     const signIn = async (email: string, password: string) => {
@@ -178,20 +196,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw error;
         }
 
-        if (data.user) {
-            const profile = await fetchUserProfile(data.user);
-            setUser({
-                id: data.user.id,
-                email: data.user.email || '',
-                profile,
-            });
-        }
+        console.log('[Auth] Sign in successful, refreshing router...');
+
+        // IMPORTANT: Refresh router to ensure middleware sees the new cookie
+        router.refresh();
     };
 
     // Sign out function
     const signOut = async () => {
         await supabase.auth.signOut();
         setUser(null);
+        router.push('/login');
+        router.refresh();
     };
 
     const value = useMemo<AuthContextType>(
