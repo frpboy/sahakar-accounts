@@ -59,10 +59,10 @@ export default function AdminDashboard() {
                                 <h3 className="font-medium text-gray-900">Manage Permissions</h3>
                                 <p className="text-sm text-gray-600">Edit user roles and access</p>
                             </button>
-                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            <a href="/dashboard/users" className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block">
                                 <h3 className="font-medium text-gray-900">View All Users</h3>
                                 <p className="text-sm text-gray-600">12 active users</p>
-                            </button>
+                            </a>
                         </div>
                     </div>
 

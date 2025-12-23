@@ -32,18 +32,18 @@ export default function AccountantDashboard() {
                     <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-xl font-bold text-gray-900 mb-4">📄 Financial Reports</h2>
                         <div className="space-y-3">
-                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            <a href="/dashboard/monthly" className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block">
                                 <h3 className="font-medium text-gray-900">Monthly P&L Statement</h3>
                                 <p className="text-sm text-gray-600">Profit and Loss breakdown</p>
-                            </button>
+                            </a>
                             <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                                 <h3 className="font-medium text-gray-900">Cash Flow Report</h3>
                                 <p className="text-sm text-gray-600">Cash movement analysis</p>
                             </button>
-                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            <a href="/dashboard/reports" className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block">
                                 <h3 className="font-medium text-gray-900">Category Summary</h3>
                                 <p className="text-sm text-gray-600">Income/Expense by category</p>
-                            </button>
+                            </a>
                         </div>
                     </div>
 

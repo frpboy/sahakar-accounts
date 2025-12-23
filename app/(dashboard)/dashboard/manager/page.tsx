@@ -60,16 +60,16 @@ export default function ManagerDashboard() {
                             <h3 className="font-medium text-gray-900">Enter Transactions</h3>
                             <p className="text-sm text-gray-600 mt-1">Add today's entries</p>
                         </a>
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-center">
+                        <a href="/dashboard/reports" className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-center block">
                             <div className="text-3xl mb-2">📊</div>
                             <h3 className="font-medium text-gray-900">View Reports</h3>
                             <p className="text-sm text-gray-600 mt-1">Analyze performance</p>
-                        </button>
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-center">
+                        </a>
+                        <a href="/dashboard/monthly" className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-center block">
                             <div className="text-3xl mb-2">📤</div>
-                            <h3 className="font-medium text-gray-900">Export Data</h3>
-                            <p className="text-sm text-gray-600 mt-1">Download reports</p>
-                        </button>
+                            <h3 className="font-medium text-gray-900">Monthly View</h3>
+                            <p className="text-sm text-gray-600 mt-1">View monthly summaries</p>
+                        </a>
                     </div>
                 </div>
             </div>
