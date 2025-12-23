@@ -83,8 +83,38 @@ function LoginForm() {
                 </button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-gray-600">
-                <p>Demo: staff.test@sahakar.com / Zabnix@2025</p>
+            {/* Demo Accounts */}
+            <div className="mt-8 border-t border-gray-200 pt-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-4 text-center">🧪 Demo Accounts</h3>
+                <div className="space-y-2">
+                    {[
+                        { email: 'frpboy12@gmail.com', role: '👑 Superadmin', color: 'bg-purple-50 border-purple-200 text-purple-900' },
+                        { email: 'paymentstarlexpmna@gmail.com', role: '💼 HO Accountant', color: 'bg-green-50 border-green-200 text-green-900' },
+                        { email: 'manager.test@sahakar.com', role: '📊 Manager', color: 'bg-blue-50 border-blue-200 text-blue-900' },
+                        { email: 'staff.test@sahakar.com', role: '👤 Staff', color: 'bg-orange-50 border-orange-200 text-orange-900' },
+                        { email: 'auditor.test@sahakar.com', role: '🛡️ Auditor', color: 'bg-gray-50 border-gray-200 text-gray-900' },
+                    ].map((account) => (
+                        <button
+                            key={account.email}
+                            onClick={() => {
+                                setEmail(account.email);
+                                setPassword('Zabnix@2025');
+                            }}
+                            className={`w-full text-left p-3 border rounded-lg hover:shadow-md transition-all ${account.color}`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-medium opacity-75">{account.role}</p>
+                                    <p className="text-sm font-mono">{account.email}</p>
+                                </div>
+                                <span className="text-xs opacity-50">Click to fill</span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+                <p className="text-xs text-center text-gray-500 mt-4">
+                    All accounts use password: <code className="bg-gray-100 px-2 py-1 rounded">Zabnix@2025</code>
+                </p>
             </div>
         </div>
     );
