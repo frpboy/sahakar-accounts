@@ -14,7 +14,7 @@ export default async function DashboardPage() {
         .from('users')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .single() as { data: any, error: any }; // Type cast for build fix
 
     let outlets: any[] = [];
 
