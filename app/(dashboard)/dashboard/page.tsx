@@ -1,17 +1,48 @@
-import { getCurrentUser, getUserOutlets } from '@/lib/db';
+import { createServerClient } from '@/lib/supabase-server';
+import { redirect } from 'next/navigation';
 
 export default async function DashboardPage() {
-    const user = await getCurrentUser();
-    const outlets = user ? await getUserOutlets(user.id) : [];
+    const supabase = createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        redirect('/login');
+    }
+
+    // Fetch user profile with outlet_id
+    const { data: userProfile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+    let outlets: any[] = [];
+
+    if (userProfile) {
+        if (['master_admin', 'ho_accountant', 'superadmin'].includes(userProfile.role)) {
+            const { data } = await supabase
+                .from('outlets')
+                .select('*')
+                // .eq('is_active', true) // Schema mismatch fix
+                .order('name');
+            outlets = data || [];
+        } else if (userProfile.outlet_id) {
+            const { data } = await supabase
+                .from('outlets')
+                .select('*')
+                .eq('id', userProfile.outlet_id); // Fetch assigned outlet
+            outlets = data || [];
+        }
+    }
 
     return (
         <div className="space-y-6">
             <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                    Welcome back, {user?.full_name}
+                    Welcome back, {userProfile?.full_name || userProfile?.name}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                    Role: {user?.role.replace('_', ' ').toUpperCase()}
+                    Role: {userProfile?.role?.replace('_', ' ').toUpperCase()}
                 </p>
             </div>
 

@@ -178,21 +178,24 @@ CREATE POLICY "Staff can insert entries for their outlet" ON daily_entries
 ```
 
 
+
 ## 6. Deploy and Test
 
 ### Deployment Checklist
 - [x] **Redeploy** the Vercel application (environment variables are configured)
 - [x] **Verify** deployment succeeded (Live at: `https://sahakar-accounts-k4nn4ns-projects.vercel.app/`)
 - [x] **Test** authentication flow with `staff` role (Passed)
-- [ ] **Test** authentication flow with `outlet_manager` role
-- [ ] **Test** authentication flow with `ho_accountant` role
-- [ ] **Test** daily entry creation (Manager/Staff)
-- [ ] **Test** Google Sheets sync (Submit day -> Check Drive)
-- [x] **Verify** role-based access control (Staff restricted correctly)
-- [ ] **Check** Google Drive folder updates
+- [x] **Test** authentication flow with `outlet_manager` role (Passed)
+- [ ] **Test** daily entry creation (Manager/Staff) - **READY FOR TEST**
+- [ ] **Test** Google Sheets sync (Submit day -> Check Drive) - **READY FOR TEST**
+- [x] **Verify** role-based access control (Staff restricted correctly, Manager access fixed)
 
-### Testing Steps (To Be Performed)
-1.  **Manager Test**: Login as `manager.test@sahakar.com`, create entry, submit.
+### Testing Steps (To Be Performed by User)
+1.  **Manager Test**: Login as `manager.test@sahakar.com` (Pass: `Zabnix@2025`).
+    *   Verify Dashboard loads "Main Outlet".
+    *   Click "Daily Entry" or "Enter Transactions".
+    *   Create a test transaction (Income -> Medicine Sale -> Cash -> 100).
+    *   Submit the day.
 2.  **Sync Test**: Verify submitted entry appears in Drive folder `Sahakar Accounts/MAIN/2025/December.xlsx`.
 3.  **Accountant Test**: Login as `paymentstarlexpmna@gmail.com`, verify "Read Only" view of entry.
 
@@ -231,6 +234,6 @@ NODE_ENV=development
 
 ## 📋 Next Steps
 
-1. **Test Manager & Accountant roles** on the live app.
-2. **Verify Sheet Sync** is creating files in Drive.
-3. **Handover**: Finalize `README.md` and project docs.
+1.  **Execute the Manual Validation** above.
+2.  **Report any specific errors** (e.g., if Sync fails).
+3.  **Finalize Documentation**.
