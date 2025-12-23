@@ -2,8 +2,9 @@
 
 import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
-import { DashboardCard } from '@/components/dashboard-card';
+import { DailyRecordActions } from '@/components/daily-record-actions';
 import { MonthlyReport } from '@/components/monthly-report';
+import { BalanceSummary } from '@/components/balance-summary';
 import { useQuery } from '@tanstack/react-query';
 
 export default function ManagerDashboard() {
@@ -27,33 +28,20 @@ export default function ManagerDashboard() {
                     <p className="text-gray-600 mt-2">Welcome, {user?.profile?.name}</p>
                 </div>
 
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <DashboardCard
-                        title="Today's Income"
-                        value={`₹${(dailyRecord?.total_income || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
-                        colorClass="text-green-600"
-                        subtitle="Cash + UPI"
-                    />
-                    <DashboardCard
-                        title="Today's Expense"
-                        value={`₹${(dailyRecord?.total_expense || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
-                        colorClass="text-red-600"
-                        subtitle="Cash + UPI"
-                    />
-                    <DashboardCard
-                        title="Cash Balance"
-                        value={`₹${(dailyRecord?.closing_cash || dailyRecord?.opening_cash || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
-                        colorClass="text-blue-600"
-                        subtitle="Current"
-                    />
-                    <DashboardCard
-                        title="UPI Balance"
-                        value={`₹${(dailyRecord?.closing_upi || dailyRecord?.opening_upi || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
-                        colorClass="text-purple-600"
-                        subtitle="Current"
-                    />
+                {/* Balance Summary */}
+                <div className="mb-8">
+                    <BalanceSummary />
                 </div>
+
+                {/* Daily Record Actions */}
+                {dailyRecord && (
+                    <div className="mb-8">
+                        <DailyRecordActions
+                            recordId={dailyRecord.id}
+                            status={dailyRecord.status}
+                        />
+                    </div>
+                )}
 
                 {/* Monthly Report */}
                 <div className="mb-8">

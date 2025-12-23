@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
 import { DashboardCard } from '@/components/dashboard-card';
 import { MonthlyReport } from '@/components/monthly-report';
+import { BalanceSummary } from '@/components/balance-summary';
 
 export default function AdminDashboard() {
     const { user } = useAuth();
@@ -83,6 +84,12 @@ export default function AdminDashboard() {
                             </button>
                         </div>
                     </div>
+                </div>
+
+                {/* Balance Summary */}
+                <div className="mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Outlet Balance Overview</h2>
+                    <BalanceSummary />
                 </div>
 
                 {/* Monthly Report */}
