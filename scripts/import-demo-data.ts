@@ -6,9 +6,13 @@
  * Usage: npx tsx scripts/import-demo-data.ts
  */
 
+// Load environment variables from .env.local
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
-import * as path from 'path';
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase setup
@@ -41,10 +45,9 @@ async function getOrCreateOutlet(name: string, code: string): Promise<string> {
     const { data, error } = await supabase
         .from('outlets')
         .insert({
-            organization_id: '00000000-0000-0000-0000-000000000001',
             name,
             code,
-            address: `${name} Location`,
+            location: `${name} Location`,
         })
         .select('id')
         .single();
