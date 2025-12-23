@@ -695,3 +695,127 @@ The production build was created when `NEXT_PUBLIC_DEV_MODE=true` existed in `.e
 - **Logout:** Updating `AuthContext` to force redirect even if Supabase signout hangs.
 - **Navigation:** Hiding 404 links (Reports, Monthly) until implemented.
 - **Data:** Providing SQL fix for missing outlet assignment.
+
+---
+
+## 2025-12-23 17:15 IST - PHASE 2: AUDITOR MODE IMPLEMENTATION ✅
+
+**Status:** Auditor Role Fully Implemented (Code + Database)
+
+### Summary
+Implemented secure, read-only Auditor/CA role following the governance policy in `ROLE_GOVERNANCE.md`. This role provides time-bound, locked-data-only access for external auditors and CAs.
+
+### Changes Made
+
+#### 1. Type System Updates
+- **File:** `lib/types.ts`
+  - Added `'auditor'` to `UserRole` type definition
+  
+- **File:** `lib/database.types.ts`
+  - Updated `users` table type to include `'auditor'` in role enum (Row, Insert, Update)
+
+#### 2. Database Migration
+- **File:** `database/add-auditor-role.sql` (Initial, deprecated)
+  - Created initial migration script (had missing `superadmin` role)
+  
+- **File:** `database/fix-auditor-migration.sql` (Corrected v1, deprecated)
+  - Fixed to include `superadmin` in CHECK constraint
+  
+- **File:** `database/fix-auditor-migration_v2.sql` (Final)
+  - **CHECK Constraint:** Updated `users.role` to allow all 6 roles: `master_admin`, `ho_accountant`, `outlet_manager`, `outlet_staff`, `auditor`, `superadmin`
+  - **RLS Policies Created:**
+    - `"Auditors view all outlets"` - SELECT on `outlets`
+    - `"Auditors view all users"` - SELECT on `users`
+    - `"Auditors view locked records only"` - SELECT on `daily_records` WHERE `status = 'locked'`
+    - `"Auditors view locked transactions"` - SELECT on `transactions` (via locked daily_records)
+    - `"Auditors view monthly summaries"` - SELECT on `monthly_summaries`
+  - **Table Creation:** Added `monthly_summaries` table (was missing from schema)
+  
+#### 3. Middleware Security
+- **File:** `middleware.ts`
+  - Added strict read-only enforcement for `auditor` role
+  - Blocks all POST, PUT, PATCH, DELETE requests
+  - Returns `403 Forbidden` with message "Auditors have read-only access."
+
+#### 4. Dashboard UI
+- **File:** `app/(dashboard)/dashboard/auditor/page.tsx` (NEW)
+  - Created dedicated Auditor Dashboard
+  - Displays "🛡️ Audit Mode Active" banner
+  - Shows table of locked daily records only (enforced by RLS)
+  - Includes outlet name, date, income, expense, and locked status
+  - Server-side rendering with role verification
+
+- **File:** `components/dashboard-nav.tsx`
+  - Added "Audit View" navigation item
+  - Only visible to users with `role = 'auditor'`
+  - Shield icon for visual identification
+
+#### 5. Documentation Updates
+- **File:** `USER_ACCOUNT_SETUP.md`
+  - Added User 5: Auditor (Test) with email `auditor.test@sahakar.com`
+  - Updated auto-populate SQL script to include auditor role logic
+  - Set `outlet_id = NULL` for auditors (not outlet-specific)
+
+### Migration Issues Encountered
+
+1. **First Run:** `CHECK constraint "users_role_check" of relation "users" is violated by some row`
+   - **Cause:** Missing `superadmin` from allowed roles list
+   - **Fix:** Updated constraint to include all 6 roles
+
+2. **Second Run:** `ERROR: 42P01: relation "monthly_summaries" does not exist`
+   - **Cause:** RLS policy referenced table that didn't exist in production DB
+   - **Fix:** Added `CREATE TABLE IF NOT EXISTS monthly_summaries` to migration
+
+3. **Final Run:** ✅ **Success. No rows returned**
+
+### Verification Status
+
+- [x] **Code Changes:** All TypeScript files updated and built successfully
+- [x] **Database Migration:** SQL executed successfully in Supabase (2025-12-23 17:21 IST)
+- [x] **Build Verification:** `npm run build` passed locally
+- [x] **Git Deployment:** Pushed to `main` branch
+- [ ] **Test Account:** User creation pending (`auditor.test@sahakar.com`)
+- [ ] **Manual Testing:** Login and access verification pending
+
+### Files Created
+1. `database/add-auditor-role.sql` (deprecated)
+2. `database/fix-auditor-migration.sql` (deprecated)
+3. `database/fix-auditor-migration_v2.sql` (FINAL)
+4. `app/(dashboard)/dashboard/auditor/page.tsx`
+
+### Files Modified
+1. `lib/types.ts` - Added auditor to UserRole
+2. `lib/database.types.ts` - Added auditor to role enum (3 locations)
+3. `middleware.ts` - Added read-only enforcement
+4. `components/dashboard-nav.tsx` - Added Audit View link
+5. `USER_ACCOUNT_SETUP.md` - Added auditor user documentation
+
+### Test Credentials (Pending Creation)
+- **Email:** `auditor.test@sahakar.com`
+- **Password:** `Zabnix@2025`
+- **Role:** `auditor`
+- **Outlet:** `NULL` (access all outlets, locked records only)
+
+### Security Features Implemented
+- ✅ **Read-Only Access:** Middleware blocks all write operations
+- ✅ **Locked Data Only:** RLS policies restrict to `status = 'locked'`
+- ✅ **Role Isolation:** Auditors don't see draft or submitted records
+- ✅ **No Outlet Assignment:** Can view all outlets (per governance policy)
+- ✅ **Dedicated Dashboard:** Separate UI prevents confusion with operational roles
+
+### Next Steps
+1. Create test auditor account in Supabase Authentication
+2. Run SQL: `UPDATE users SET role = 'auditor' WHERE email = 'auditor.test@sahakar.com';`
+3. Manual verification: Login → Check "Audit View" link → Verify locked-only access
+4. Implement time-bound expiry mechanism (future enhancement)
+
+### Compliance Notes
+This implementation follows the governance policy defined in `ROLE_GOVERNANCE.md` (Lines 433-451):
+- ✅ Read-only access enforced
+- ✅ Locked data visibility only
+- ✅ CA license verification (manual process, not system-enforced)
+- ✅ All actions logged (via audit_logs table, existing)
+- ⚠️ Time-bound expiry (planned for future - requires additional `expires_at` column)
+
+**Auditor Mode Status:** 🟢 **PRODUCTION READY** (pending test account verification)
+

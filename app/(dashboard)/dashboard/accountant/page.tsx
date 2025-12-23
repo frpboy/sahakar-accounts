@@ -3,6 +3,7 @@
 import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
 import { MonthlyReport } from '@/components/monthly-report';
+import { BalanceSummary } from '@/components/balance-summary';
 
 export default function AccountantDashboard() {
     const { user } = useAuth();
@@ -13,6 +14,12 @@ export default function AccountantDashboard() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">HO Accountant Dashboard</h1>
                     <p className="text-gray-600 mt-2">Welcome, {user?.profile?.name}</p>
+                </div>
+
+                {/* Balance Summary */}
+                <div className="mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">All Outlets Balance</h2>
+                    <BalanceSummary />
                 </div>
 
                 {/* Monthly Report */}
