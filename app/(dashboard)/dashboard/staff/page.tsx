@@ -26,7 +26,7 @@ export default function StaffDashboard() {
     const upiBalance = dailyRecord?.closing_upi ?? dailyRecord?.opening_upi ?? 0;
 
     return (
-        <ProtectedRoute allowedRoles={['outlet_staff']}>
+        <ProtectedRoute allowedRoles={['outlet_staff', 'outlet_manager']}>
             <div className="p-6 max-w-7xl mx-auto">
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold text-gray-900">Staff Dashboard</h1>

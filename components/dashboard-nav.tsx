@@ -24,7 +24,7 @@ const navigation: NavItem[] = [
     },
     {
         name: 'Daily Entry',
-        href: '/dashboard/daily-entry',
+        href: '/dashboard/staff',
         roles: ['outlet_manager', 'outlet_staff'],
         icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
