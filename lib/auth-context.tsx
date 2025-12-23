@@ -145,9 +145,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } catch (err) {
                 console.error('[Auth] Error loading user:', err);
             } finally {
+                console.log('[Auth] Initial load complete, setting loading=false');
                 setLoading(false);
             }
         };
+
+        // SAFETY FALLBACK: Force loading to false after 4 seconds if it hangs
+        const timeoutId = setTimeout(() => {
+            setLoading((prev) => {
+                if (prev) {
+                    console.warn('[Auth] Session check timed out, forcing loading=false');
+                    return false;
+                }
+                return prev;
+            });
+        }, 4000);
 
         loadUser();
 
@@ -155,6 +167,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 console.log('[Auth] State changed:', event);
+
+                // Clear timeout if state changes (meaning auth is alive)
+                clearTimeout(timeoutId);
 
                 if (session?.user) {
                     const profile = await fetchUserProfile(session.user);
