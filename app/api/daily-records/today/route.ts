@@ -43,9 +43,10 @@ export async function GET(request: NextRequest) {
         // Try to get existing record for today
         const { data: existingRecord } = await adminSupabase
             .from('daily_records')
-            .select('*')
+            .select('id,date,outlet_id,opening_cash,opening_upi,closing_cash,closing_upi,total_income,total_expense,status')
             .eq('outlet_id', outletId)
             .eq('date', today)
+            .limit(1)
             .maybeSingle();
 
         if (existingRecord) {
@@ -88,9 +89,10 @@ export async function GET(request: NextRequest) {
                 console.log('[DailyRecords] Race condition detected, fetching existing record');
                 const { data: raceRecord } = await adminSupabase
                     .from('daily_records')
-                    .select('*')
+                    .select('id,date,outlet_id,opening_cash,opening_upi,closing_cash,closing_upi,total_income,total_expense,status')
                     .eq('outlet_id', outletId)
                     .eq('date', today)
+                    .limit(1)
                     .single();
 
                 return NextResponse.json(raceRecord);

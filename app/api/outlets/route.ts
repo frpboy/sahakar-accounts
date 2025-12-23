@@ -6,12 +6,19 @@ import { createAdminClient } from '@/lib/supabase-server';
 export async function GET(request: NextRequest) {
     try {
         const supabase = createAdminClient();
+        const searchParams = request.nextUrl.searchParams;
+        const id = searchParams.get('id');
 
-        const { data, error } = await supabase
+        let query = supabase
             .from('outlets')
-            .select('*')
-            // .eq('is_active', true) // Temporarily disabled due to schema mismatch
+            .select('id,name,code,address,phone,email,created_at')
             .order('name');
+
+        if (id) {
+            query = query.eq('id', id).limit(1);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });
