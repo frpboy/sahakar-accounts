@@ -86,7 +86,7 @@ export interface Database {
                     organization_id: string
                     email: string
                     full_name: string
-                    role: 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff'
+                    role: 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff' | 'auditor'
                     phone: string | null
                     is_active: boolean
                     created_at: string
@@ -97,7 +97,7 @@ export interface Database {
                     organization_id: string
                     email: string
                     full_name: string
-                    role: 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff'
+                    role: 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff' | 'auditor'
                     phone?: string | null
                     is_active?: boolean
                     created_at?: string
@@ -107,7 +107,7 @@ export interface Database {
                     organization_id?: string
                     email?: string
                     full_name?: string
-                    role?: 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff'
+                    role?: 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff' | 'auditor'
                     phone?: string | null
                     is_active?: boolean
                     updated_at?: string
