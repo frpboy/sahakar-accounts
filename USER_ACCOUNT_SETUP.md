@@ -28,6 +28,11 @@ Due to browser rate limits, please create the user accounts manually in Supabase
 - Password: Zabnix@2025
 - ✅ Check "Auto Confirm User"
 
+### User 5: Auditor (Test)
+- Email: `auditor.test@sahakar.com`
+- Password: Zabnix@2025
+- ✅ Check "Auto Confirm User"
+
 ## Step 2: Get Outlet ID
 
 After creating the users, you need to get the Main Outlet ID to assign to the manager and staff.
@@ -120,16 +125,19 @@ SELECT
     WHEN 'paymentstarlexpmna@gmail.com' THEN 'HO Accountant'
     WHEN 'manager.test@sahakar.com' THEN 'Test Manager'
     WHEN 'staff.test@sahakar.com' THEN 'Test Staff'
+    WHEN 'auditor.test@sahakar.com' THEN 'Test Auditor'
   END as name,
   CASE au.email
     WHEN 'frpboy12@gmail.com' THEN 'superadmin'
     WHEN 'paymentstarlexpmna@gmail.com' THEN 'ho_accountant'
     WHEN 'manager.test@sahakar.com' THEN 'outlet_manager'
     WHEN 'staff.test@sahakar.com' THEN 'outlet_staff'
+    WHEN 'auditor.test@sahakar.com' THEN 'auditor'
   END as role,
   CASE au.email
     WHEN 'manager.test@sahakar.com' THEN (SELECT id FROM main_outlet)
     WHEN 'staff.test@sahakar.com' THEN (SELECT id FROM main_outlet)
+    WHEN 'auditor.test@sahakar.com' THEN NULL -- Auditors don't belong to a specific outlet
     ELSE NULL
   END as outlet_id
 FROM auth_users au
@@ -137,7 +145,8 @@ WHERE au.email IN (
   'frpboy12@gmail.com',
   'paymentstarlexpmna@gmail.com',
   'manager.test@sahakar.com',
-  'staff.test@sahakar.com'
+  'staff.test@sahakar.com',
+  'auditor.test@sahakar.com'
 )
 ON CONFLICT (id) DO UPDATE
 SET 
