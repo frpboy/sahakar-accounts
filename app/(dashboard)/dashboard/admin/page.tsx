@@ -8,6 +8,7 @@ import { MonthlyReport } from '@/components/monthly-report';
 import { BalanceSummary } from '@/components/balance-summary';
 import { CreateUserModal } from '@/components/create-user-modal';
 import { CreateOutletModal } from '@/components/create-outlet-modal';
+import { ManagePermissionsModal } from '@/components/manage-permissions-modal';
 import { useQuery } from '@tanstack/react-query';
 import { UserPlus, Building2, Settings } from 'lucide-react';
 
@@ -15,6 +16,7 @@ export default function AdminDashboard() {
     const { user } = useAuth();
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showCreateOutlet, setShowCreateOutlet] = useState(false);
+    const [showManagePermissions, setShowManagePermissions] = useState(false);
 
     // Fetch users count
     const { data: users } = useQuery({
@@ -97,7 +99,10 @@ export default function AdminDashboard() {
                                 <h3 className="font-medium text-gray-900">Create New User</h3>
                                 <p className="text-sm text-gray-600">Add staff, manager, or accountant</p>
                             </button>
-                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            <button
+                                onClick={() => setShowManagePermissions(true)}
+                                className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                            >
                                 <h3 className="font-medium text-gray-900">Manage Permissions</h3>
                                 <p className="text-sm text-gray-600">Edit user roles and access</p>
                             </button>
@@ -163,6 +168,11 @@ export default function AdminDashboard() {
                 isOpen={showCreateOutlet}
                 onClose={() => setShowCreateOutlet(false)}
                 onSuccess={handleOutletCreated}
+            />
+            <ManagePermissionsModal
+                isOpen={showManagePermissions}
+                onClose={() => setShowManagePermissions(false)}
+                onSuccess={handleUserCreated}
             />
         </ProtectedRoute>
     );
