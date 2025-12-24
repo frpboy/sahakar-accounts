@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
 import { DashboardCard } from '@/components/dashboard-card';
@@ -7,11 +8,13 @@ import { TransactionForm } from '@/components/transaction-form';
 import { TransactionList } from '@/components/transaction-list';
 import { LiveBalance } from '@/components/live-balance';
 import { DailyRecordActions } from '@/components/daily-record-actions';
+import { OpeningBalanceModal } from '@/components/opening-balance-modal';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
 
 export default function StaffDashboard() {
     const { user } = useAuth();
+    const [showOpeningModal, setShowOpeningModal] = useState(false);
 
     // Get today's daily record
     const { data: dailyRecord, isLoading: recordLoading } = useQuery({
@@ -38,6 +41,16 @@ export default function StaffDashboard() {
 
     const cashBalance = dailyRecord?.closing_cash ?? dailyRecord?.opening_cash ?? 0;
     const upiBalance = dailyRecord?.closing_upi ?? dailyRecord?.opening_upi ?? 0;
+
+    // Auto-show opening balance modal if needed
+    useEffect(() => {
+        if (dailyRecord && dailyRecord.status === 'draft') {
+            const hasOpeningBalances = (dailyRecord.opening_cash || 0) > 0 || (dailyRecord.opening_upi || 0) > 0;
+            if (!hasOpeningBalances) {
+                setShowOpeningModal(true);
+            }
+        }
+    }, [dailyRecord]);
 
     return (
         <ProtectedRoute allowedRoles={['outlet_staff', 'outlet_manager']}>
@@ -71,7 +84,12 @@ export default function StaffDashboard() {
                         {recordLoading ? (
                             <div className="bg-gray-100 rounded-lg h-64 animate-pulse"></div>
                         ) : (
-                            <LiveBalance cashBalance={cashBalance} upiBalance={upiBalance} />
+                            <LiveBalance
+                                cashBalance={cashBalance}
+                                upiBalance={upiBalance}
+                                openingCash={dailyRecord?.opening_cash || 0}
+                                openingUpi={dailyRecord?.opening_upi || 0}
+                            />
                         )}
                     </div>
 
@@ -92,6 +110,18 @@ export default function StaffDashboard() {
                     <div className="mt-8">
                         <TransactionList dailyRecordId={dailyRecord.id} />
                     </div>
+                )}
+
+                {/* Opening Balance Modal */}
+                {dailyRecord && (
+                    <OpeningBalanceModal
+                        isOpen={showOpeningModal}
+                        onClose={() => setShowOpeningModal(false)}
+                        recordId={dailyRecord.id}
+                        date={dailyRecord.date}
+                        previousClosingCash={0}
+                        previousClosingUpi={0}
+                    />
                 )}
             </div>
         </ProtectedRoute>
