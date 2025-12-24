@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase-server';
 import { DashboardNav } from '@/components/dashboard-nav';
 import { UserMenu } from '@/components/user-menu';
+import { AuthErrorState } from '@/components/auth-error-state';
 import type { UserProfile } from '@/lib/auth-context';
 
 export const dynamic = 'force-dynamic';
@@ -13,18 +13,16 @@ export default async function DashboardLayout({
 }) {
     const supabase = createServerClient();
 
-    console.log('[DashboardLayout] Fetching user...');
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
         console.error('[DashboardLayout] Auth error:', authError);
     }
 
+    // Middleware guarantees user exists - if not, show error
     if (!user) {
-        console.log('[DashboardLayout] No user found - middleware should have caught this');
-        // Don't redirect here - middleware handles this
-        // This log helps debug if middleware isn't working
-        return null; // Return early but don't redirect (middleware does it)
+        console.error('[DashboardLayout] No user found - middleware should have caught this');
+        return <AuthErrorState message="Authentication required. Please log in again." />;
     }
 
     console.log('[DashboardLayout] User found:', user.email, 'Fetching profile...');
