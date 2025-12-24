@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
         const { data, error } = await supabase
             .from('users')
-            .select('id,email,name,full_name,role,outlet_id,phone,created_at')
+            .select('id,email,name,role,outlet_id,phone,created_at')
             .order('created_at', { ascending: false })
             .limit(100); // Limit to 100 users
 
@@ -48,16 +48,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: authError.message }, { status: 500 });
         }
 
-        // Create user profile
+        // Create user profile with outlet_id if provided
         const { data, error } = await supabase
             .from('users')
             .insert({
                 id: authData.user.id,
-                organization_id: '00000000-0000-0000-0000-000000000001',
                 email,
-                full_name: fullName,
+                name: fullName,
                 role,
                 phone,
+                outlet_id: outletId || null,
             })
             .select()
             .single();
@@ -68,15 +68,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        // Add outlet access if provided
-        if (outletId) {
-            await supabase
-                .from('user_outlet_access')
-                .insert({
-                    user_id: authData.user.id,
-                    outlet_id: outletId,
-                });
-        }
+        // Outlet is already set in the insert above, no need for separate table
 
         return NextResponse.json(data, { status: 201 });
     } catch (error: any) {
