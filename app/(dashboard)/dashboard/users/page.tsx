@@ -52,7 +52,8 @@ export default function UsersPage() {
             {/* Modals */}
             <CreateUserModal
                 isOpen={showCreateUser}
-                onClose={() => {
+                onClose={() => setShowCreateUser(false)}
+                onSuccess={() => {
                     setShowCreateUser(false);
                     refetch();
                 }}
@@ -60,6 +61,7 @@ export default function UsersPage() {
             <ManagePermissionsModal
                 isOpen={showManagePermissions}
                 onClose={() => setShowManagePermissions(false)}
+                onSuccess={() => setShowManagePermissions(false)}
             />
 
             <div className="bg-white rounded-lg shadow overflow-hidden">

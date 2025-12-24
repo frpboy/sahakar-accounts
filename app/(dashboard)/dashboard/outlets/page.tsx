@@ -148,7 +148,8 @@ export default function OutletsPage() {
                 {/* Create Outlet Modal */}
                 <CreateOutletModal
                     isOpen={showCreateOutlet}
-                    onClose={() => {
+                    onClose={() => setShowCreateOutlet(false)}
+                    onSuccess={() => {
                         setShowCreateOutlet(false);
                         refetch();
                     }}
