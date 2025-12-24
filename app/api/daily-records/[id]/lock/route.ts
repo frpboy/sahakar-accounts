@@ -1,51 +1,52 @@
 // @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-server';
-import type { DailyRecord } from '@/lib/temp-types';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function POST(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient({ cookies });
+
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { id } = params;
 
-        // Get the daily record
-        const { data: record, error: fetchError } = await supabase
-            .from('daily_records')
-            .select('*')
-            .eq('id', id)
-            .single();
+        // Get reason from request body (optional)
+        const body = await request.json().catch(() => ({}));
+        const reason = body.reason || null;
 
-        if (fetchError || !record) {
-            return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
-        }
-
-        const typedRecord = record as DailyRecord;
-
-        if (typedRecord.status !== 'submitted') {
-            return NextResponse.json({ error: 'Record must be submitted first' }, { status: 400 });
-        }
-
-        // Update status to locked
-        const { data, error } = await (supabase
-            .from('daily_records')
-            .update({
-                status: 'locked',
-                locked_at: new Date().toISOString(),
-            })
-            .eq('id', id)
-            .select()
-            .single() as any);
+        // Call lock_day RPC (validates role and logs automatically)
+        const { data, error } = await supabase.rpc('lock_day', {
+            record_id: id,
+            locked_by_user_id: session.user.id,
+            lock_reason: reason
+        });
 
         if (error) {
-            console.error('Error locking daily record:', error);
+            console.error('Error calling lock_day RPC:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json(data);
+        // RPC returns JSON with success/error
+        if (!data || !data.success) {
+            return NextResponse.json({
+                error: data?.error || 'Failed to lock record'
+            }, { status: 400 });
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: data.message
+        });
     } catch (error: any) {
         console.error('Error in POST /api/daily-records/[id]/lock:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
