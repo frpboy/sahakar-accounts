@@ -61,9 +61,9 @@ BEGIN
     INSERT INTO audit_logs (
         user_id,
         action,
-        entity_type,
+        entity,
         entity_id,
-        changes,
+        new_data,
         reason
     ) VALUES (
         locked_by_user_id,

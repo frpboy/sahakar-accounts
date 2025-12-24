@@ -56,9 +56,9 @@ BEGIN
     INSERT INTO audit_logs (
         user_id,
         action,
-        entity_type,
+        entity,
         entity_id,
-        changes
+        new_data
     ) VALUES (
         submitted_by_user_id,
         'submit_day',

@@ -3,6 +3,7 @@
 -- =====================================================================
 -- Purpose: Add columns for enhanced audit trail (reason, IP, severity)
 -- Created: 2025-12-24
+-- Note: Working with existing schema (entity, old_data, new_data columns)
 -- =====================================================================
 
 -- Add new columns to audit_logs table if they don't exist
@@ -23,7 +24,7 @@ ON audit_logs(user_id, action, created_at DESC);
 
 -- Create index for entity tracking
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity 
-ON audit_logs(entity_type, entity_id, created_at DESC);
+ON audit_logs(entity, entity_id, created_at DESC);
 
 -- Add comments for documentation
 COMMENT ON COLUMN audit_logs.reason IS 
@@ -38,7 +39,7 @@ COMMENT ON COLUMN audit_logs.user_agent IS
 COMMENT ON COLUMN audit_logs.severity IS 
 'Severity level: normal (default), warning (important), critical (requires immediate attention)';
 
--- Verification query
+-- Verification query - check if new columns were added
 SELECT 
     column_name,
     data_type,
@@ -47,6 +48,7 @@ SELECT
 FROM information_schema.columns
 WHERE table_name = 'audit_logs'
 AND column_name IN ('reason', 'ip_address', 'user_agent', 'severity')
-ORDER BY ordinal_position;
+ORDER BY column_name;
 
 SELECT 'audit_logs table expanded successfully' as status;
+
