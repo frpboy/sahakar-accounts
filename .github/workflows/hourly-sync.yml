@@ -1,0 +1,20 @@
+name: Hourly Google Sheets Sync
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Every hour at minute 0
+  workflow_dispatch: # Allows you to trigger it manually from the "Actions" tab
+
+jobs:
+  sync-to-sheets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Sync API
+        run: |
+          curl -X POST "https://sahakar-accounts.vercel.app/api/cron/sync-sheets" \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          -H "Content-Type: application/json"
+          
+      - name: Report Status
+        if: always()
+        run: echo "Sync request sent at $(date)"
