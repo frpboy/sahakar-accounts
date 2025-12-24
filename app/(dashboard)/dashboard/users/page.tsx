@@ -1,12 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { CreateUserModal } from '@/components/create-user-modal';
+import { ManagePermissionsModal } from '@/components/manage-permissions-modal';
+import { UserPlus, Settings } from 'lucide-react';
 
 export default function UsersPage() {
     const supabase = createClientComponentClient();
+    const [showCreateUser, setShowCreateUser] = useState(false);
+    const [showManagePermissions, setShowManagePermissions] = useState(false);
 
-    const { data: users, isLoading } = useQuery({
+    const { data: users, isLoading, refetch } = useQuery({
         queryKey: ['users-list'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -25,10 +31,36 @@ export default function UsersPage() {
                     <h1 className="text-3xl font-bold text-gray-900">Users</h1>
                     <p className="text-gray-600 mt-2">Manage system users and access.</p>
                 </div>
-                {/* <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Add User
-                </button> */}
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowCreateUser(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        <UserPlus size={20} />
+                        Add User
+                    </button>
+                    <button
+                        onClick={() => setShowManagePermissions(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                        <Settings size={20} />
+                        Manage Permissions
+                    </button>
+                </div>
             </div>
+
+            {/* Modals */}
+            <CreateUserModal
+                isOpen={showCreateUser}
+                onClose={() => {
+                    setShowCreateUser(false);
+                    refetch();
+                }}
+            />
+            <ManagePermissionsModal
+                isOpen={showManagePermissions}
+                onClose={() => setShowManagePermissions(false)}
+            />
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">
@@ -75,8 +107,8 @@ export default function UsersPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'master_admin' ? 'bg-purple-100 text-purple-800' :
-                                                    user.role === 'outlet_manager' ? 'bg-green-100 text-green-800' :
-                                                        'bg-blue-100 text-blue-800'
+                                                user.role === 'outlet_manager' ? 'bg-green-100 text-green-800' :
+                                                    'bg-blue-100 text-blue-800'
                                                 }`}>
                                                 {user.role}
                                             </span>
