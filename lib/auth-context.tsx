@@ -28,6 +28,8 @@ export type UserProfile = {
     | 'auditor';
     name?: string;
     outlet_id?: string;
+    access_start_date?: string;
+    access_end_date?: string;
 };
 
 export type AuthUser = {
@@ -122,6 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return {
                 role: data.role,
                 name: data.name || data.full_name,
+                outlet_id: data.outlet_id,
+                access_start_date: data.access_start_date,
+                access_end_date: data.access_end_date,
             } as UserProfile;
         } catch (err) {
             console.error('[Auth] Exception fetching profile:', err);

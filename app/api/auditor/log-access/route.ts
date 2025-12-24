@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
         const { action, entity_type, entity_id, outlet_id } = body;
 
         // Validate action
-        const valid Actions = ['view_dashboard', 'view_record', 'view_transaction', 'export_excel', 'export_pdf', 'filter_data'];
+        const validActions = ['view_dashboard', 'view_record', 'view_transaction', 'export_excel', 'export_pdf', 'filter_data'];
         if (!validActions.includes(action)) {
             return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
         }
