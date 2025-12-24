@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SubmitReviewModal } from './submit-review-modal';
 
 interface DailyRecordActionsProps {
     recordId: string;
@@ -10,6 +11,7 @@ interface DailyRecordActionsProps {
 
 export function DailyRecordActions({ recordId, status }: DailyRecordActionsProps) {
     const queryClient = useQueryClient();
+    const [showSubmitModal, setShowSubmitModal] = useState(false);
 
     const submitRecord = useMutation({
         mutationFn: async () => {
@@ -82,27 +84,36 @@ export function DailyRecordActions({ recordId, status }: DailyRecordActionsProps
 
     // Draft status
     return (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        <span className="font-medium text-blue-900">Draft</span>
+        <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span className="font-medium text-blue-900">Draft</span>
+                        </div>
+                        <p className="text-sm text-blue-700 mt-1">
+                            You can add or modify transactions.
+                        </p>
                     </div>
-                    <p className="text-sm text-blue-700 mt-1">
-                        You can add or modify transactions.
-                    </p>
+                    <button
+                        onClick={() => setShowSubmitModal(true)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                    >
+                        ✓ Review & Submit
+                    </button>
                 </div>
-                <button
-                    onClick={() => submitRecord.mutate()}
-                    disabled={submitRecord.isPending}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400"
-                >
-                    {submitRecord.isPending ? 'Submitting...' : '✓ Submit Record'}
-                </button>
             </div>
-        </div>
+
+            {/* Submit Review Modal */}
+            <SubmitReviewModal
+                isOpen={showSubmitModal}
+                onClose={() => setShowSubmitModal(false)}
+                recordId={recordId}
+                date={new Date().toISOString()}
+            />
+        </>
     );
 }
