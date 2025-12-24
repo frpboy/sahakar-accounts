@@ -5,8 +5,15 @@ export default async function DashboardPage() {
     const supabase = createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Note: Middleware already protects this route
+    // If user is null here, middleware failed - but we shouldn't double-redirect
     if (!user) {
-        redirect('/login');
+        console.error('[DashboardPage] No User found - middleware should have caught this');
+        return (
+            <div className="p-6">
+                <p className="text-red-600">Authentication error. Please refresh the page.</p>
+            </div>
+        );
     }
 
     // Fetch user profile with outlet_id

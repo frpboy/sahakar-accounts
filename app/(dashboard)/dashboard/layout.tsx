@@ -21,8 +21,10 @@ export default async function DashboardLayout({
     }
 
     if (!user) {
-        console.log('[DashboardLayout] No user found, redirecting to login');
-        redirect('/login');
+        console.log('[DashboardLayout] No user found - middleware should have caught this');
+        // Don't redirect here - middleware handles this
+        // This log helps debug if middleware isn't working
+        return null; // Return early but don't redirect (middleware does it)
     }
 
     console.log('[DashboardLayout] User found:', user.email, 'Fetching profile...');
@@ -38,8 +40,16 @@ export default async function DashboardLayout({
     }
 
     if (!userData) {
-        console.log('[DashboardLayout] No profile found for user, redirecting to login');
-        redirect('/login');
+        console.log('[DashboardLayout] No profile found for user');
+        // Don't redirect - just show error state
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-gray-900">Profile Not Found</h2>
+                    <p className="mt-2 text-gray-600">Please contact administrator to set up your profile.</p>
+                </div>
+            </div>
+        );
     }
 
     console.log('[DashboardLayout] Profile loaded successfully for:', (userData as any)?.email);
