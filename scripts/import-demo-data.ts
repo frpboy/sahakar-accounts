@@ -367,7 +367,7 @@ async function scanAndImport(dir: string, outletType?: string, location?: string
                     `${location} ${outletType === 'hyper_pharmacy' ? 'Hyper Pharmacy' : 'Smart Clinic'}`,
                     code,
                     location,
-                    outletType
+                    outletType as 'hyper_pharmacy' | 'smart_clinic'
                 );
 
                 if (outletId) {
