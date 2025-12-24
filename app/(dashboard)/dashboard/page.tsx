@@ -1,19 +1,14 @@
 import { createServerClient } from '@/lib/supabase-server';
-import { redirect } from 'next/navigation';
+import { AuthErrorState } from '@/components/auth-error-state';
 
 export default async function DashboardPage() {
     const supabase = createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Note: Middleware already protects this route
-    // If user is null here, middleware failed - but we shouldn't double-redirect
+    // Middleware guarantees user exists - if not, show error
     if (!user) {
-        console.error('[DashboardPage] No User found - middleware should have caught this');
-        return (
-            <div className="p-6">
-                <p className="text-red-600">Authentication error. Please refresh the page.</p>
-            </div>
-        );
+        console.error('[DashboardPage] No user found - middleware should have caught this');
+        return <AuthErrorState message="Authentication required. Please log in again." />;
     }
 
     // Fetch user profile with outlet_id
