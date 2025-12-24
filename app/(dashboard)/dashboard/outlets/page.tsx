@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
 import { useQuery } from '@tanstack/react-query';
+import { CreateOutletModal } from '@/components/create-outlet-modal';
 
 interface Outlet {
     id: string;
@@ -14,9 +16,10 @@ interface Outlet {
 
 export default function OutletsPage() {
     const { user } = useAuth();
+    const [showCreateOutlet, setShowCreateOutlet] = useState(false);
 
     // Fetch all outlets
-    const { data: outlets, isLoading } = useQuery<Outlet[]>({
+    const { data: outlets, isLoading, refetch } = useQuery<Outlet[]>({
         queryKey: ['outlets'],
         queryFn: async () => {
             const res = await fetch('/api/outlets');
@@ -69,7 +72,10 @@ export default function OutletsPage() {
                     <div className="p-6 border-b border-gray-200">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-bold text-gray-900">All Outlets</h2>
-                            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <button
+                                onClick={() => setShowCreateOutlet(true)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
                                 + Add New Outlet
                             </button>
                         </div>
@@ -138,6 +144,15 @@ export default function OutletsPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Create Outlet Modal */}
+                <CreateOutletModal
+                    isOpen={showCreateOutlet}
+                    onClose={() => {
+                        setShowCreateOutlet(false);
+                        refetch();
+                    }}
+                />
             </div>
         </ProtectedRoute>
     );
