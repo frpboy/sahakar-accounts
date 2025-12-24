@@ -9,6 +9,7 @@ import { TransactionList } from '@/components/transaction-list';
 import { LiveBalance } from '@/components/live-balance';
 import { DailyRecordActions } from '@/components/daily-record-actions';
 import { OpeningBalanceModal } from '@/components/opening-balance-modal';
+import { TransactionSummary } from '@/components/transaction-summary';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
 
@@ -107,8 +108,13 @@ export default function StaffDashboard() {
 
                 {/* Transaction List */}
                 {dailyRecord && (
-                    <div className="mt-8">
-                        <TransactionList dailyRecordId={dailyRecord.id} />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                        <div>
+                            <TransactionSummary dailyRecordId={dailyRecord.id} />
+                        </div>
+                        <div>
+                            <TransactionList dailyRecordId={dailyRecord.id} />
+                        </div>
                     </div>
                 )}
 
@@ -124,6 +130,6 @@ export default function StaffDashboard() {
                     />
                 )}
             </div>
-        </ProtectedRoute>
+        </ProtectedRoute >
     );
 }
