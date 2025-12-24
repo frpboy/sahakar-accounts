@@ -1,0 +1,169 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.audit_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  action text,
+  entity text,
+  entity_id uuid,
+  old_data jsonb,
+  new_data jsonb,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT audit_logs_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.auditor_access_log (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  auditor_id uuid NOT NULL,
+  outlet_id uuid,
+  action text NOT NULL CHECK (action = ANY (ARRAY['view_dashboard'::text, 'view_record'::text, 'view_transaction'::text, 'export_excel'::text, 'export_pdf'::text, 'filter_data'::text])),
+  entity_type text,
+  entity_id uuid,
+  accessed_at timestamp with time zone NOT NULL DEFAULT now(),
+  ip_address text,
+  user_agent text,
+  CONSTRAINT auditor_access_log_pkey PRIMARY KEY (id),
+  CONSTRAINT auditor_access_log_auditor_id_fkey FOREIGN KEY (auditor_id) REFERENCES public.users(id),
+  CONSTRAINT auditor_access_log_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
+CREATE TABLE public.auditor_outlets (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  outlet_id uuid,
+  CONSTRAINT auditor_outlets_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.business_days (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid,
+  date date NOT NULL,
+  opening_cash numeric NOT NULL,
+  opening_upi numeric NOT NULL,
+  closing_cash numeric,
+  closing_upi numeric,
+  status USER-DEFINED DEFAULT 'DRAFT'::day_status,
+  submitted_by uuid,
+  submitted_at timestamp without time zone,
+  locked_by uuid,
+  locked_at timestamp without time zone,
+  CONSTRAINT business_days_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.categories (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  code character varying NOT NULL UNIQUE,
+  name character varying NOT NULL,
+  type character varying NOT NULL CHECK (type::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])),
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT categories_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.daily_records (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  outlet_id uuid NOT NULL,
+  date date NOT NULL,
+  particulars text NOT NULL,
+  amount numeric NOT NULL,
+  category text NOT NULL,
+  payment_mode text,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  synced_to_sheets boolean DEFAULT false,
+  opening_cash numeric DEFAULT 0,
+  opening_upi numeric DEFAULT 0,
+  closing_cash numeric,
+  closing_upi numeric,
+  total_income numeric,
+  total_expense numeric,
+  status character varying DEFAULT 'draft'::character varying,
+  submitted_at timestamp with time zone,
+  submitted_by uuid,
+  locked_at timestamp with time zone,
+  locked_by uuid,
+  CONSTRAINT daily_records_pkey PRIMARY KEY (id),
+  CONSTRAINT daily_entries_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT daily_entries_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
+  CONSTRAINT daily_records_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id),
+  CONSTRAINT daily_records_locked_by_fkey FOREIGN KEY (locked_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.daily_totals (
+  business_day_id uuid NOT NULL,
+  income_cash numeric,
+  income_upi numeric,
+  expense_cash numeric,
+  expense_upi numeric,
+  CONSTRAINT daily_totals_pkey PRIMARY KEY (business_day_id),
+  CONSTRAINT daily_totals_business_day_id_fkey FOREIGN KEY (business_day_id) REFERENCES public.business_days(id)
+);
+CREATE TABLE public.monthly_summaries (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid NOT NULL,
+  month date NOT NULL,
+  total_income numeric DEFAULT 0,
+  total_expense numeric DEFAULT 0,
+  total_cash_in numeric DEFAULT 0,
+  total_cash_out numeric DEFAULT 0,
+  total_upi_in numeric DEFAULT 0,
+  total_upi_out numeric DEFAULT 0,
+  net_profit numeric DEFAULT 0,
+  opening_balance numeric DEFAULT 0,
+  closing_balance numeric DEFAULT 0,
+  days_count integer DEFAULT 0,
+  generated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT monthly_summaries_pkey PRIMARY KEY (id),
+  CONSTRAINT monthly_summaries_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
+CREATE TABLE public.outlets (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  location text,
+  created_at timestamp with time zone DEFAULT now(),
+  code character varying NOT NULL,
+  address text,
+  phone character varying,
+  email character varying,
+  google_sheet_id character varying,
+  is_active boolean DEFAULT true,
+  updated_at timestamp with time zone DEFAULT now(),
+  type character varying NOT NULL DEFAULT 'hyper_pharmacy'::character varying CHECK (type::text = ANY (ARRAY['hyper_pharmacy'::character varying, 'smart_clinic'::character varying]::text[])),
+  CONSTRAINT outlets_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.roles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL UNIQUE,
+  CONSTRAINT roles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  daily_record_id uuid,
+  type character varying NOT NULL CHECK (type::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])),
+  category character varying NOT NULL,
+  payment_mode character varying NOT NULL CHECK (payment_mode::text = ANY (ARRAY['cash'::character varying, 'upi'::character varying]::text[])),
+  amount numeric NOT NULL CHECK (amount > 0::numeric),
+  description text,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  idempotency_key text,
+  CONSTRAINT transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT transactions_daily_record_id_fkey FOREIGN KEY (daily_record_id) REFERENCES public.daily_records(id),
+  CONSTRAINT transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_outlets (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  outlet_id uuid,
+  CONSTRAINT user_outlets_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  email text NOT NULL UNIQUE,
+  name text NOT NULL,
+  role text NOT NULL CHECK (role = ANY (ARRAY['master_admin'::text, 'ho_accountant'::text, 'outlet_manager'::text, 'outlet_staff'::text, 'auditor'::text, 'superadmin'::text])),
+  outlet_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  access_start_date date,
+  access_end_date date,
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
+  CONSTRAINT users_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);

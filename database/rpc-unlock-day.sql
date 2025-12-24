@@ -74,9 +74,10 @@ BEGIN
     INSERT INTO audit_logs (
         user_id,
         action,
-        entity_type,
+        entity,
         entity_id,
-        changes,
+        old_data,
+        new_data,
         reason,
         severity
     ) VALUES (
@@ -85,13 +86,15 @@ BEGIN
         'daily_record',
         record_id,
         json_build_object(
-            'old_status', 'locked',
-            'new_status', 'submitted',
+            'status', 'locked',
+            'locked_by', record.locked_by,
+            'locked_by_email', previous_locker_email,
+            'locked_at', record.locked_at
+        ),
+        json_build_object(
+            'status', 'submitted',
             'date', record.date,
-            'outlet_id', record.outlet_id,
-            'previously_locked_by', record.locked_by,
-            'previously_locked_by_email', previous_locker_email,
-            'previously_locked_at', record.locked_at
+            'outlet_id', record.outlet_id
         ),
         unlock_reason,
         'critical'
