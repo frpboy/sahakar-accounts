@@ -47,13 +47,15 @@ BEGIN
         );
     END IF;
     
-    -- Update status to locked
+    -- Update status to locked and reset sync flags
     UPDATE daily_records
     SET 
         status = 'locked',
         locked_by = locked_by_user_id,
         locked_at = NOW(),
-        synced_to_sheet = FALSE,  -- Flag for Google Sheets sync
+        synced_to_sheets = FALSE,  -- Mark for Google Sheets sync
+        last_synced_at = NULL,     -- Reset sync timestamp
+        sheet_sync_error = NULL,   -- Clear any previous errors
         updated_at = NOW()
     WHERE id = record_id;
     
