@@ -106,20 +106,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
-    // Fetch user profile from database
-    const fetchUserProfile = async (authUser: User): Promise<UserProfile> => {
+    // Fetch user profile from database with retry logic
+    const fetchUserProfile = async (authUser: User, retryCount = 0): Promise<UserProfile> => {
+        const maxRetries = 3;
+        const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 5000); // Exponential backoff, max 5s
+
         try {
+            console.log(`[Auth] Fetching profile for user ${authUser.id} (attempt ${retryCount + 1}/${maxRetries + 1})`);
+
             const { data, error } = await supabase
                 .from('users')
                 .select('*')
                 .eq('id', authUser.id)
                 .single();
 
-            if (error || !data) {
+            if (error) {
                 console.error('[Auth] Error fetching profile:', error);
-                // Return default profile
-                return { role: 'outlet_staff' } as UserProfile;
+
+                // Retry on network errors or timeouts
+                if (retryCount < maxRetries && (error.message?.includes('timeout') || error.message?.includes('network'))) {
+                    console.warn(`[Auth] Retrying profile fetch in ${retryDelay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    return fetchUserProfile(authUser, retryCount + 1);
+                }
+
+                // If no data after retries, throw error instead of returning default
+                throw new Error(`Profile not found for user ${authUser.id}`);
             }
+
+            if (!data) {
+                throw new Error(`Profile not found for user ${authUser.id}`);
+            }
+
+            console.log('[Auth] Profile fetched successfully:', data.email, data.role);
 
             return {
                 role: data.role,
@@ -130,7 +149,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } as UserProfile;
         } catch (err) {
             console.error('[Auth] Exception fetching profile:', err);
-            return { role: 'outlet_staff' } as UserProfile;
+
+            // Retry on exceptions
+            if (retryCount < maxRetries) {
+                console.warn(`[Auth] Retrying profile fetch in ${retryDelay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                return fetchUserProfile(authUser, retryCount + 1);
+            }
+
+            // After all retries failed, throw the error
+            throw err;
         }
     };
 
@@ -157,16 +185,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         };
 
-        // SAFETY FALLBACK: Force loading to false after 4 seconds if it hangs
+        // SAFETY FALLBACK: Force loading to false after 10 seconds if it hangs
         const timeoutId = setTimeout(() => {
             setLoading((prev) => {
                 if (prev) {
-                    console.warn('[Auth] Session check timed out, forcing loading=false');
+                    console.warn('[Auth] Session check timed out after 10s, forcing loading=false');
                     return false;
                 }
                 return prev;
             });
-        }, 4000);
+        }, 10000); // Increased from 4000ms to 10000ms
 
         loadUser();
 
@@ -218,10 +246,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw error;
         }
 
-        console.log('[Auth] Sign in successful, refreshing router...');
-
-        // IMPORTANT: Refresh router to ensure middleware sees the new cookie
-        router.refresh();
+        console.log('[Auth] Sign in successful');
+        // Login page will handle redirect explicitly
+        // No need for router.refresh() here
     };
 
     // Sign out function

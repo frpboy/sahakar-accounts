@@ -184,7 +184,11 @@ CREATE TABLE public.users (
   created_at timestamp with time zone DEFAULT now(),
   access_start_date date,
   access_end_date date,
+  auditor_access_granted_at timestamp with time zone,
+  auditor_access_expires_at timestamp with time zone,
+  auditor_access_granted_by uuid,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
-  CONSTRAINT users_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+  CONSTRAINT users_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT users_auditor_access_granted_by_fkey FOREIGN KEY (auditor_access_granted_by) REFERENCES public.users(id)
 );

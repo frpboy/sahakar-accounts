@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Crown, Briefcase, BarChart3, User, Shield, Beaker } from 'lucide-react';
 
@@ -19,7 +20,8 @@ function LoginForm() {
         try {
             console.log('[LoginForm] Attempting sign in for:', email);
             await signIn(email, password);
-            console.log('[LoginForm] Sign in successful, middleware will handle redirect');
+            console.log('[LoginForm] Sign in successful, auth state will trigger redirect');
+            // Don't redirect here - let the auth state listener handle it
         } catch (err: any) {
             console.error('[LoginForm] Sign in error:', err);
             setError(err.message || 'Failed to sign in');
@@ -82,6 +84,16 @@ function LoginForm() {
                 >
                     {loading ? 'Signing in...' : 'Sign In'}
                 </button>
+
+                {/* Fallback link for resilience */}
+                {loading && (
+                    <p className="text-center text-sm text-gray-600 mt-4">
+                        If you are not redirected automatically,{' '}
+                        <a href="/dashboard" className="text-blue-600 hover:text-blue-700 font-medium">
+                            click here
+                        </a>
+                    </p>
+                )}
             </form>
 
             {/* Demo Accounts */}
@@ -128,9 +140,15 @@ function LoginForm() {
 
 export default function LoginPage() {
     const { user, loading } = useAuth();
+    const router = useRouter();
 
-    // Redirection is handled by server-side middleware for stability.
-    // This client component only shows the UI.
+    // Auth-state-based redirect (the correct pattern)
+    useEffect(() => {
+        if (!loading && user) {
+            console.log('[LoginPage] User authenticated, redirecting to dashboard');
+            router.replace('/dashboard');
+        }
+    }, [loading, user, router]);
 
     if (loading) {
         return (
@@ -147,6 +165,12 @@ export default function LoginPage() {
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                     <p className="text-gray-700 font-medium">Redirecting to dashboard...</p>
                     <p className="text-xs text-gray-400 mt-2">Authenticated as {user.email}</p>
+                    <p className="text-sm text-gray-600 mt-4">
+                        If you are not redirected automatically,{' '}
+                        <a href="/dashboard" className="text-blue-600 hover:text-blue-700 font-medium underline">
+                            click here
+                        </a>
+                    </p>
                 </div>
             </div>
         );
