@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import type { Database } from '@/lib/database.types';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -7,7 +9,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function POST(request: Request) {
     try {
-        const supabase = createServerClient();
+        const supabase = createRouteHandlerClient<Database, 'public'>({ cookies });
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {

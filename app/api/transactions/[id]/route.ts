@@ -29,7 +29,7 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createRouteHandlerClient<Database>({ cookies });
+        const supabase = createRouteHandlerClient<Database, 'public'>({ cookies });
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -129,7 +129,7 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createRouteHandlerClient<Database>({ cookies });
+        const supabase = createRouteHandlerClient<Database, 'public'>({ cookies });
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {

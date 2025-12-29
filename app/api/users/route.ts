@@ -19,14 +19,14 @@ function getErrorMessage(error: unknown): string {
 
 export async function GET() {
     try {
-        const supabase = createRouteHandlerClient<any>({ cookies });
-        const { data: { session } } = await supabase.auth.getSession();
+        const sessionClient = createRouteHandlerClient<Database, 'public'>({ cookies });
+        const { data: { session } } = await sessionClient.auth.getSession();
 
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { data: requester } = await supabase
+        const { data: requester } = await sessionClient
             .from('users')
             .select('role')
             .eq('id', session.user.id)
@@ -36,7 +36,8 @@ export async function GET() {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const { data, error } = await supabase
+        const adminClient = createAdminClient();
+        const { data, error } = await adminClient
             .from('users')
             .select('id,email,name,role,outlet_id,created_at')
             .order('created_at', { ascending: false })
@@ -54,14 +55,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient<any>({ cookies });
-        const { data: { session } } = await supabase.auth.getSession();
+        const sessionClient = createRouteHandlerClient<Database, 'public'>({ cookies });
+        const { data: { session } } = await sessionClient.auth.getSession();
 
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { data: requester } = await supabase
+        const { data: requester } = await sessionClient
             .from('users')
             .select('role')
             .eq('id', session.user.id)
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
 
         const body = (await request.json()) as CreateUserBody;
 
-        const { email, fullName, role, phone, outletId } = body;
+        const { email, fullName, role, outletId } = body;
 
         if (!email || !fullName || !role) {
             return NextResponse.json(
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Create user profile with outlet_id if provided
-        const { data, error } = await supabase
+        const { data, error } = await adminClient
             .from('users')
             .insert({
                 id: authData.user.id,

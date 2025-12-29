@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase-server';
+import { createAdminClient, createServerClient } from '@/lib/supabase-server';
 import { DashboardNav } from '@/components/dashboard-nav';
 import { UserMenu } from '@/components/user-menu';
 import { AuthErrorState } from '@/components/auth-error-state';
@@ -27,11 +27,27 @@ export default async function DashboardLayout({
 
     console.log('[DashboardLayout] User found:', user.email, 'Fetching profile...');
 
-    const { data: userData, error: dbError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    let userData: unknown = null;
+    let dbError: unknown = null;
+
+    try {
+        const adminClient = createAdminClient();
+        const { data, error } = await adminClient
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+        userData = data;
+        dbError = error;
+    } catch (error: unknown) {
+        const { data, error: fallbackError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+        userData = data;
+        dbError = fallbackError ?? error;
+    }
 
     if (dbError) {
         console.error('[DashboardLayout] Database error fetching profile:', dbError);

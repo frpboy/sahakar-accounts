@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { sheetsService } from '@/lib/google-sheets';
+import type { Database } from '@/lib/database.types';
 
 type LockBody = {
     reason?: string;
@@ -18,12 +19,19 @@ function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
 }
 
+type RpcClient = {
+    rpc: (
+        fn: string,
+        args: Record<string, unknown>
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
 export async function POST(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createRouteHandlerClient<any>({ cookies });
+        const supabase = createRouteHandlerClient<Database, 'public'>({ cookies });
 
         // Get current session
         const { data: { session } } = await supabase.auth.getSession();
@@ -39,7 +47,8 @@ export async function POST(
         const reason = typeof body.reason === 'string' ? body.reason : null;
 
         // Call lock_day RPC (validates role and logs automatically)
-        const { data, error } = await supabase.rpc('lock_day', {
+        const rpcClient = supabase as unknown as RpcClient;
+        const { data, error } = await rpcClient.rpc('lock_day', {
             record_id: id,
             locked_by_user_id: session.user.id,
             lock_reason: reason
@@ -62,7 +71,7 @@ export async function POST(
         // --- AUTOMATED SYNC START ---
         try {
             console.log(`[AutoSync] Starting sync for record ${id}...`);
-            const adminSupabase = createRouteHandlerClient<any>({ cookies });
+            const adminSupabase = createRouteHandlerClient<Database, 'public'>({ cookies });
 
             // Get daily record with outlet info
             const { data: record, error: recordError } = await adminSupabase

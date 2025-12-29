@@ -11,6 +11,7 @@ import React, {
 import { User } from '@supabase/supabase-js';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
+import { cacheHelpers } from '@/lib/db';
 
 /* ======================================================
    TYPES
@@ -83,39 +84,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             console.log(`[Auth] Fetching profile for user ${authUser.id} (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', authUser.id)
-                .single();
-
-            if (error) {
-                console.error('[Auth] Error fetching profile:', error);
-
-                // Retry on network errors or timeouts
-                if (retryCount < maxRetries && (error.message.includes('timeout') || error.message.includes('network'))) {
-                    console.warn(`[Auth] Retrying profile fetch in ${retryDelay}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, retryDelay));
-                    return fetchUserProfile(authUser, retryCount + 1);
-                }
-
-                // If no data after retries, throw error instead of returning default
-                throw new Error(`Profile not found for user ${authUser.id}`);
+            const cached = await cacheHelpers.getUser(authUser.id);
+            if (cached) {
+                return {
+                    role: cached.role as UserProfile['role'],
+                    name: cached.name || cached.full_name || undefined,
+                    outlet_id: cached.outlet_id || undefined,
+                    access_start_date: cached.access_start_date || undefined,
+                    access_end_date: cached.access_end_date || undefined,
+                };
             }
+
+            const res = await fetch('/api/profile', { method: 'GET' });
+            if (!res.ok) {
+                const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+                throw new Error(payload?.error || `Failed to fetch profile (${res.status})`);
+            }
+
+            const data = (await res.json()) as {
+                id: string;
+                email: string;
+                role: UserProfile['role'];
+                name?: string | null;
+                full_name?: string | null;
+                outlet_id?: string | null;
+                access_start_date?: string | null;
+                access_end_date?: string | null;
+                auditor_access_granted_at?: string | null;
+                auditor_access_expires_at?: string | null;
+            };
 
             if (!data) {
                 throw new Error(`Profile not found for user ${authUser.id}`);
             }
 
+            await cacheHelpers.cacheUser({
+                id: data.id,
+                email: data.email,
+                name: data.name || undefined,
+                full_name: data.full_name || undefined,
+                role: data.role,
+                outlet_id: data.outlet_id || undefined,
+                access_start_date: data.access_start_date || undefined,
+                access_end_date: data.access_end_date || undefined,
+                auditor_access_granted_at: data.auditor_access_granted_at || undefined,
+                auditor_access_expires_at: data.auditor_access_expires_at || undefined,
+            });
+
             console.log('[Auth] Profile fetched successfully:', data.email, data.role);
 
             return {
-                role: (data as { role: UserProfile['role'] }).role,
-                name: (data as { name?: string | null; full_name?: string | null }).name || (data as { full_name?: string | null }).full_name || undefined,
-                outlet_id: (data as { outlet_id?: string | null }).outlet_id || undefined,
-                access_start_date: (data as { access_start_date?: string | null }).access_start_date || undefined,
-                access_end_date: (data as { access_end_date?: string | null }).access_end_date || undefined,
-            } as UserProfile;
+                role: data.role,
+                name: data.name || data.full_name || undefined,
+                outlet_id: data.outlet_id || undefined,
+                access_start_date: data.access_start_date || undefined,
+                access_end_date: data.access_end_date || undefined,
+            };
         } catch (err) {
             console.error('[Auth] Exception fetching profile:', err);
 
@@ -129,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // After all retries failed, throw the error
             throw err;
         }
-    }, [supabase]);
+    }, []);
 
     // Load user on mount
     useEffect(() => {

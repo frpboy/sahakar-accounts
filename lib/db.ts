@@ -45,6 +45,10 @@ export interface CachedUser {
     full_name?: string;
     role: string;
     outlet_id?: string;
+    access_start_date?: string;
+    access_end_date?: string;
+    auditor_access_granted_at?: string;
+    auditor_access_expires_at?: string;
     cached_at: number;
 }
 

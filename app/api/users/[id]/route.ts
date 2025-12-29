@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import type { Database } from '@/lib/database.types';
+import { createAdminClient } from '@/lib/supabase-server';
 
 type PatchUserBody = {
     role?: string | null;
@@ -28,7 +29,7 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const sessionClient = createRouteHandlerClient<any>({ cookies });
+        const sessionClient = createRouteHandlerClient<Database, 'public'>({ cookies });
         const { data: { session } } = await sessionClient.auth.getSession();
 
         if (!session) {
@@ -70,7 +71,8 @@ export async function PATCH(
             return NextResponse.json({ error: 'No changes provided' }, { status: 400 });
         }
 
-        const { data: updated, error: updateError } = await sessionClient
+        const adminClient = createAdminClient();
+        const { data: updated, error: updateError } = await adminClient
             .from('users')
             .update(updateData)
             .eq('id', params.id)

@@ -18,7 +18,7 @@ export async function POST(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createRouteHandlerClient<any>({ cookies });
+        const supabase = createRouteHandlerClient<Database, 'public'>({ cookies });
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {

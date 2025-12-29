@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import type { Database } from '@/lib/database.types';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -7,7 +9,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function POST(request: Request) {
     try {
-        const supabase = createServerClient();
+        const supabase = createRouteHandlerClient<Database, 'public'>({ cookies });
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
@@ -21,7 +23,8 @@ export async function POST(request: Request) {
             .eq('id', user.id)
             .single();
 
-        if (!adminUser || !['master_admin', 'superadmin'].includes(adminUser.role)) {
+        const requesterRole = (adminUser as unknown as { role?: string } | null)?.role;
+        if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
             return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
