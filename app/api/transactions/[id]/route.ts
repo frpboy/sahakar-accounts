@@ -87,7 +87,6 @@ export async function PATCH(
         const typedDailyRecord = dailyRecord as Pick<DailyRecordRow, 'outlet_id' | 'status'> | null;
         const dailyRecordOutletId = typedDailyRecord?.outlet_id;
         const dailyRecordStatus = typedDailyRecord?.status;
-        const dailyRecordStatus = typedDailyRecord?.status;
 
         if (!dailyRecord) {
             return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
