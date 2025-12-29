@@ -45,8 +45,10 @@ export async function PATCH(
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
+        const profileRole = (profile as any)?.role as string | undefined;
+        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
 
-        const canEdit = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profile.role);
+        const canEdit = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profileRole || '');
         if (!canEdit) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -69,21 +71,23 @@ export async function PATCH(
             .select('id,outlet_id,status')
             .eq('id', tx.daily_record_id)
             .single();
+        const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
+        const dailyRecordStatus = (dailyRecord as any)?.status as string | null | undefined;
 
         if (!dailyRecord) {
             return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
         }
 
-        const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
-        if (!canSelectOutlet && dailyRecord.outlet_id !== profile.outlet_id) {
+        const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
+        if (!canSelectOutlet && dailyRecordOutletId !== profileOutletId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        if (['outlet_staff', 'outlet_manager'].includes(profile.role) && dailyRecord.status !== 'draft') {
+        if (['outlet_staff', 'outlet_manager'].includes(profileRole || '') && dailyRecordStatus !== 'draft') {
             return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
         }
 
-        if (profile.role === 'outlet_staff' && tx.created_by !== session.user.id) {
+        if (profileRole === 'outlet_staff' && (tx as any)?.created_by !== session.user.id) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -107,7 +111,7 @@ export async function PATCH(
 
         const { data, error } = await supabase
             .from('transactions')
-            .update(updateData)
+            .update(updateData as any)
             .eq('id', id)
             .select()
             .single();
@@ -145,8 +149,10 @@ export async function DELETE(
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
+        const profileRole = (profile as any)?.role as string | undefined;
+        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
 
-        const canDelete = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profile.role);
+        const canDelete = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profileRole || '');
         if (!canDelete) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -169,21 +175,23 @@ export async function DELETE(
             .select('id,outlet_id,status')
             .eq('id', tx.daily_record_id)
             .single();
+        const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
+        const dailyRecordStatus = (dailyRecord as any)?.status as string | null | undefined;
 
         if (!dailyRecord) {
             return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
         }
 
-        const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
-        if (!canSelectOutlet && dailyRecord.outlet_id !== profile.outlet_id) {
+        const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
+        if (!canSelectOutlet && dailyRecordOutletId !== profileOutletId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        if (['outlet_staff', 'outlet_manager'].includes(profile.role) && dailyRecord.status !== 'draft') {
+        if (['outlet_staff', 'outlet_manager'].includes(profileRole || '') && dailyRecordStatus !== 'draft') {
             return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
         }
 
-        if (profile.role === 'outlet_staff' && tx.created_by !== session.user.id) {
+        if (profileRole === 'outlet_staff' && (tx as any)?.created_by !== session.user.id) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

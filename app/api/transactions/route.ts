@@ -34,11 +34,13 @@ export async function GET(request: NextRequest) {
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
+        const profileRole = (profile as any)?.role as string | undefined;
+        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
 
         const searchParams = request.nextUrl.searchParams;
         const dailyRecordId = searchParams.get('dailyRecordId');
 
-        const canListWithoutDailyRecord = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
+        const canListWithoutDailyRecord = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
         if (!dailyRecordId && !canListWithoutDailyRecord) {
             return NextResponse.json({ error: 'dailyRecordId is required' }, { status: 400 });
         }
@@ -55,7 +57,8 @@ export async function GET(request: NextRequest) {
             }
 
             const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
-            if (!canSelectOutlet && dailyRecord.outlet_id !== profile.outlet_id) {
+            const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
+            if (!canSelectOutlet && dailyRecordOutletId !== profileOutletId) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
         }
@@ -105,8 +108,10 @@ export async function POST(request: NextRequest) {
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
+        const profileRole = (profile as any)?.role as string | undefined;
+        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
 
-        const canCreateTransaction = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profile.role);
+        const canCreateTransaction = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profileRole || '');
         if (!canCreateTransaction) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -150,12 +155,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
         }
 
-        const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
-        if (!canSelectOutlet && dailyRecord.outlet_id !== profile.outlet_id) {
+        const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
+        const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
+        const dailyRecordStatus = (dailyRecord as any)?.status as string | null | undefined;
+        if (!canSelectOutlet && dailyRecordOutletId !== profileOutletId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        if (['outlet_staff', 'outlet_manager'].includes(profile.role) && dailyRecord.status !== 'draft') {
+        if (['outlet_staff', 'outlet_manager'].includes(profileRole || '') && dailyRecordStatus !== 'draft') {
             return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
         }
 
@@ -171,7 +178,7 @@ export async function POST(request: NextRequest) {
                 description: validated.description || null,
                 created_by: validated.createdBy || null,
                 idempotency_key: idempotencyKey || null,
-            })
+            } as any)
             .select()
             .single();
 

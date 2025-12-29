@@ -29,11 +29,13 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        const outletId = requestedOutletId ?? profile.outlet_id;
+        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
+        const profileRole = (profile as any)?.role as string | undefined;
+        const outletId = requestedOutletId ?? profileOutletId ?? null;
 
         if (requestedOutletId) {
-            const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
-            if (!canSelectOutlet && requestedOutletId !== profile.outlet_id) {
+            const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
+            if (!canSelectOutlet && requestedOutletId !== profileOutletId) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
         }

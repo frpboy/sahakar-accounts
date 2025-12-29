@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        if (!['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role)) {
+        const profileRole = (profile as any)?.role as string | undefined;
+        if (!profileRole || !['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

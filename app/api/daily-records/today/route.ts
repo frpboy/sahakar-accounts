@@ -34,17 +34,19 @@ export async function GET(request: NextRequest) {
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
+        const profileRole = (profile as any)?.role as string | undefined;
+        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
 
         const searchParams = request.nextUrl.searchParams;
         let outletId = searchParams.get('outletId');
 
         if (outletId) {
-            const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
-            if (!canSelectOutlet && outletId !== profile.outlet_id) {
+            const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
+            if (!canSelectOutlet && outletId !== profileOutletId) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
         } else {
-            outletId = profile.outlet_id;
+            outletId = profileOutletId ?? null;
         }
 
         if (!outletId) {
@@ -81,6 +83,8 @@ export async function GET(request: NextRequest) {
             .eq('outlet_id', outletId)
             .eq('date', yesterdayStr)
             .maybeSingle();
+        const prevClosingCash = (previousRecord as any)?.closing_cash as number | null | undefined;
+        const prevClosingUpi = (previousRecord as any)?.closing_upi as number | null | undefined;
 
         // Create new record - handles race conditions at database level
         const { data: newRecord, error: insertError } = await supabase
@@ -88,14 +92,14 @@ export async function GET(request: NextRequest) {
             .insert({
                 outlet_id: outletId,
                 date: today,
-                opening_cash: previousRecord?.closing_cash || 0,
-                opening_upi: previousRecord?.closing_upi || 0,
-                closing_cash: previousRecord?.closing_cash || 0,
-                closing_upi: previousRecord?.closing_upi || 0,
+                opening_cash: prevClosingCash || 0,
+                opening_upi: prevClosingUpi || 0,
+                closing_cash: prevClosingCash || 0,
+                closing_upi: prevClosingUpi || 0,
                 total_income: 0,
                 total_expense: 0,
                 status: 'draft',
-            })
+            } as any)
             .select()
             .single();
 

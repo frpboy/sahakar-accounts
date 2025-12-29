@@ -43,7 +43,8 @@ export async function PATCH(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        if (!['master_admin', 'superadmin'].includes(caller.role)) {
+        const callerRole = (caller as any)?.role as string | undefined;
+        if (!callerRole || !['master_admin', 'superadmin'].includes(callerRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

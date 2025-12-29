@@ -31,7 +31,8 @@ export async function POST(
             .eq('id', session.user.id)
             .single();
 
-        if (!requester || !['ho_accountant', 'master_admin', 'superadmin'].includes(requester.role)) {
+        const requesterRole = (requester as any)?.role as string | undefined;
+        if (!requesterRole || !['ho_accountant', 'master_admin', 'superadmin'].includes(requesterRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -72,14 +73,14 @@ export async function POST(
             // Update outlet with sheet ID
             await supabase
                 .from('outlets')
-                .update({ google_sheet_id: sheetId })
+                .update({ google_sheet_id: sheetId } as any)
                 .eq('id', typedRecord.outlet_id);
         }
 
         // Sync to sheet
         await sheetsService.syncDailyRecord(sheetId, typedRecord.date, typedRecord);
         if (transactions && transactions.length > 0) {
-            await sheetsService.syncTransactions(sheetId, transactions);
+            await sheetsService.syncTransactions(sheetId, transactions as any);
         }
 
         // Update sync status
@@ -88,7 +89,7 @@ export async function POST(
             .update({
                 synced_to_sheets: true,
                 last_synced_at: new Date().toISOString(),
-            })
+            } as any)
             .eq('id', id);
 
         return NextResponse.json({ success: true, sheetId });

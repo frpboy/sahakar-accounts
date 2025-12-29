@@ -21,7 +21,8 @@ export async function POST(request: Request) {
             .eq('id', session.user.id)
             .single();
 
-        if (adminUserError || !adminUser || !['master_admin', 'superadmin'].includes(adminUser.role)) {
+        const adminRole = (adminUser as any)?.role as string | undefined;
+        if (adminUserError || !adminRole || !['master_admin', 'superadmin'].includes(adminRole)) {
             return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 

@@ -111,7 +111,7 @@ export async function POST(
                 // Sync to sheet
                 await sheetsService.syncDailyRecord(sheetId, typedRecord.date, typedRecord);
                 if (transactions && transactions.length > 0) {
-                    await sheetsService.syncTransactions(sheetId, transactions);
+                    await sheetsService.syncTransactions(sheetId, transactions as any);
                 }
 
                 // Update sync status in daily_records

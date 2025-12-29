@@ -24,7 +24,8 @@ export async function GET() {
             .eq('id', session.user.id)
             .single();
 
-        if (!requester || !['master_admin', 'superadmin'].includes(requester.role)) {
+        const requesterRole = (requester as any)?.role as string | undefined;
+        if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
