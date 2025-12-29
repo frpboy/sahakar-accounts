@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteClient } from '@/lib/supabase-server';
+import type { Database } from '@/lib/database.types';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -29,8 +30,9 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
-        const profileRole = (profile as any)?.role as string | undefined;
+        const typedProfile = profile as Pick<Database['public']['Tables']['users']['Row'], 'role' | 'outlet_id'>;
+        const profileOutletId = typedProfile.outlet_id;
+        const profileRole = typedProfile.role;
         const outletId = requestedOutletId ?? profileOutletId ?? null;
 
         if (requestedOutletId) {

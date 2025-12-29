@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import type { Database } from '@/lib/database.types';
 
 type TransactionRow = {
@@ -24,7 +23,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient<Database>({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -41,7 +40,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        const profileRole = (profile as any)?.role as string | undefined;
+        const typedProfile = profile as Pick<Database['public']['Tables']['users']['Row'], 'role'>;
+        const profileRole = typedProfile.role;
         if (!profileRole || !['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }

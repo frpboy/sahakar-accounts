@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createRouteClient } from '@/lib/supabase-server';
+import type { Database } from '@/lib/database.types';
 
 type CreateUserBody = {
     email?: string;
@@ -29,7 +30,8 @@ export async function GET() {
             .eq('id', session.user.id)
             .single();
 
-        const requesterRole = (requester as any)?.role as string | undefined;
+        const typedRequester = requester as Pick<Database['public']['Tables']['users']['Row'], 'role'> | null;
+        const requesterRole = typedRequester?.role;
         if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -66,7 +68,8 @@ export async function POST(request: NextRequest) {
             .eq('id', session.user.id)
             .single();
 
-        const requesterRole = (requester as any)?.role as string | undefined;
+        const typedRequester = requester as Pick<Database['public']['Tables']['users']['Row'], 'role'> | null;
+        const requesterRole = typedRequester?.role;
         if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }

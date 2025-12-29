@@ -12,6 +12,9 @@ type PatchTransactionBody = {
     description?: string | null;
 };
 
+type DailyRecordRow = Database['public']['Tables']['daily_records']['Row'];
+type UserProfileRow = Database['public']['Tables']['users']['Row'];
+
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
 }
@@ -45,8 +48,9 @@ export async function PATCH(
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
-        const profileRole = (profile as any)?.role as string | undefined;
-        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
+        const typedProfile = profile as Pick<UserProfileRow, 'role' | 'outlet_id'>;
+        const profileRole = typedProfile.role;
+        const profileOutletId = typedProfile.outlet_id;
 
         const canEdit = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profileRole || '');
         if (!canEdit) {
@@ -80,8 +84,10 @@ export async function PATCH(
             .select('id,outlet_id,status')
             .eq('id', typedTx.daily_record_id)
             .single();
-        const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
-        const dailyRecordStatus = (dailyRecord as any)?.status as string | null | undefined;
+        const typedDailyRecord = dailyRecord as Pick<DailyRecordRow, 'outlet_id' | 'status'> | null;
+        const dailyRecordOutletId = typedDailyRecord?.outlet_id;
+        const dailyRecordStatus = typedDailyRecord?.status;
+        const dailyRecordStatus = typedDailyRecord?.status;
 
         if (!dailyRecord) {
             return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
@@ -96,7 +102,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
         }
 
-        if (profileRole === 'outlet_staff' && (tx as any)?.created_by !== session.user.id) {
+        if (profileRole === 'outlet_staff' && typedTx.created_by !== session.user.id) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -105,20 +111,15 @@ export async function PATCH(
 
         const { type, category, paymentMode, amount, description } = body;
 
-        const updateData: Partial<{
-            type: 'income' | 'expense';
-            category: string;
-            payment_mode: 'cash' | 'upi';
-            amount: number;
-            description: string | null;
-        }> = {};
+        const updateData: Database['public']['Tables']['transactions']['Update'] = {};
         if (type) updateData.type = type;
         if (category) updateData.category = category;
         if (paymentMode) updateData.payment_mode = paymentMode;
         if (amount !== undefined) updateData.amount = amount;
         if (description !== undefined) updateData.description = description;
 
-        const { data, error } = await (supabase.from('transactions') as any)
+        const { data, error } = await supabase
+            .from('transactions')
             .update(updateData)
             .eq('id', id)
             .select()
@@ -157,8 +158,9 @@ export async function DELETE(
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
-        const profileRole = (profile as any)?.role as string | undefined;
-        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
+        const typedProfile = profile as Pick<UserProfileRow, 'role' | 'outlet_id'>;
+        const profileRole = typedProfile.role;
+        const profileOutletId = typedProfile.outlet_id;
 
         const canDelete = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profileRole || '');
         if (!canDelete) {
@@ -192,8 +194,9 @@ export async function DELETE(
             .select('id,outlet_id,status')
             .eq('id', typedTx.daily_record_id)
             .single();
-        const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
-        const dailyRecordStatus = (dailyRecord as any)?.status as string | null | undefined;
+        const typedDailyRecord = dailyRecord as Pick<DailyRecordRow, 'outlet_id' | 'status'> | null;
+        const dailyRecordOutletId = typedDailyRecord?.outlet_id;
+        const dailyRecordStatus = typedDailyRecord?.status;
 
         if (!dailyRecord) {
             return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
@@ -208,7 +211,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
         }
 
-        if (profileRole === 'outlet_staff' && (tx as any)?.created_by !== session.user.id) {
+        if (profileRole === 'outlet_staff' && typedTx.created_by !== session.user.id) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

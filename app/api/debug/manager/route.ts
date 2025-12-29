@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import type { Database } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +10,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function GET() {
     try {
-        const supabase = createRouteHandlerClient<Database>({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -24,7 +23,8 @@ export async function GET() {
             .eq('id', session.user.id)
             .single();
 
-        const requesterRole = (requester as any)?.role as string | undefined;
+        const typedRequester = requester as Pick<Database['public']['Tables']['users']['Row'], 'role'> | null;
+        const requesterRole = typedRequester?.role;
         if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }

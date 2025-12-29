@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TransactionSchema } from '@/lib/validation';
 import { ZodError } from 'zod';
 import { createRouteClient } from '@/lib/supabase-server';
+import type { Database } from '@/lib/database.types';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -34,8 +35,9 @@ export async function GET(request: NextRequest) {
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
-        const profileRole = (profile as any)?.role as string | undefined;
-        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
+        const typedProfile = profile as Pick<Database['public']['Tables']['users']['Row'], 'role' | 'outlet_id'>;
+        const profileRole = typedProfile.role;
+        const profileOutletId = typedProfile.outlet_id;
 
         const searchParams = request.nextUrl.searchParams;
         const dailyRecordId = searchParams.get('dailyRecordId');
@@ -57,7 +59,8 @@ export async function GET(request: NextRequest) {
             }
 
             const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
-            const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
+            const typedDailyRecord = dailyRecord as Pick<Database['public']['Tables']['daily_records']['Row'], 'outlet_id'>;
+            const dailyRecordOutletId = typedDailyRecord.outlet_id;
             if (!canSelectOutlet && dailyRecordOutletId !== profileOutletId) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
@@ -108,8 +111,9 @@ export async function POST(request: NextRequest) {
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
-        const profileRole = (profile as any)?.role as string | undefined;
-        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
+        const typedProfile = profile as Pick<Database['public']['Tables']['users']['Row'], 'role' | 'outlet_id'>;
+        const profileRole = typedProfile.role;
+        const profileOutletId = typedProfile.outlet_id;
 
         const canCreateTransaction = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profileRole || '');
         if (!canCreateTransaction) {
@@ -156,8 +160,9 @@ export async function POST(request: NextRequest) {
         }
 
         const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
-        const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
-        const dailyRecordStatus = (dailyRecord as any)?.status as string | null | undefined;
+        const typedDailyRecord = dailyRecord as Pick<Database['public']['Tables']['daily_records']['Row'], 'outlet_id' | 'status'>;
+        const dailyRecordOutletId = typedDailyRecord.outlet_id;
+        const dailyRecordStatus = typedDailyRecord.status;
         if (!canSelectOutlet && dailyRecordOutletId !== profileOutletId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -167,18 +172,19 @@ export async function POST(request: NextRequest) {
         }
 
         // Insert transaction
+        const insertPayload: Database['public']['Tables']['transactions']['Insert'] = {
+            daily_record_id: validated.dailyRecordId,
+            type: validated.type,
+            category: validated.category,
+            payment_mode: validated.paymentMode,
+            amount: validated.amount,
+            description: validated.description || null,
+            created_by: validated.createdBy || null,
+            idempotency_key: idempotencyKey || null,
+        };
         const { data, error } = await supabase
             .from('transactions')
-            .insert({
-                daily_record_id: validated.dailyRecordId,
-                type: validated.type,
-                category: validated.category,
-                payment_mode: validated.paymentMode,
-                amount: validated.amount,
-                description: validated.description || null,
-                created_by: validated.createdBy || null,
-                idempotency_key: idempotencyKey || null,
-            } as any)
+            .insert(insertPayload)
             .select()
             .single();
 

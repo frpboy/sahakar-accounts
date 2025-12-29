@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createRouteClient } from '@/lib/supabase-server';
+import type { Database } from '@/lib/database.types';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -21,7 +22,8 @@ export async function POST(request: Request) {
             .eq('id', session.user.id)
             .single();
 
-        const adminRole = (adminUser as any)?.role as string | undefined;
+        const typedAdminUser = adminUser as Pick<Database['public']['Tables']['users']['Row'], 'role'> | null;
+        const adminRole = typedAdminUser?.role;
         if (adminUserError || !adminRole || !['master_admin', 'superadmin'].includes(adminRole)) {
             return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }

@@ -102,7 +102,8 @@ export async function POST(
                     );
 
                     // Update outlet with sheet ID
-                    await (adminSupabase.from('outlets') as any)
+                    await adminSupabase
+                        .from('outlets')
                         .update({ google_sheet_id: sheetId })
                         .eq('id', typedRecord.outlet_id);
                 }
@@ -110,11 +111,15 @@ export async function POST(
                 // Sync to sheet
                 await sheetsService.syncDailyRecord(sheetId, typedRecord.date, typedRecord);
                 if (transactions && transactions.length > 0) {
-                    await sheetsService.syncTransactions(sheetId, transactions as any);
+                    await sheetsService.syncTransactions(
+                        sheetId,
+                        transactions as Database['public']['Tables']['transactions']['Row'][]
+                    );
                 }
 
                 // Update sync status in daily_records
-                await (adminSupabase.from('daily_records') as any)
+                await adminSupabase
+                    .from('daily_records')
                     .update({
                         synced_to_sheets: true,
                         last_synced_at: new Date().toISOString(),

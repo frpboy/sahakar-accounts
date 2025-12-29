@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import type { Database } from '@/lib/database.types';
 
 function getErrorMessage(error: unknown): string {
@@ -18,7 +17,7 @@ function getErrorCode(error: unknown): string | undefined {
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient<Database>({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -34,8 +33,9 @@ export async function GET(request: NextRequest) {
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
-        const profileRole = (profile as any)?.role as string | undefined;
-        const profileOutletId = (profile as any)?.outlet_id as string | null | undefined;
+        const typedProfile = profile as Pick<Database['public']['Tables']['users']['Row'], 'role' | 'outlet_id'>;
+        const profileRole = typedProfile.role;
+        const profileOutletId = typedProfile.outlet_id;
 
         const searchParams = request.nextUrl.searchParams;
         let outletId = searchParams.get('outletId');
@@ -83,23 +83,28 @@ export async function GET(request: NextRequest) {
             .eq('outlet_id', outletId)
             .eq('date', yesterdayStr)
             .maybeSingle();
-        const prevClosingCash = (previousRecord as any)?.closing_cash as number | null | undefined;
-        const prevClosingUpi = (previousRecord as any)?.closing_upi as number | null | undefined;
+        const typedPreviousRecord = previousRecord as Pick<
+            Database['public']['Tables']['daily_records']['Row'],
+            'closing_cash' | 'closing_upi'
+        > | null;
+        const prevClosingCash = typedPreviousRecord?.closing_cash;
+        const prevClosingUpi = typedPreviousRecord?.closing_upi;
 
         // Create new record - handles race conditions at database level
+        const insertPayload: Database['public']['Tables']['daily_records']['Insert'] = {
+            outlet_id: outletId,
+            date: today,
+            opening_cash: prevClosingCash ?? 0,
+            opening_upi: prevClosingUpi ?? 0,
+            closing_cash: prevClosingCash ?? 0,
+            closing_upi: prevClosingUpi ?? 0,
+            total_income: 0,
+            total_expense: 0,
+            status: 'draft',
+        };
         const { data: newRecord, error: insertError } = await supabase
             .from('daily_records')
-            .insert({
-                outlet_id: outletId,
-                date: today,
-                opening_cash: prevClosingCash || 0,
-                opening_upi: prevClosingUpi || 0,
-                closing_cash: prevClosingCash || 0,
-                closing_upi: prevClosingUpi || 0,
-                total_income: 0,
-                total_expense: 0,
-                status: 'draft',
-            } as any)
+            .insert(insertPayload)
             .select()
             .single();
 

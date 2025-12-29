@@ -31,7 +31,8 @@ export async function POST(
             .eq('id', session.user.id)
             .single();
 
-        const requesterRole = (requester as any)?.role as string | undefined;
+        const typedRequester = requester as Pick<Database['public']['Tables']['users']['Row'], 'role'> | null;
+        const requesterRole = typedRequester?.role;
         if (!requesterRole || !['ho_accountant', 'master_admin', 'superadmin'].includes(requesterRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -71,7 +72,8 @@ export async function POST(
             );
 
             // Update outlet with sheet ID
-            await (supabase.from('outlets') as any)
+            await supabase
+                .from('outlets')
                 .update({ google_sheet_id: sheetId })
                 .eq('id', typedRecord.outlet_id);
         }
@@ -79,11 +81,15 @@ export async function POST(
         // Sync to sheet
         await sheetsService.syncDailyRecord(sheetId, typedRecord.date, typedRecord);
         if (transactions && transactions.length > 0) {
-            await sheetsService.syncTransactions(sheetId, transactions as any);
+            await sheetsService.syncTransactions(
+                sheetId,
+                transactions as Database['public']['Tables']['transactions']['Row'][]
+            );
         }
 
         // Update sync status
-        await (supabase.from('daily_records') as any)
+        await supabase
+            .from('daily_records')
             .update({
                 synced_to_sheets: true,
                 last_synced_at: new Date().toISOString(),

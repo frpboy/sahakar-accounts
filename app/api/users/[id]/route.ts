@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createRouteClient } from '@/lib/supabase-server';
+import type { Database } from '@/lib/database.types';
 
 type PatchUserBody = {
     role?: string | null;
@@ -43,7 +44,8 @@ export async function PATCH(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const callerRole = (caller as any)?.role as string | undefined;
+        const typedCaller = caller as Pick<Database['public']['Tables']['users']['Row'], 'role'>;
+        const callerRole = typedCaller.role;
         if (!callerRole || !['master_admin', 'superadmin'].includes(callerRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }

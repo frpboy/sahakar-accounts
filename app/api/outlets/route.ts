@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteClient } from '@/lib/supabase-server';
+import type { Database } from '@/lib/database.types';
 
 type CreateOutletBody = {
     name?: string;
@@ -62,7 +63,8 @@ export async function POST(request: NextRequest) {
             .eq('id', session.user.id)
             .single();
 
-        const requesterRole = (requester as any)?.role as string | undefined;
+        const typedRequester = requester as Pick<Database['public']['Tables']['users']['Row'], 'role'> | null;
+        const requesterRole = typedRequester?.role;
         if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -75,15 +77,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Name and code required' }, { status: 400 });
         }
 
+        const insertPayload: Database['public']['Tables']['outlets']['Insert'] = {
+            name,
+            code,
+            location,
+            phone,
+            email,
+        };
         const { data, error } = await supabase
             .from('outlets')
-            .insert({
-                name,
-                code,
-                location,
-                phone,
-                email,
-            } as any)
+            .insert(insertPayload)
             .select()
             .single();
 
