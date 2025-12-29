@@ -1,10 +1,11 @@
 import { createServerClient } from '@/lib/supabase-server';
+import type { Database } from '@/lib/database.types';
 
 /**
  * Log auditor actions for compliance tracking
  */
 export async function logAuditorAction(
-    action: string,
+    action: Database['public']['Tables']['auditor_access_log']['Row']['action'],
     entity_type?: string,
     entity_id?: string,
     outlet_id?: string,
@@ -26,10 +27,11 @@ export async function logAuditorAction(
             .eq('id', user.id)
             .single();
 
-        if (userData?.role !== 'auditor') return;
+        const typedUserData = userData as Pick<Database['public']['Tables']['users']['Row'], 'role'> | null;
+        if (typedUserData?.role !== 'auditor') return;
 
         // Log the action
-        await supabase.from('auditor_access_log').insert({
+        const payload: Database['public']['Tables']['auditor_access_log']['Insert'] = {
             auditor_id: user.id,
             action,
             entity_type,
@@ -37,7 +39,8 @@ export async function logAuditorAction(
             outlet_id,
             ip_address: metadata?.ip_address,
             user_agent: metadata?.user_agent
-        });
+        };
+        await (supabase.from('auditor_access_log') as any).insert(payload);
     } catch (error) {
         console.error('[AuditorLogger] Error logging action:', error);
         // Don't throw - logging failure shouldn't break the app

@@ -71,9 +71,8 @@ export async function POST(
             );
 
             // Update outlet with sheet ID
-            await supabase
-                .from('outlets')
-                .update({ google_sheet_id: sheetId } as any)
+            await (supabase.from('outlets') as any)
+                .update({ google_sheet_id: sheetId })
                 .eq('id', typedRecord.outlet_id);
         }
 
@@ -84,12 +83,11 @@ export async function POST(
         }
 
         // Update sync status
-        await supabase
-            .from('daily_records')
+        await (supabase.from('daily_records') as any)
             .update({
                 synced_to_sheets: true,
                 last_synced_at: new Date().toISOString(),
-            } as any)
+            })
             .eq('id', id);
 
         return NextResponse.json({ success: true, sheetId });

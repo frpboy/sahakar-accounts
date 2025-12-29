@@ -1,9 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/database.types';
+import { createRouteClient } from '@/lib/supabase-server';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -15,9 +13,12 @@ type Stats =
     | { todayStatus: string; todayIncome: number; todayExpense: number; transactionCount: number }
     | { cashBalance: number; upiBalance: number; myTransactionsToday: number };
 
+type RouteClient = ReturnType<typeof createRouteClient>;
+type UserProfile = Pick<Database['public']['Tables']['users']['Row'], 'role' | 'outlet_id'>;
+
 export async function GET() {
     try {
-        const sessionClient = createRouteHandlerClient<Database>({ cookies });
+        const sessionClient = createRouteClient();
         const { data: { session } } = await sessionClient.auth.getSession();
 
         if (!session) {
@@ -34,10 +35,11 @@ export async function GET() {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
+        const typedProfile = profile as UserProfile;
         let stats: Stats;
 
         // Role-specific statistics
-        switch (profile.role) {
+        switch (typedProfile.role) {
             case 'superadmin':
                 stats = await getSuperAdminStats(sessionClient);
                 break;
@@ -45,10 +47,10 @@ export async function GET() {
                 stats = await getHOAccountantStats(sessionClient);
                 break;
             case 'outlet_manager':
-                stats = await getManagerStats(sessionClient, profile.outlet_id);
+                stats = await getManagerStats(sessionClient, typedProfile.outlet_id);
                 break;
             case 'outlet_staff':
-                stats = await getStaffStats(sessionClient, profile.outlet_id, session.user.id);
+                stats = await getStaffStats(sessionClient, typedProfile.outlet_id, session.user.id);
                 break;
             default:
                 return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
@@ -61,7 +63,7 @@ export async function GET() {
     }
 }
 
-async function getSuperAdminStats(supabase: SupabaseClient<Database>) {
+async function getSuperAdminStats(supabase: RouteClient) {
     const [outletsResult, usersResult, submittedResult, lockedResult] = await Promise.all([
         supabase.from('outlets').select('id', { count: 'exact', head: true }),
         supabase.from('users').select('id', { count: 'exact', head: true }),
@@ -77,7 +79,7 @@ async function getSuperAdminStats(supabase: SupabaseClient<Database>) {
     };
 }
 
-async function getHOAccountantStats(supabase: SupabaseClient<Database>) {
+async function getHOAccountantStats(supabase: RouteClient) {
     const today = new Date().toISOString().split('T')[0];
     const [pendingVerificationsResult, lockedTodayResult] = await Promise.all([
         supabase.from('daily_records').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
@@ -92,7 +94,7 @@ async function getHOAccountantStats(supabase: SupabaseClient<Database>) {
     };
 }
 
-async function getManagerStats(supabase: SupabaseClient<Database>, outletId: string | null) {
+async function getManagerStats(supabase: RouteClient, outletId: string | null) {
     if (!outletId) {
         return {
             todayStatus: 'No Outlet',
@@ -105,12 +107,17 @@ async function getManagerStats(supabase: SupabaseClient<Database>, outletId: str
     // Get today's date
     const today = new Date().toISOString().split('T')[0];
 
-    const { data: record } = await supabase
+    const { data: recordRaw } = await supabase
         .from('daily_records')
         .select('id,status,total_income,total_expense')
         .eq('outlet_id', outletId)
         .eq('date', today)
         .maybeSingle();
+
+    const record = recordRaw as Pick<
+        Database['public']['Tables']['daily_records']['Row'],
+        'id' | 'status' | 'total_income' | 'total_expense'
+    > | null;
 
     if (!record) {
         return {
@@ -127,14 +134,14 @@ async function getManagerStats(supabase: SupabaseClient<Database>, outletId: str
         .eq('daily_record_id', record.id);
 
     return {
-        todayStatus: record.status,
+        todayStatus: record.status ?? 'Unknown',
         todayIncome: Number(record.total_income || 0),
         todayExpense: Number(record.total_expense || 0),
         transactionCount: transactionCount || 0,
     };
 }
 
-async function getStaffStats(supabase: SupabaseClient<Database>, outletId: string | null, userId: string) {
+async function getStaffStats(supabase: RouteClient, outletId: string | null, userId: string) {
     if (!outletId) {
         return {
             cashBalance: 0,
@@ -144,12 +151,17 @@ async function getStaffStats(supabase: SupabaseClient<Database>, outletId: strin
     }
 
     const today = new Date().toISOString().split('T')[0];
-    const { data: record } = await supabase
+    const { data: recordRaw } = await supabase
         .from('daily_records')
         .select('id,opening_cash,opening_upi,closing_cash,closing_upi,status')
         .eq('outlet_id', outletId)
         .eq('date', today)
         .maybeSingle();
+
+    const record = recordRaw as Pick<
+        Database['public']['Tables']['daily_records']['Row'],
+        'id' | 'opening_cash' | 'opening_upi' | 'closing_cash' | 'closing_upi' | 'status'
+    > | null;
 
     if (!record) {
         return {

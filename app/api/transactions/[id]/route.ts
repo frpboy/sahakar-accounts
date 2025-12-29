@@ -66,10 +66,19 @@ export async function PATCH(
             return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
         }
 
+        const typedTx = tx as Pick<
+            Database['public']['Tables']['transactions']['Row'],
+            'id' | 'created_by' | 'daily_record_id'
+        >;
+
+        if (!typedTx.daily_record_id) {
+            return NextResponse.json({ error: 'Transaction is missing daily record' }, { status: 500 });
+        }
+
         const { data: dailyRecord } = await supabase
             .from('daily_records')
             .select('id,outlet_id,status')
-            .eq('id', tx.daily_record_id)
+            .eq('id', typedTx.daily_record_id)
             .single();
         const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
         const dailyRecordStatus = (dailyRecord as any)?.status as string | null | undefined;
@@ -109,9 +118,8 @@ export async function PATCH(
         if (amount !== undefined) updateData.amount = amount;
         if (description !== undefined) updateData.description = description;
 
-        const { data, error } = await supabase
-            .from('transactions')
-            .update(updateData as any)
+        const { data, error } = await (supabase.from('transactions') as any)
+            .update(updateData)
             .eq('id', id)
             .select()
             .single();
@@ -170,10 +178,19 @@ export async function DELETE(
             return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
         }
 
+        const typedTx = tx as Pick<
+            Database['public']['Tables']['transactions']['Row'],
+            'id' | 'created_by' | 'daily_record_id'
+        >;
+
+        if (!typedTx.daily_record_id) {
+            return NextResponse.json({ error: 'Transaction is missing daily record' }, { status: 500 });
+        }
+
         const { data: dailyRecord } = await supabase
             .from('daily_records')
             .select('id,outlet_id,status')
-            .eq('id', tx.daily_record_id)
+            .eq('id', typedTx.daily_record_id)
             .single();
         const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
         const dailyRecordStatus = (dailyRecord as any)?.status as string | null | undefined;

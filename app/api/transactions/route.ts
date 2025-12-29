@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
                 return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
             }
 
-            const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
+            const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
             const dailyRecordOutletId = (dailyRecord as any)?.outlet_id as string | null | undefined;
             if (!canSelectOutlet && dailyRecordOutletId !== profileOutletId) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
