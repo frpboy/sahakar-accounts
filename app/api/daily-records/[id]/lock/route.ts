@@ -1,9 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import { sheetsService } from '@/lib/google-sheets';
 import type { Database } from '@/lib/database.types';
+import { createRouteClient } from '@/lib/supabase-server';
 
 type LockBody = {
     reason?: string;
@@ -13,6 +12,10 @@ type LockRpcResult = {
     success: boolean;
     message?: string;
     error?: string;
+};
+
+type DailyRecordWithOutlet = Database['public']['Tables']['daily_records']['Row'] & {
+    outlets: Pick<Database['public']['Tables']['outlets']['Row'], 'name' | 'google_sheet_id'> | null;
 };
 
 function getErrorMessage(error: unknown): string {
@@ -31,7 +34,7 @@ export async function POST(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createRouteHandlerClient<Database, 'public'>({ cookies });
+        const supabase = createRouteClient();
 
         // Get current session
         const { data: { session } } = await supabase.auth.getSession();
@@ -71,7 +74,7 @@ export async function POST(
         // --- AUTOMATED SYNC START ---
         try {
             console.log(`[AutoSync] Starting sync for record ${id}...`);
-            const adminSupabase = createRouteHandlerClient<Database, 'public'>({ cookies });
+            const adminSupabase = createRouteClient();
 
             // Get daily record with outlet info
             const { data: record, error: recordError } = await adminSupabase
@@ -80,7 +83,9 @@ export async function POST(
                 .eq('id', id)
                 .single();
 
-            if (!recordError && record) {
+            const typedRecord = record as DailyRecordWithOutlet | null;
+
+            if (!recordError && typedRecord) {
                 // Get transactions
                 const { data: transactions } = await adminSupabase
                     .from('transactions')
@@ -88,11 +93,11 @@ export async function POST(
                     .eq('daily_record_id', id);
 
                 // Get or create sheet
-                let sheetId = record.outlets?.google_sheet_id;
+                let sheetId = typedRecord.outlets?.google_sheet_id;
                 if (!sheetId) {
-                    const month = new Date(record.date).toISOString().slice(0, 7);
+                    const month = new Date(typedRecord.date).toISOString().slice(0, 7);
                     sheetId = await sheetsService.createMonthlySheet(
-                        record.outlets?.name || 'Outlet',
+                        typedRecord.outlets?.name || 'Outlet',
                         month
                     );
 
@@ -100,11 +105,11 @@ export async function POST(
                     await adminSupabase
                         .from('outlets')
                         .update({ google_sheet_id: sheetId })
-                        .eq('id', record.outlet_id);
+                        .eq('id', typedRecord.outlet_id);
                 }
 
                 // Sync to sheet
-                await sheetsService.syncDailyRecord(sheetId, record.date, record);
+                await sheetsService.syncDailyRecord(sheetId, typedRecord.date, typedRecord);
                 if (transactions && transactions.length > 0) {
                     await sheetsService.syncTransactions(sheetId, transactions);
                 }

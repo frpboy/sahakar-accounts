@@ -17,7 +17,7 @@ type Stats =
 
 export async function GET() {
     try {
-        const sessionClient = createRouteHandlerClient<Database, 'public'>({ cookies });
+        const sessionClient = createRouteHandlerClient<Database>({ cookies });
         const { data: { session } } = await sessionClient.auth.getSession();
 
         if (!session) {

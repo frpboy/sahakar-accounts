@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { Database } from '@/lib/database.types';
+import { createAdminClient, createRouteClient } from '@/lib/supabase-server';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -9,28 +7,27 @@ function getErrorMessage(error: unknown): string {
 
 export async function POST(request: Request) {
     try {
-        const supabase = createRouteHandlerClient<Database, 'public'>({ cookies });
-        const { data: { user } } = await supabase.auth.getUser();
+        const sessionClient = createRouteClient();
+        const { data: { session } } = await sessionClient.auth.getSession();
 
-        if (!user) {
+        if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         // Check if user is admin
-        const { data: adminUser } = await supabase
+        const { data: adminUser, error: adminUserError } = await sessionClient
             .from('users')
             .select('role')
-            .eq('id', user.id)
+            .eq('id', session.user.id)
             .single();
 
-        const requesterRole = (adminUser as unknown as { role?: string } | null)?.role;
-        if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
+        if (adminUserError || !adminUser || !['master_admin', 'superadmin'].includes(adminUser.role)) {
             return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
         const { auditor_id, days } = await request.json();
 
-        if (!auditor_id || !days) {
+        if (!auditor_id || typeof days !== 'number' || !Number.isFinite(days) || days <= 0) {
             return NextResponse.json({ error: 'Missing required fields: auditor_id, days' }, { status: 400 });
         }
 
@@ -40,12 +37,13 @@ export async function POST(request: Request) {
         expiresAt.setDate(expiresAt.getDate() + days);
 
         // Grant access
-        const { error } = await supabase
+        const adminClient = createAdminClient();
+        const { error } = await adminClient
             .from('users')
             .update({
                 auditor_access_granted_at: grantedAt.toISOString(),
                 auditor_access_expires_at: expiresAt.toISOString(),
-                auditor_access_granted_by: user.id
+                auditor_access_granted_by: session.user.id
             })
             .eq('id', auditor_id)
             .eq('role', 'auditor');

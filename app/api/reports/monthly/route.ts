@@ -12,7 +12,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient<Database, 'public'>({ cookies });
+        const supabase = createRouteHandlerClient<Database>({ cookies });
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {

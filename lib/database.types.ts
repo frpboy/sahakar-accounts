@@ -121,6 +121,7 @@ export type Database = {
                     user_id?: string | null
                     outlet_id?: string | null
                 }
+                Relationships: []
             }
             business_days: {
                 Row: {
@@ -164,6 +165,7 @@ export type Database = {
                     locked_by?: string | null
                     locked_at?: string | null
                 }
+                Relationships: []
             }
             daily_records: {
                 Row: {
@@ -415,6 +417,7 @@ export type Database = {
                 Update: {
                     name?: string
                 }
+                Relationships: []
             }
             sheet_sync_log: {
                 Row: {
@@ -469,6 +472,7 @@ export type Database = {
                     user_id?: string | null
                     outlet_id?: string | null
                 }
+                Relationships: []
             }
             users: {
                 Row: {
@@ -554,19 +558,12 @@ export type Database = {
                     expense_cash?: number | null
                     expense_upi?: number | null
                 }
+                Relationships: []
             }
         }
-        Views: {
-            [_ in never]: never
-        }
-        Functions: {
-            [_ in never]: never
-        }
-        Enums: {
-            [_ in never]: never
-        }
-        CompositeTypes: {
-            [_ in never]: never
-        }
+        Views: Record<string, never>
+        Functions: Record<string, never>
+        Enums: Record<string, never>
+        CompositeTypes: Record<string, never>
     }
 };

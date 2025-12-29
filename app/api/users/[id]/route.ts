@@ -1,9 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import type { Database } from '@/lib/database.types';
-import { createAdminClient } from '@/lib/supabase-server';
+import { createAdminClient, createRouteClient } from '@/lib/supabase-server';
 
 type PatchUserBody = {
     role?: string | null;
@@ -29,7 +26,7 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const sessionClient = createRouteHandlerClient<Database, 'public'>({ cookies });
+        const sessionClient = createRouteClient();
         const { data: { session } } = await sessionClient.auth.getSession();
 
         if (!session) {
