@@ -1,17 +1,53 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import type { Database } from '@/lib/database.types';
+
+type DailyRecordRow = Database['public']['Tables']['daily_records']['Row'];
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient<any>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const searchParams = request.nextUrl.searchParams;
-        const outletId = searchParams.get('outletId') || '9e0c4614-53cf-40d3-abdd-a1d0183c3909';
+        const requestedOutletId = searchParams.get('outletId');
         const month = searchParams.get('month'); // Format: YYYY-MM
 
         if (!month) {
             return NextResponse.json({ error: 'Month parameter required' }, { status: 400 });
+        }
+
+        const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('role,outlet_id')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
+        const outletId = requestedOutletId ?? profile.outlet_id;
+
+        if (requestedOutletId) {
+            const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
+            if (!canSelectOutlet && requestedOutletId !== profile.outlet_id) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+        }
+
+        if (!outletId) {
+            return NextResponse.json({ error: 'Outlet ID is required or not assigned to user' }, { status: 400 });
         }
 
         // Get all daily records for the month
@@ -34,6 +70,11 @@ export async function GET(request: NextRequest) {
         }
 
         // Calculate summary
+        const firstRecord = (records as DailyRecordRow[] | null | undefined)?.[0];
+        const lastRecord = (records as DailyRecordRow[] | null | undefined)?.[
+            records ? records.length - 1 : 0
+        ];
+
         const summary = {
             month,
             outlet_id: outletId,
@@ -45,12 +86,12 @@ export async function GET(request: NextRequest) {
             total_upi_in: 0,
             total_upi_out: 0,
             net_profit: 0,
-            opening_balance: records?.[0]?.opening_cash + records?.[0]?.opening_upi || 0,
-            closing_balance: records?.[records.length - 1]?.closing_cash + records?.[records.length - 1]?.closing_upi || 0,
+            opening_balance: (Number(firstRecord?.opening_cash || 0) + Number(firstRecord?.opening_upi || 0)),
+            closing_balance: (Number(lastRecord?.closing_cash || 0) + Number(lastRecord?.closing_upi || 0)),
         };
 
         if (records) {
-            records.forEach(record => {
+            (records as DailyRecordRow[]).forEach((record) => {
                 summary.total_income += Number(record.total_income || 0);
                 summary.total_expense += Number(record.total_expense || 0);
             });
@@ -58,8 +99,8 @@ export async function GET(request: NextRequest) {
         }
 
         return NextResponse.json(summary);
-    } catch (error: any) {
-        console.error('Error in GET /api/reports/monthly:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        console.error('Error in GET /api/reports/monthly:', { message: getErrorMessage(error) });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

@@ -1,6 +1,21 @@
 import { createServerClient } from '@/lib/supabase-server';
 import { AuthErrorState } from '@/components/auth-error-state';
 
+type DashboardUserProfile = {
+    id: string;
+    role: string;
+    outlet_id: string | null;
+    full_name?: string | null;
+    name?: string | null;
+};
+
+type DashboardOutlet = {
+    id: string;
+    name: string;
+    code: string;
+    location?: string | null;
+};
+
 export default async function DashboardPage() {
     const supabase = createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -14,26 +29,28 @@ export default async function DashboardPage() {
     // Fetch user profile with outlet_id
     const { data: userProfile } = await supabase
         .from('users')
-        .select('*')
+        .select('id,role,outlet_id,full_name,name')
         .eq('id', user.id)
-        .single() as { data: any, error: any }; // Type cast for build fix
+        .single();
 
-    let outlets: any[] = [];
+    const typedUserProfile = (userProfile as DashboardUserProfile | null);
 
-    if (userProfile) {
-        if (['master_admin', 'ho_accountant'].includes(userProfile.role)) {
+    let outlets: DashboardOutlet[] = [];
+
+    if (typedUserProfile) {
+        if (['master_admin', 'ho_accountant'].includes(typedUserProfile.role)) {
             const { data } = await supabase
                 .from('outlets')
-                .select('*')
+                .select('id,name,code,location')
                 // .eq('is_active', true) // Schema mismatch fix
                 .order('name');
-            outlets = data || [];
-        } else if (userProfile.outlet_id) {
+            outlets = (data as DashboardOutlet[] | null) || [];
+        } else if (typedUserProfile.outlet_id) {
             const { data } = await supabase
                 .from('outlets')
-                .select('*')
-                .eq('id', userProfile.outlet_id); // Fetch assigned outlet
-            outlets = data || [];
+                .select('id,name,code,location')
+                .eq('id', typedUserProfile.outlet_id); // Fetch assigned outlet
+            outlets = (data as DashboardOutlet[] | null) || [];
         }
     }
 
@@ -41,10 +58,10 @@ export default async function DashboardPage() {
         <div className="space-y-6">
             <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                    Welcome back, {userProfile?.full_name || userProfile?.name}
+                    Welcome back, {typedUserProfile?.full_name || typedUserProfile?.name}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                    Role: {userProfile?.role?.replace('_', ' ').toUpperCase()}
+                    Role: {typedUserProfile?.role?.replace('_', ' ').toUpperCase()}
                 </p>
             </div>
 

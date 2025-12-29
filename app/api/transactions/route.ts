@@ -1,18 +1,70 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { TransactionSchema } from '@/lib/validation';
+import { ZodError } from 'zod';
+import type { Database } from '@/lib/database.types';
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
+
+function getErrorCode(error: unknown): string | undefined {
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+        const code = (error as Record<string, unknown>).code;
+        return typeof code === 'string' ? code : undefined;
+    }
+    return undefined;
+}
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient<any>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('role,outlet_id')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
         const searchParams = request.nextUrl.searchParams;
         const dailyRecordId = searchParams.get('dailyRecordId');
 
+        const canListWithoutDailyRecord = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
+        if (!dailyRecordId && !canListWithoutDailyRecord) {
+            return NextResponse.json({ error: 'dailyRecordId is required' }, { status: 400 });
+        }
+
+        if (dailyRecordId) {
+            const { data: dailyRecord } = await supabase
+                .from('daily_records')
+                .select('id,outlet_id')
+                .eq('id', dailyRecordId)
+                .single();
+
+            if (!dailyRecord) {
+                return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
+            }
+
+            const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
+            if (!canSelectOutlet && dailyRecord.outlet_id !== profile.outlet_id) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+        }
+
         let query = supabase
             .from('transactions')
-            .select('id,daily_record_id,type,category,payment_mode,amount,description,date,created_at')
+            .select('id,daily_record_id,type,category,payment_mode,amount,description,created_at')
             .order('created_at', { ascending: false })
             .limit(50); // Limit to recent 50 transactions
 
@@ -28,15 +80,39 @@ export async function GET(request: NextRequest) {
         }
 
         return NextResponse.json(data);
-    } catch (error: any) {
-        console.error('Error in GET /api/transactions:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        console.error('Error in GET /api/transactions:', {
+            message: getErrorMessage(error),
+            code: getErrorCode(error),
+        });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient<any>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('role,outlet_id')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
+        const canCreateTransaction = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profile.role);
+        if (!canCreateTransaction) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         const body = await request.json();
 
         // Idempotency check - prevents duplicate transactions on retry
@@ -44,7 +120,7 @@ export async function POST(request: NextRequest) {
         if (idempotencyKey) {
             const { data: existing } = await supabase
                 .from('transactions')
-                .select('id,daily_record_id,type,category,payment_mode,amount,description,date,created_at')
+                .select('id,daily_record_id,type,category,payment_mode,amount,description,created_at')
                 .eq('idempotency_key', idempotencyKey)
                 .limit(1)
                 .maybeSingle();
@@ -63,8 +139,27 @@ export async function POST(request: NextRequest) {
             paymentMode: body.paymentMode,
             amount: typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount,
             description: body.description,
-            createdBy: body.createdBy,
+            createdBy: session.user.id,
         });
+
+        const { data: dailyRecord } = await supabase
+            .from('daily_records')
+            .select('id,outlet_id,status')
+            .eq('id', validated.dailyRecordId)
+            .single();
+
+        if (!dailyRecord) {
+            return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
+        }
+
+        const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
+        if (!canSelectOutlet && dailyRecord.outlet_id !== profile.outlet_id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        if (['outlet_staff', 'outlet_manager'].includes(profile.role) && dailyRecord.status !== 'draft') {
+            return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
+        }
 
         // Insert transaction
         const { data, error } = await supabase
@@ -91,13 +186,12 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(data, { status: 201 });
-    } catch (error: any) {
-        // Zod validation error
-        if (error.name === 'ZodError') {
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
             return NextResponse.json(
                 {
                     error: 'Validation failed',
-                    details: error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+                    details: error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join(', ')
                 },
                 { status: 400 }
             );
@@ -105,8 +199,8 @@ export async function POST(request: NextRequest) {
 
         // Sanitized error logging - never log sensitive data
         console.error('Error in POST /api/transactions:', {
-            message: error.message,
-            code: error.code,
+            message: getErrorMessage(error),
+            code: getErrorCode(error),
         });
 
         return NextResponse.json(

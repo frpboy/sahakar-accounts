@@ -49,8 +49,8 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess }: CreateOutletMo
                 phone: '',
                 email: '',
             });
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to create outlet');
         } finally {
             setLoading(false);
         }

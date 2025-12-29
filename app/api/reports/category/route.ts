@@ -1,11 +1,49 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+
+type TransactionRow = {
+    type: string;
+    category: string;
+    amount: number | string;
+    created_at: string;
+};
+
+type GroupedCategory = {
+    category: string;
+    type: string;
+    total: number;
+    count: number;
+};
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient<any>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
+        if (!['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         const searchParams = request.nextUrl.searchParams;
         const startDate = searchParams.get('startDate');
         const endDate = searchParams.get('endDate');
@@ -13,14 +51,14 @@ export async function GET(request: NextRequest) {
         // Build query
         let query = supabase
             .from('transactions')
-            .select('type,category,amount,date');
+            .select('type,category,amount,created_at');
 
         // Apply date filters
         if (startDate) {
-            query = query.gte('date', startDate);
+            query = query.gte('created_at', startDate);
         }
         if (endDate) {
-            query = query.lte('date', endDate);
+            query = query.lte('created_at', `${endDate}T23:59:59.999Z`);
         }
 
         const { data: transactions, error } = await query;
@@ -31,7 +69,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Group by category and type
-        const grouped = transactions?.reduce((acc: any, tx: any) => {
+        const grouped = (transactions as TransactionRow[] | null | undefined)?.reduce<Record<string, GroupedCategory>>((acc, tx) => {
             const key = `${tx.category}-${tx.type}`;
             if (!acc[key]) {
                 acc[key] = {
@@ -41,7 +79,7 @@ export async function GET(request: NextRequest) {
                     count: 0,
                 };
             }
-            acc[key].total += parseFloat(tx.amount);
+            acc[key].total += typeof tx.amount === 'number' ? tx.amount : Number(tx.amount);
             acc[key].count += 1;
             return acc;
         }, {});
@@ -49,8 +87,8 @@ export async function GET(request: NextRequest) {
         const result = Object.values(grouped || {});
 
         return NextResponse.json(result);
-    } catch (error: any) {
-        console.error('Error in GET /api/reports/category:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        console.error('Error in GET /api/reports/category:', { message: getErrorMessage(error) });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

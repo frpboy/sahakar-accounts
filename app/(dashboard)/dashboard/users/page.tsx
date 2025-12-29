@@ -7,12 +7,21 @@ import { CreateUserModal } from '@/components/create-user-modal';
 import { ManagePermissionsModal } from '@/components/manage-permissions-modal';
 import { UserPlus, Settings } from 'lucide-react';
 
+type UsersListRow = {
+    id: string;
+    email: string;
+    name?: string | null;
+    full_name?: string | null;
+    role: string;
+    outlet_id?: string | null;
+};
+
 export default function UsersPage() {
     const supabase = createClientComponentClient();
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showManagePermissions, setShowManagePermissions] = useState(false);
 
-    const { data: users, isLoading, refetch } = useQuery({
+    const { data: users, isLoading, refetch } = useQuery<UsersListRow[]>({
         queryKey: ['users-list'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -20,7 +29,7 @@ export default function UsersPage() {
                 .select('*')
                 .order('name');
             if (error) throw error;
-            return data;
+            return (data ?? []) as UsersListRow[];
         },
     });
 
@@ -97,7 +106,7 @@ export default function UsersPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                users?.map((user: any) => (
+                                users?.map((user) => (
                                     <tr key={user.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">

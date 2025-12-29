@@ -6,7 +6,7 @@ import { ProtectedRoute } from '@/components/protected-route';
 import { MonthlyReport } from '@/components/monthly-report';
 import { BalanceSummary } from '@/components/balance-summary';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle, Lock, Calendar, Building2, Filter, Clock, AlertCircle, X } from 'lucide-react';
+import { CheckCircle, Lock, Calendar, Building2, Clock, AlertCircle, X } from 'lucide-react';
 
 interface DailyRecord {
     id: string;
@@ -21,6 +21,12 @@ interface DailyRecord {
     submitted_at?: string;
 }
 
+interface OutletOption {
+    id: string;
+    name: string;
+    code: string;
+}
+
 export default function AccountantDashboard() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
@@ -33,7 +39,7 @@ export default function AccountantDashboard() {
     const [lockReason, setLockReason] = useState('');
 
     // Fetch all outlets
-    const { data: outlets } = useQuery({
+    const { data: outlets } = useQuery<OutletOption[]>({
         queryKey: ['outlets'],
         queryFn: async () => {
             const res = await fetch('/api/outlets');
@@ -117,7 +123,7 @@ export default function AccountantDashboard() {
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                                     >
                                         <option value="all">All Outlets</option>
-                                        {outlets?.map((outlet: any) => (
+                                        {outlets?.map((outlet) => (
                                             <option key={outlet.id} value={outlet.id}>
                                                 {outlet.name} ({outlet.code})
                                             </option>
@@ -273,7 +279,7 @@ export default function AccountantDashboard() {
                                         } else {
                                             alert(`⚠️ ${data.message || 'Sync failed'}`);
                                         }
-                                    } catch (error) {
+                                    } catch {
                                         alert('❌ Sync error. Please check configuration.');
                                     }
                                 }}

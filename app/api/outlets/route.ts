@@ -1,11 +1,29 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+
+type CreateOutletBody = {
+    name?: string;
+    code?: string;
+    location?: string;
+    phone?: string;
+    email?: string;
+};
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient<any>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const searchParams = request.nextUrl.searchParams;
         const id = searchParams.get('id');
 
@@ -25,15 +43,31 @@ export async function GET(request: NextRequest) {
         }
 
         return NextResponse.json(data);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createAdminClient();
-        const body = await request.json();
+        const supabase = createRouteHandlerClient<any>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: requester } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+        if (!requester || !['master_admin', 'superadmin'].includes(requester.role)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const body = (await request.json()) as CreateOutletBody;
 
         const { name, code, location, phone, email } = body;
 
@@ -44,7 +78,6 @@ export async function POST(request: NextRequest) {
         const { data, error } = await supabase
             .from('outlets')
             .insert({
-                organization_id: '00000000-0000-0000-0000-000000000001',
                 name,
                 code,
                 location,
@@ -59,7 +92,7 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(data, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

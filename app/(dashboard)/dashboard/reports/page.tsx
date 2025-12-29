@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Download, FileDown, Calendar, Shield } from 'lucide-react';
+import { Download, FileDown, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -13,11 +13,18 @@ import { AuditorBanner } from '@/components/auditor-banner';
 // Extend jsPDF type
 declare module 'jspdf' {
     interface jsPDF {
-        autoTable: (options: any) => void;
+        autoTable: (options: Record<string, unknown>) => void;
     }
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+
+type CategoryReportRow = {
+    category: string;
+    type: 'income' | 'expense';
+    total: number;
+    count: number;
+};
 
 export default function ReportsPage() {
     const { user } = useAuth();
@@ -25,7 +32,7 @@ export default function ReportsPage() {
     const [endDate, setEndDate] = useState('');
 
     // Fetch report data
-    const { data: reportData, isLoading } = useQuery({
+    const { data: reportData, isLoading } = useQuery<CategoryReportRow[]>({
         queryKey: ['category-report', startDate, endDate],
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -34,13 +41,13 @@ export default function ReportsPage() {
 
             const res = await fetch(`/api/reports/category?${params}`);
             if (!res.ok) throw new Error('Failed to fetch report');
-            return res.json();
+            return (await res.json()) as CategoryReportRow[];
         },
     });
 
     // Transform data for charts
-    const incomeData = reportData?.filter((r: any) => r.type === 'income') || [];
-    const expenseData = reportData?.filter((r: any) => r.type === 'expense') || [];
+    const incomeData = reportData?.filter((r) => r.type === 'income') || [];
+    const expenseData = reportData?.filter((r) => r.type === 'expense') || [];
 
 
     // Export to Excel with optional watermark
@@ -49,7 +56,12 @@ export default function ReportsPage() {
 
         const isAuditor = user?.profile?.role === 'auditor';
 
-        const data = reportData.map((r: any) => ({
+        const data: Array<{
+            Category: string;
+            Type: string;
+            'Total Amount': string;
+            Transactions: number | string;
+        }> = reportData.map((r) => ({
             Category: r.category,
             Type: r.type,
             'Total Amount': `₹${r.total.toLocaleString('en-IN')}`,
@@ -62,13 +74,13 @@ export default function ReportsPage() {
                 Type: '',
                 'Total Amount': '',
                 Transactions: ''
-            } as any);
+            });
             data.push({
                 Category: 'AUDIT EXPORT WATERMARK',
                 Type: `Exported by: ${user?.profile?.name || user?.email}`,
                 'Total Amount': `Date: ${new Date().toLocaleString('en-IN')}`,
                 Transactions: 'DO NOT MODIFY'
-            } as any);
+            });
         }
 
         const ws = XLSX.utils.json_to_sheet(data);
@@ -102,7 +114,7 @@ export default function ReportsPage() {
             doc.setTextColor(0, 0, 0);
         }
 
-        const tableData = reportData.map((r: any) => [
+        const tableData = reportData.map((r) => [
             r.category,
             r.type,
             `₹${r.total.toLocaleString('en-IN')}`,
@@ -219,7 +231,7 @@ export default function ReportsPage() {
                                         outerRadius={80}
                                         label
                                     >
-                                        {incomeData.map((entry: any, index: number) => (
+                                        {incomeData.map((_, index: number) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
@@ -243,7 +255,7 @@ export default function ReportsPage() {
                                         outerRadius={80}
                                         label
                                     >
-                                        {expenseData.map((entry: any, index: number) => (
+                                        {expenseData.map((_, index: number) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
@@ -289,7 +301,7 @@ export default function ReportsPage() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {reportData.map((row: any, index: number) => (
+                                {reportData.map((row, index: number) => (
                                     <tr key={index} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                             {row.category}

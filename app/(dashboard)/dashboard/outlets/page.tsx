@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
 import { useQuery } from '@tanstack/react-query';
 import { CreateOutletModal } from '@/components/create-outlet-modal';
@@ -15,7 +14,6 @@ interface Outlet {
 }
 
 export default function OutletsPage() {
-    const { user } = useAuth();
     const [showCreateOutlet, setShowCreateOutlet] = useState(false);
 
     // Fetch all outlets

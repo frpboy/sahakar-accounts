@@ -1,20 +1,104 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import type { Database } from '@/lib/database.types';
+
+type PatchTransactionBody = {
+    type?: 'income' | 'expense';
+    category?: string;
+    paymentMode?: 'cash' | 'upi';
+    amount?: number;
+    description?: string | null;
+};
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
+
+function getErrorCode(error: unknown): string | undefined {
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+        const code = (error as Record<string, unknown>).code;
+        return typeof code === 'string' ? code : undefined;
+    }
+    return undefined;
+}
 
 export async function PATCH(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createAdminClient();
-        const body = await request.json();
+        const supabase = createRouteHandlerClient<Database>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('role,outlet_id')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
+        const canEdit = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profile.role);
+        if (!canEdit) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const { data: tx, error: txError } = await supabase
+            .from('transactions')
+            .select('id,created_by,daily_record_id')
+            .eq('id', params.id)
+            .single();
+
+        if (txError) {
+            return NextResponse.json({ error: txError.message }, { status: 500 });
+        }
+        if (!tx) {
+            return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+        }
+
+        const { data: dailyRecord } = await supabase
+            .from('daily_records')
+            .select('id,outlet_id,status')
+            .eq('id', tx.daily_record_id)
+            .single();
+
+        if (!dailyRecord) {
+            return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
+        }
+
+        const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
+        if (!canSelectOutlet && dailyRecord.outlet_id !== profile.outlet_id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        if (['outlet_staff', 'outlet_manager'].includes(profile.role) && dailyRecord.status !== 'draft') {
+            return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
+        }
+
+        if (profile.role === 'outlet_staff' && tx.created_by !== session.user.id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const body = (await request.json()) as PatchTransactionBody;
         const { id } = params;
 
         const { type, category, paymentMode, amount, description } = body;
 
-        const updateData: any = {};
+        const updateData: Partial<{
+            type: 'income' | 'expense';
+            category: string;
+            payment_mode: 'cash' | 'upi';
+            amount: number;
+            description: string | null;
+        }> = {};
         if (type) updateData.type = type;
         if (category) updateData.category = category;
         if (paymentMode) updateData.payment_mode = paymentMode;
@@ -34,18 +118,75 @@ export async function PATCH(
         }
 
         return NextResponse.json(data);
-    } catch (error: any) {
-        console.error('Error in PATCH /api/transactions/[id]:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        console.error('Error in PATCH /api/transactions/[id]:', { message: getErrorMessage(error) });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
 export async function DELETE(
-    request: NextRequest,
+    _request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient<Database>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('role,outlet_id')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
+        const canDelete = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profile.role);
+        if (!canDelete) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const { data: tx, error: txError } = await supabase
+            .from('transactions')
+            .select('id,created_by,daily_record_id')
+            .eq('id', params.id)
+            .single();
+
+        if (txError) {
+            return NextResponse.json({ error: txError.message }, { status: 500 });
+        }
+        if (!tx) {
+            return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+        }
+
+        const { data: dailyRecord } = await supabase
+            .from('daily_records')
+            .select('id,outlet_id,status')
+            .eq('id', tx.daily_record_id)
+            .single();
+
+        if (!dailyRecord) {
+            return NextResponse.json({ error: 'Daily record not found' }, { status: 404 });
+        }
+
+        const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
+        if (!canSelectOutlet && dailyRecord.outlet_id !== profile.outlet_id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        if (['outlet_staff', 'outlet_manager'].includes(profile.role) && dailyRecord.status !== 'draft') {
+            return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
+        }
+
+        if (profile.role === 'outlet_staff' && tx.created_by !== session.user.id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         const { id } = params;
 
         const { error } = await supabase
@@ -59,8 +200,8 @@ export async function DELETE(
         }
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        console.error('Error in DELETE /api/transactions/[id]:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        console.error('Error in DELETE /api/transactions/[id]:', { message: getErrorMessage(error), code: getErrorCode(error) });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

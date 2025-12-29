@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
 
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
+
 export async function POST(request: Request) {
     try {
         const supabase = createServerClient();
@@ -54,8 +58,8 @@ export async function POST(request: Request) {
             expires_at: expiresAt,
             days: days
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[GrantAccess] Exception:', error);
-        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

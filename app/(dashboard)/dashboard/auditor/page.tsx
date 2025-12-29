@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AuditorBanner } from '@/components/auditor-banner';
@@ -8,14 +8,11 @@ import { useQuery } from '@tanstack/react-query';
 import {
     Shield,
     Calendar,
-    Download,
-    Filter,
     FileSpreadsheet,
     FileText,
     Building2,
     TrendingUp,
-    TrendingDown,
-    DollarSign
+    TrendingDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -36,6 +33,25 @@ interface DailyRecord {
     locked_at?: string;
 }
 
+interface OutletOption {
+    id: string;
+    name: string;
+    code: string;
+}
+
+type ExportRow = {
+    Date: string;
+    Outlet: string;
+    Code: string;
+    'Opening Cash': number | string;
+    'Opening UPI': number | string;
+    'Total Income': number | string;
+    'Total Expense': number | string;
+    'Closing Cash': number | string;
+    'Closing UPI': number | string;
+    'Locked At': string;
+};
+
 export default function AuditorDashboard() {
     const { user } = useAuth();
     const [filters, setFilters] = useState({
@@ -45,13 +61,31 @@ export default function AuditorDashboard() {
         month: new Date().toISOString().slice(0, 7)
     });
 
+    // Log access action
+    const logAuditorAccess = useCallback(async (action: string, entity_id?: string) => {
+        try {
+            await fetch('/api/auditor/log-access', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action,
+                    entity_type: 'daily_record',
+                    entity_id,
+                    outlet_id: filters.outletId !== 'all' ? filters.outletId : null
+                })
+            });
+        } catch (error: unknown) {
+            console.error('Failed to log access:', error);
+        }
+    }, [filters.outletId]);
+
     // Log dashboard access
     useEffect(() => {
         logAuditorAccess('view_dashboard');
-    }, []);
+    }, [logAuditorAccess]);
 
     // Fetch all outlets for filter
-    const { data: outlets } = useQuery({
+    const { data: outlets } = useQuery<OutletOption[]>({
         queryKey: ['outlets'],
         queryFn: async () => {
             const res = await fetch('/api/outlets');
@@ -76,24 +110,6 @@ export default function AuditorDashboard() {
         }
     });
 
-    // Log access action
-    const logAuditorAccess = async (action: string, entity_id?: string) => {
-        try {
-            await fetch('/api/auditor/log-access', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action,
-                    entity_type: 'daily_record',
-                    entity_id,
-                    outlet_id: filters.outletId !== 'all' ? filters.outletId : null
-                })
-            });
-        } catch (error) {
-            console.error('Failed to log access:', error);
-        }
-    };
-
     // Export to Excel with watermark
     const exportToExcel = () => {
         if (!records || records.length === 0) {
@@ -103,7 +119,7 @@ export default function AuditorDashboard() {
 
         logAuditorAccess('export_excel');
 
-        const exportData = records.map(record => ({
+        const exportData: ExportRow[] = records.map((record) => ({
             'Date': new Date(record.date).toLocaleDateString('en-IN'),
             'Outlet': record.outlet?.name || 'Unknown',
             'Code': record.outlet?.code || 'N/A',
@@ -128,7 +144,7 @@ export default function AuditorDashboard() {
             'Closing Cash': '',
             'Closing UPI': '',
             'Locked At': ''
-        } as any);
+        });
         exportData.push({
             'Date': 'AUDIT EXPORT WATERMARK',
             'Outlet': `Exported by: ${user?.profile?.name || user?.email}`,
@@ -140,7 +156,7 @@ export default function AuditorDashboard() {
             'Closing Cash': '',
             'Closing UPI': '',
             'Locked At': ''
-        } as any);
+        });
 
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
@@ -225,7 +241,7 @@ export default function AuditorDashboard() {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                             >
                                 <option value="all">All Outlets</option>
-                                {outlets?.map((outlet: any) => (
+                                {outlets?.map((outlet) => (
                                     <option key={outlet.id} value={outlet.id}>
                                         {outlet.name} ({outlet.code})
                                     </option>

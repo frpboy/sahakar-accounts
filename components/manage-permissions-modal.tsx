@@ -4,6 +4,21 @@ import { useState, useEffect } from 'react';
 import { X, Shield, Loader2, User, Building2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
+type UsersApiRow = {
+    id: string;
+    email: string;
+    name?: string | null;
+    full_name?: string | null;
+    role: string;
+    outlet_id?: string | null;
+};
+
+type OutletsApiRow = {
+    id: string;
+    name: string;
+    code: string;
+};
+
 interface ManagePermissionsModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -18,28 +33,28 @@ export function ManagePermissionsModal({ isOpen, onClose, onSuccess }: ManagePer
     const [error, setError] = useState('');
 
     // Fetch users
-    const { data: users } = useQuery({
+    const { data: users } = useQuery<UsersApiRow[]>({
         queryKey: ['users'],
         queryFn: async () => {
             const res = await fetch('/api/users');
             if (!res.ok) return [];
-            return res.json();
+            return (await res.json()) as UsersApiRow[];
         },
         enabled: isOpen,
     });
 
     // Fetch outlets
-    const { data: outlets } = useQuery({
+    const { data: outlets } = useQuery<OutletsApiRow[]>({
         queryKey: ['outlets'],
         queryFn: async () => {
             const res = await fetch('/api/outlets');
             if (!res.ok) return [];
-            return res.json();
+            return (await res.json()) as OutletsApiRow[];
         },
         enabled: isOpen,
     });
 
-    const selectedUserData = users?.find((u: any) => u.id === selectedUser);
+    const selectedUserData = users?.find((u) => u.id === selectedUser);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -47,23 +62,24 @@ export function ManagePermissionsModal({ isOpen, onClose, onSuccess }: ManagePer
         setError('');
 
         try {
-            // Note: This would require a new API endpoint to update user permissions
-            // For now, we'll show a message that this needs to be done via SQL
-            setError('Permission updates currently require SQL. Use: UPDATE users SET role = \'...\', outlet_id = \'...\' WHERE id = \'...\'');
+            const res = await fetch(`/api/users/${selectedUser}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    role: newRole || null,
+                    outlet_id: newOutletId || null,
+                }),
+            });
 
-            // TODO: Implement PATCH /api/users/[id] endpoint
-            // const res = await fetch(`/api/users/${selectedUser}`, {
-            //   method: 'PATCH',
-            //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify({ role: newRole, outlet_id: newOutletId }),
-            // });
+            if (!res.ok) {
+                const data = (await res.json()) as { error?: string };
+                throw new Error(data.error || 'Failed to update permissions');
+            }
 
-            setTimeout(() => {
-                onSuccess();
-                onClose();
-            }, 3000);
-        } catch (err: any) {
-            setError(err.message);
+            onSuccess();
+            onClose();
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to update permissions');
         } finally {
             setLoading(false);
         }
@@ -116,7 +132,7 @@ export function ManagePermissionsModal({ isOpen, onClose, onSuccess }: ManagePer
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         >
                             <option value="">Choose a user...</option>
-                            {users?.map((user: any) => (
+                            {users?.map((user) => (
                                 <option key={user.id} value={user.id}>
                                     {user.full_name || user.name || user.email} ({user.role})
                                 </option>
@@ -166,7 +182,7 @@ export function ManagePermissionsModal({ isOpen, onClose, onSuccess }: ManagePer
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     >
                                         <option value="">No outlet assigned</option>
-                                        {outlets?.map((outlet: any) => (
+                                        {outlets?.map((outlet) => (
                                             <option key={outlet.id} value={outlet.id}>
                                                 {outlet.name} ({outlet.code})
                                             </option>
@@ -210,7 +226,7 @@ export function ManagePermissionsModal({ isOpen, onClose, onSuccess }: ManagePer
                             ) : (
                                 <>
                                     <Shield className="w-4 h-4" />
-                                    Show SQL Command
+                                    Update Permissions
                                 </>
                             )}
                         </button>

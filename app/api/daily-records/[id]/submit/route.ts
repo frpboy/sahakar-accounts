@@ -1,11 +1,20 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 
+type SubmitRpcResult = {
+    success: boolean;
+    message?: string;
+    error?: string;
+};
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
+
 export async function POST(
-    request: NextRequest,
+    _request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
@@ -31,19 +40,21 @@ export async function POST(
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
+        const rpcResult = data as SubmitRpcResult | null;
+
         // RPC returns JSON with success/error
-        if (!data || !data.success) {
+        if (!rpcResult || !rpcResult.success) {
             return NextResponse.json({
-                error: data?.error || 'Failed to submit record'
+                error: rpcResult?.error || 'Failed to submit record'
             }, { status: 400 });
         }
 
         return NextResponse.json({
             success: true,
-            message: data.message
+            message: rpcResult.message
         });
-    } catch (error: any) {
-        console.error('Error in POST /api/daily-records/[id]/submit:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        console.error('Error in POST /api/daily-records/[id]/submit:', { message: getErrorMessage(error) });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

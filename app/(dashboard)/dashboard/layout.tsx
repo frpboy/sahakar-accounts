@@ -50,9 +50,8 @@ export default async function DashboardLayout({
         );
     }
 
-    console.log('[DashboardLayout] Profile loaded successfully for:', (userData as any)?.email);
-
     const typedUserData = userData as UserProfile & { id: string; email: string };
+    console.log('[DashboardLayout] Profile loaded successfully for:', typedUserData.email);
 
     return (
         <div className="min-h-screen bg-gray-50">

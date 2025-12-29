@@ -83,7 +83,7 @@ export function OpeningBalanceModal({
                         </p>
                     </div>
                     <p className="text-sm text-blue-700">
-                        Set your opening balances to begin tracking today's transactions
+                        Set your opening balances to begin tracking today&apos;s transactions
                     </p>
                 </div>
 
@@ -91,7 +91,7 @@ export function OpeningBalanceModal({
                     {/* Previous Day Summary */}
                     {(previousClosingCash > 0 || previousClosingUpi > 0) && (
                         <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                            <p className="text-sm font-medium text-gray-700 mb-2">Yesterday's Closing:</p>
+                            <p className="text-sm font-medium text-gray-700 mb-2">Yesterday&apos;s Closing:</p>
                             <div className="flex justify-between text-sm text-gray-600">
                                 <span>Cash: ₹{previousClosingCash.toLocaleString('en-IN')}</span>
                                 <span>UPI: ₹{previousClosingUpi.toLocaleString('en-IN')}</span>

@@ -13,19 +13,6 @@ export function DailyRecordActions({ recordId, status }: DailyRecordActionsProps
     const queryClient = useQueryClient();
     const [showSubmitModal, setShowSubmitModal] = useState(false);
 
-    const submitRecord = useMutation({
-        mutationFn: async () => {
-            const res = await fetch(`/api/daily-records/${recordId}/submit`, {
-                method: 'POST',
-            });
-            if (!res.ok) throw new Error('Failed to submit record');
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['daily-record-today'] });
-        },
-    });
-
     const lockRecord = useMutation({
         mutationFn: async () => {
             const res = await fetch(`/api/daily-records/${recordId}/lock`, {

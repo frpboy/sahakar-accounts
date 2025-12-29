@@ -1,6 +1,5 @@
 'use client';
 
-import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -16,7 +15,6 @@ interface CashFlowData {
 }
 
 export default function CashFlowReportPage() {
-    const { user } = useAuth();
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
     // Mock data - replace with actual API call

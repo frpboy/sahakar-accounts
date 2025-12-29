@@ -58,7 +58,7 @@ export default function ManagerDashboard() {
                         >
                             <div className="text-3xl mb-2">📝</div>
                             <h3 className="font-medium text-gray-900">Enter Transactions</h3>
-                            <p className="text-sm text-gray-600 mt-1">Add today's entries</p>
+                            <p className="text-sm text-gray-600 mt-1">Add today&apos;s entries</p>
                         </a>
                         <a href="/dashboard/reports" className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-center block">
                             <div className="text-3xl mb-2">📊</div>

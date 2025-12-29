@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { ProtectedRoute } from '@/components/protected-route';
-import { DashboardCard } from '@/components/dashboard-card';
 import { TransactionForm } from '@/components/transaction-form';
 import { TransactionList } from '@/components/transaction-list';
 import { LiveBalance } from '@/components/live-balance';
@@ -29,15 +28,15 @@ export default function StaffDashboard() {
 
     // Fetch outlet information
     const { data: outlet } = useQuery({
-        queryKey: ['outlet', user?.profile?.outlet_id as string],
+        queryKey: ['outlet', user?.profile?.outlet_id],
         queryFn: async () => {
             if (!user?.profile?.outlet_id) return null;
-            const res = await fetch(`/api/outlets?id=${(user.profile as any).outlet_id}`);
+            const res = await fetch(`/api/outlets?id=${user.profile.outlet_id}`);
             if (!res.ok) return null;
             const outlets = await res.json();
             return outlets[0] || null;
         },
-        enabled: !!(user?.profile as any)?.outlet_id,
+        enabled: !!user?.profile?.outlet_id,
     });
 
     const cashBalance = dailyRecord?.closing_cash ?? dailyRecord?.opening_cash ?? 0;

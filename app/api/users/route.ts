@@ -1,15 +1,44 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import type { Database } from '@/lib/database.types';
 
-export async function GET(request: NextRequest) {
+type CreateUserBody = {
+    email?: string;
+    fullName?: string;
+    role?: string;
+    phone?: string | null;
+    outletId?: string | null;
+};
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
+
+export async function GET() {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient<any>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: requester } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+        if (!requester || !['master_admin', 'superadmin'].includes(requester.role)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         const { data, error } = await supabase
             .from('users')
-            .select('id,email,name,role,outlet_id,phone,created_at')
+            .select('id,email,name,role,outlet_id,created_at')
             .order('created_at', { ascending: false })
             .limit(100); // Limit to 100 users
 
@@ -18,15 +47,31 @@ export async function GET(request: NextRequest) {
         }
 
         return NextResponse.json(data);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createAdminClient();
-        const body = await request.json();
+        const supabase = createRouteHandlerClient<any>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: requester } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+        if (!requester || !['master_admin', 'superadmin'].includes(requester.role)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const body = (await request.json()) as CreateUserBody;
 
         const { email, fullName, role, phone, outletId } = body;
 
@@ -37,8 +82,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const allowedRoles = ['master_admin', 'superadmin', 'ho_accountant', 'outlet_manager', 'outlet_staff', 'auditor'] as const;
+        if (!allowedRoles.includes(role as (typeof allowedRoles)[number])) {
+            return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+        }
+
+        const adminClient = createAdminClient();
+
         // Create auth user first
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
             email,
             password: 'Zabnix@2025', // Default password
             email_confirm: true,
@@ -56,7 +108,6 @@ export async function POST(request: NextRequest) {
                 email,
                 name: fullName,
                 role,
-                phone,
                 outlet_id: outletId || null,
             })
             .select()
@@ -64,14 +115,14 @@ export async function POST(request: NextRequest) {
 
         if (error) {
             // Rollback auth user if profile creation fails
-            await supabase.auth.admin.deleteUser(authData.user.id);
+            await adminClient.auth.admin.deleteUser(authData.user.id);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
         // Outlet is already set in the insert above, no need for separate table
 
         return NextResponse.json(data, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

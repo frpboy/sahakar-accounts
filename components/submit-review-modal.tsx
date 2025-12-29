@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { CheckCircle, AlertCircle, X, Send, DollarSign, CreditCard } from 'lucide-react';
 
@@ -11,27 +10,40 @@ interface SubmitReviewModalProps {
     date: string;
 }
 
+type DailyRecordDetail = {
+    opening_cash: number | null;
+    opening_upi: number | null;
+    total_income: number | null;
+    total_expense: number | null;
+};
+
+type TransactionRow = {
+    type: 'income' | 'expense';
+    payment_mode: 'cash' | 'upi';
+    amount: number | null;
+};
+
 export function SubmitReviewModal({ isOpen, onClose, recordId, date }: SubmitReviewModalProps) {
     const queryClient = useQueryClient();
 
     // Fetch record details and transactions
-    const { data: record } = useQuery({
+    const { data: record } = useQuery<DailyRecordDetail | null>({
         queryKey: ['daily-record', recordId],
         queryFn: async () => {
             const res = await fetch(`/api/daily-records?id=${recordId}`);
             if (!res.ok) throw new Error('Failed to fetch record');
             const records = await res.json();
-            return records[0];
+            return (records?.[0] ?? null) as DailyRecordDetail | null;
         },
         enabled: isOpen
     });
 
-    const { data: transactions } = useQuery({
+    const { data: transactions } = useQuery<TransactionRow[]>({
         queryKey: ['transactions', recordId],
         queryFn: async () => {
             const res = await fetch(`/api/transactions?daily_record_id=${recordId}`);
             if (!res.ok) throw new Error('Failed to fetch transactions');
-            return res.json();
+            return (await res.json()) as TransactionRow[];
         },
         enabled: isOpen
     });
@@ -62,17 +74,21 @@ export function SubmitReviewModal({ isOpen, onClose, recordId, date }: SubmitRev
     const totalExpense = record.total_expense || 0;
 
     // Calculate expected closing
-    const incomeTransactions = transactions?.filter((t: any) => t.type === 'income') || [];
-    const expenseTransactions = transactions?.filter((t: any) => t.type === 'expense') || [];
+    const incomeTransactions = (transactions ?? []).filter((t) => t.type === 'income');
+    const expenseTransactions = (transactions ?? []).filter((t) => t.type === 'expense');
 
-    const cashIncome = incomeTransactions.filter((t: any) => t.payment_mode === 'cash')
-        .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-    const upiIncome = incomeTransactions.filter((t: any) => t.payment_mode === 'upi')
-        .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-    const cashExpense = expenseTransactions.filter((t: any) => t.payment_mode === 'cash')
-        .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-    const upiExpense = expenseTransactions.filter((t: any) => t.payment_mode === 'upi')
-        .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+    const cashIncome = incomeTransactions
+        .filter((t) => t.payment_mode === 'cash')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+    const upiIncome = incomeTransactions
+        .filter((t) => t.payment_mode === 'upi')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+    const cashExpense = expenseTransactions
+        .filter((t) => t.payment_mode === 'cash')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+    const upiExpense = expenseTransactions
+        .filter((t) => t.payment_mode === 'upi')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
 
     const expectedCashClosing = openingCash + cashIncome - cashExpense;
     const expectedUpiClosing = openingUpi + upiIncome - upiExpense;
@@ -84,7 +100,7 @@ export function SubmitReviewModal({ isOpen, onClose, recordId, date }: SubmitRev
     const hasExpense = totalExpense > 0;
 
     const canSubmit = hasOpeningBalances && hasTransactions;
-    const warnings = [];
+    const warnings: string[] = [];
     if (!hasIncome) warnings.push('No income transactions recorded');
     if (!hasExpense) warnings.push('No expense transactions recorded');
     if (transactions?.length === 1) warnings.push('Only one transaction recorded');

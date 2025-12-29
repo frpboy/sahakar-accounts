@@ -1,8 +1,26 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+
+type AuditorAction =
+    | 'view_dashboard'
+    | 'view_record'
+    | 'view_transaction'
+    | 'export_excel'
+    | 'export_pdf'
+    | 'filter_data';
+
+type LogAccessBody = {
+    action?: AuditorAction;
+    entity_type?: string | null;
+    entity_id?: string | null;
+    outlet_id?: string | null;
+};
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -26,12 +44,18 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Forbidden - Auditor access only' }, { status: 403 });
         }
 
-        const body = await request.json();
+        const body = (await request.json()) as LogAccessBody;
         const { action, entity_type, entity_id, outlet_id } = body;
 
-        // Validate action
-        const validActions = ['view_dashboard', 'view_record', 'view_transaction', 'export_excel', 'export_pdf', 'filter_data'];
-        if (!validActions.includes(action)) {
+        const validActions: AuditorAction[] = [
+            'view_dashboard',
+            'view_record',
+            'view_transaction',
+            'export_excel',
+            'export_pdf',
+            'filter_data',
+        ];
+        if (!action || !validActions.includes(action)) {
             return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
         }
 
@@ -58,9 +82,9 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json({ success: true }, { status: 201 });
-    } catch (error: any) {
-        console.error('Error in auditor log-access:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        console.error('Error in auditor log-access:', { message: getErrorMessage(error) });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -108,7 +132,7 @@ export async function GET(request: NextRequest) {
         }
 
         return NextResponse.json(data);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

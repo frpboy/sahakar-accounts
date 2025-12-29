@@ -1,81 +1,98 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
-import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-server';
+import { NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/database.types';
 
-export async function GET(request: NextRequest) {
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
+
+type Stats =
+    | { totalStores: number; activeUsers: number; pendingSubmissions: number; lockedDays: number }
+    | { pendingVerifications: number; lockedToday: number; flaggedEntries: number; lateSubmissions: number }
+    | { todayStatus: string; todayIncome: number; todayExpense: number; transactionCount: number }
+    | { cashBalance: number; upiBalance: number; myTransactionsToday: number };
+
+export async function GET() {
     try {
-        const supabase = createAdminClient();
+        const sessionClient = createRouteHandlerClient<Database>({ cookies });
+        const { data: { session } } = await sessionClient.auth.getSession();
 
-        // Get the authenticated user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user) {
+        if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Get user profile with role
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await sessionClient
             .from('users')
             .select('role, outlet_id')
-            .eq('id', user.id)
+            .eq('id', session.user.id)
             .single();
 
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        let stats = {};
+        let stats: Stats;
 
         // Role-specific statistics
         switch (profile.role) {
             case 'superadmin':
-                stats = await getSuperAdminStats(supabase);
+                stats = await getSuperAdminStats(sessionClient);
                 break;
             case 'ho_accountant':
-                stats = await getHOAccountantStats(supabase);
+                stats = await getHOAccountantStats(sessionClient);
                 break;
             case 'outlet_manager':
-                stats = await getManagerStats(supabase, profile.outlet_id);
+                stats = await getManagerStats(sessionClient, profile.outlet_id);
                 break;
             case 'outlet_staff':
-                stats = await getStaffStats(supabase, profile.outlet_id);
+                stats = await getStaffStats(sessionClient, profile.outlet_id, session.user.id);
                 break;
             default:
                 return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
         }
 
         return NextResponse.json(stats);
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Dashboard stats error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
-async function getSuperAdminStats(supabase: any) {
-    const [outletsResult, usersResult] = await Promise.all([
+async function getSuperAdminStats(supabase: SupabaseClient<Database>) {
+    const [outletsResult, usersResult, submittedResult, lockedResult] = await Promise.all([
         supabase.from('outlets').select('id', { count: 'exact', head: true }),
         supabase.from('users').select('id', { count: 'exact', head: true }),
+        supabase.from('daily_records').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
+        supabase.from('daily_records').select('id', { count: 'exact', head: true }).eq('status', 'locked'),
     ]);
 
     return {
         totalStores: outletsResult.count || 0,
         activeUsers: usersResult.count || 0,
-        pendingSubmissions: 0, // Will implement with transactions
-        lockedDays: 0, // Will implement with daily_records
+        pendingSubmissions: submittedResult.count || 0,
+        lockedDays: lockedResult.count || 0,
     };
 }
 
-async function getHOAccountantStats(supabase: any) {
+async function getHOAccountantStats(supabase: SupabaseClient<Database>) {
+    const today = new Date().toISOString().split('T')[0];
+    const [pendingVerificationsResult, lockedTodayResult] = await Promise.all([
+        supabase.from('daily_records').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
+        supabase.from('daily_records').select('id', { count: 'exact', head: true }).eq('status', 'locked').eq('date', today),
+    ]);
+
     return {
-        pendingVerifications: 0, // Will implement with daily_records
-        lockedToday: 0,
+        pendingVerifications: pendingVerificationsResult.count || 0,
+        lockedToday: lockedTodayResult.count || 0,
         flaggedEntries: 0,
         lateSubmissions: 0,
     };
 }
 
-async function getManagerStats(supabase: any, outletId: string | null) {
+async function getManagerStats(supabase: SupabaseClient<Database>, outletId: string | null) {
     if (!outletId) {
         return {
             todayStatus: 'No Outlet',
@@ -88,15 +105,36 @@ async function getManagerStats(supabase: any, outletId: string | null) {
     // Get today's date
     const today = new Date().toISOString().split('T')[0];
 
+    const { data: record } = await supabase
+        .from('daily_records')
+        .select('id,status,total_income,total_expense')
+        .eq('outlet_id', outletId)
+        .eq('date', today)
+        .maybeSingle();
+
+    if (!record) {
+        return {
+            todayStatus: 'No Record',
+            todayIncome: 0,
+            todayExpense: 0,
+            transactionCount: 0,
+        };
+    }
+
+    const { count: transactionCount } = await supabase
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('daily_record_id', record.id);
+
     return {
-        todayStatus: 'Draft', // Will implement with daily_records
-        todayIncome: 0,
-        todayExpense: 0,
-        transactionCount: 0,
+        todayStatus: record.status,
+        todayIncome: Number(record.total_income || 0),
+        todayExpense: Number(record.total_expense || 0),
+        transactionCount: transactionCount || 0,
     };
 }
 
-async function getStaffStats(supabase: any, outletId: string | null) {
+async function getStaffStats(supabase: SupabaseClient<Database>, outletId: string | null, userId: string) {
     if (!outletId) {
         return {
             cashBalance: 0,
@@ -105,9 +143,34 @@ async function getStaffStats(supabase: any, outletId: string | null) {
         };
     }
 
+    const today = new Date().toISOString().split('T')[0];
+    const { data: record } = await supabase
+        .from('daily_records')
+        .select('id,opening_cash,opening_upi,closing_cash,closing_upi,status')
+        .eq('outlet_id', outletId)
+        .eq('date', today)
+        .maybeSingle();
+
+    if (!record) {
+        return {
+            cashBalance: 0,
+            upiBalance: 0,
+            myTransactionsToday: 0,
+        };
+    }
+
+    const cashBalance = record.status === 'draft' ? Number(record.opening_cash || 0) : Number(record.closing_cash || 0);
+    const upiBalance = record.status === 'draft' ? Number(record.opening_upi || 0) : Number(record.closing_upi || 0);
+
+    const { count: myTransactionsToday } = await supabase
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('daily_record_id', record.id)
+        .eq('created_by', userId);
+
     return {
-        cashBalance: 0,
-        upiBalance: 0,
-        myTransactionsToday: 0,
+        cashBalance,
+        upiBalance,
+        myTransactionsToday: myTransactionsToday || 0,
     };
 }

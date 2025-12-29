@@ -1,14 +1,48 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import type { Database } from '@/lib/database.types';
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
+}
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createAdminClient();
+        const supabase = createRouteHandlerClient<any>({ cookies });
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const searchParams = request.nextUrl.searchParams;
-        const outletId = searchParams.get('outletId') || '9e0c4614-53cf-40d3-abdd-a1d0183c3909';
+        const requestedOutletId = searchParams.get('outletId');
         const month = searchParams.get('month'); // Format: YYYY-MM
+
+        const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('role,outlet_id')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
+        const outletId = requestedOutletId ?? profile.outlet_id;
+
+        if (requestedOutletId) {
+            const canSelectOutlet = ['master_admin', 'superadmin', 'ho_accountant'].includes(profile.role);
+            if (!canSelectOutlet && requestedOutletId !== profile.outlet_id) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+        }
+
+        if (!outletId) {
+            return NextResponse.json({ error: 'Outlet ID is required or not assigned to user' }, { status: 400 });
+        }
 
         let query = supabase
             .from('daily_records')
@@ -33,8 +67,8 @@ export async function GET(request: NextRequest) {
         }
 
         return NextResponse.json(data);
-    } catch (error: any) {
-        console.error('Error in GET /api/daily-records:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        console.error('Error in GET /api/daily-records:', { message: getErrorMessage(error) });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

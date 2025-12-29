@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { google } from 'googleapis';
 
 // This endpoint will sync locked daily records to Google Sheets
-export async function POST(request: NextRequest) {
+export async function POST() {
     try {
         const supabase = createRouteHandlerClient({ cookies });
         const { data: { session } } = await supabase.auth.getSession();
@@ -55,7 +56,6 @@ export async function POST(request: NextRequest) {
         }
 
         // Initialize Google Sheets API
-        const { google } = require('googleapis');
         const auth = new google.auth.GoogleAuth({
             credentials: {
                 client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
 }
 
 // GET endpoint to check sync status
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const supabase = createRouteHandlerClient({ cookies });
 

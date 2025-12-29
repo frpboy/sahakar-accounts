@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Shield, Clock, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import { Shield, Clock, Calendar } from 'lucide-react';
 
 interface Auditor {
     id: string;
