@@ -43,10 +43,14 @@ export default function AuditorManagementPage() {
             }
             return res.json();
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
+            console.log('[DEBUG] Grant Access Success:', data);
             queryClient.invalidateQueries({ queryKey: ['auditors'] });
             setSelectedAuditor(null);
             setAccessDays(30);
+        },
+        onError: (error) => {
+            console.error('[DEBUG] Grant Access Error:', error);
         }
     });
 
@@ -70,8 +74,12 @@ export default function AuditorManagementPage() {
     });
 
     const handleGrantAccess = (auditorId: string) => {
+        console.log('[DEBUG] handleGrantAccess initiated for auditor:', auditorId);
         if (confirm(`Grant ${accessDays} days of access to this auditor?`)) {
+            console.log('[DEBUG] handleGrantAccess: Confirmed by user');
             grantAccessMutation.mutate({ auditor_id: auditorId, days: accessDays });
+        } else {
+            console.log('[DEBUG] handleGrantAccess: Cancelled by user');
         }
     };
 
@@ -214,8 +222,8 @@ export default function AuditorManagementPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${accessStatus.status === 'active' ? 'bg-green-100 text-green-800' :
-                                                    accessStatus.status === 'expired' ? 'bg-red-100 text-red-800' :
-                                                        'bg-gray-100 text-gray-800'
+                                                accessStatus.status === 'expired' ? 'bg-red-100 text-red-800' :
+                                                    'bg-gray-100 text-gray-800'
                                                 }`}>
                                                 {accessStatus.label}
                                             </span>

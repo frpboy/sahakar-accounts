@@ -1,5 +1,24 @@
 import { google } from 'googleapis';
 
+type DailyRecordSyncData = {
+    opening_cash?: number | null;
+    opening_upi?: number | null;
+    total_income?: number | null;
+    total_expense?: number | null;
+    closing_cash?: number | null;
+    closing_upi?: number | null;
+    status?: string | null;
+};
+
+type TransactionSyncData = {
+    created_at: string;
+    type: string;
+    category: string;
+    payment_mode: string;
+    amount: number;
+    description?: string | null;
+};
+
 export class GoogleSheetsService {
     private sheets;
     private drive;
@@ -34,6 +53,9 @@ export class GoogleSheetsService {
                         {
                             properties: { title: 'Summary' },
                         },
+                        {
+                            properties: { title: 'Transactions' },
+                        },
                     ],
                 },
             });
@@ -56,7 +78,7 @@ export class GoogleSheetsService {
         }
     }
 
-    async syncDailyRecord(spreadsheetId: string, date: string, data: any) {
+    async syncDailyRecord(spreadsheetId: string, date: string, data: DailyRecordSyncData) {
         try {
             const values = [
                 [
@@ -67,7 +89,7 @@ export class GoogleSheetsService {
                     data.total_expense || 0,
                     data.closing_cash || 0,
                     data.closing_upi || 0,
-                    data.status,
+                    data.status || '',
                 ],
             ];
 
@@ -85,9 +107,9 @@ export class GoogleSheetsService {
         }
     }
 
-    async syncTransactions(spreadsheetId: string, transactions: any[]) {
+    async syncTransactions(spreadsheetId: string, transactions: TransactionSyncData[]) {
         try {
-            const values = transactions.map(t => [
+            const values = transactions.map((t) => [
                 new Date(t.created_at).toLocaleString('en-IN'),
                 t.type,
                 t.category,

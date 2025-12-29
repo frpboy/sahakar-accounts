@@ -57,9 +57,33 @@ export function ProtectedRoute({
                     console.log('[ProtectedRoute] ❌ Redirecting - wrong role');
                     hasRedirected.current = true;
                     router.push(getRoleDashboard(user.profile.role));
-                } else {
-                    console.log('[ProtectedRoute] ✅ Access granted!');
+                    return;
                 }
+
+                // Time-bound access check for auditors
+                if (user.profile.role === 'auditor') {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const startDate = user.profile.access_start_date ? new Date(user.profile.access_start_date) : null;
+                    const endDate = user.profile.access_end_date ? new Date(user.profile.access_end_date) : null;
+
+                    if (startDate) startDate.setHours(0, 0, 0, 0);
+                    if (endDate) endDate.setHours(0, 0, 0, 0);
+
+                    const isStarted = !startDate || today >= startDate;
+                    const isNotExpired = !endDate || today <= endDate;
+
+                    if (!isStarted || !isNotExpired) {
+                        console.log('[ProtectedRoute] ❌ Auditor access invalid (time-bound)');
+                        hasRedirected.current = true;
+                        // For auditors with invalid access, we can redirect to a restricted page or just show the banner
+                        // For now, let's allow them into the dashboard but the banner will show "EXPIRED"
+                        // and RLS will prevent any data fetching anyway.
+                    }
+                }
+
+                console.log('[ProtectedRoute] ✅ Access granted!');
             } else {
                 console.log('[ProtectedRoute] ⚠️ Access allowed (no role check required)');
             }

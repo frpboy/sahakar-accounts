@@ -38,7 +38,7 @@ export function TransactionList({ dailyRecordId }: TransactionListProps) {
     if (!transactions || transactions.length === 0) {
         return (
             <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Today's Transactions</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">{`Today's Transactions`}</h2>
                 <p className="text-gray-500 text-center py-8">
                     No transactions yet. Add your first entry above!
                 </p>
@@ -58,7 +58,7 @@ export function TransactionList({ dailyRecordId }: TransactionListProps) {
     return (
         <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-gray-900">Today's Transactions</h2>
+                <h2 className="text-xl font-bold text-gray-900">{`Today's Transactions`}</h2>
                 <p className="text-sm text-gray-600 mt-1">{transactions.length} entries</p>
             </div>
 

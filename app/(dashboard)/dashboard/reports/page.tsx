@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Download, FileDown, Calendar } from 'lucide-react';
+import { Download, FileDown, Calendar, Shield } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { useAuth } from '@/lib/auth-context';
+import { AuditorBanner } from '@/components/auditor-banner';
 
 // Extend jsPDF type
 declare module 'jspdf' {
@@ -18,6 +20,7 @@ declare module 'jspdf' {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 export default function ReportsPage() {
+    const { user } = useAuth();
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
@@ -40,28 +43,47 @@ export default function ReportsPage() {
     const expenseData = reportData?.filter((r: any) => r.type === 'expense') || [];
 
 
-    // Export to Excel
+    // Export to Excel with optional watermark
     const exportToExcel = () => {
         if (!reportData) return;
 
-        const ws = XLSX.utils.json_to_sheet(reportData.map((r: any) => ({
+        const isAuditor = user?.profile?.role === 'auditor';
+
+        const data = reportData.map((r: any) => ({
             Category: r.category,
             Type: r.type,
             'Total Amount': `₹${r.total.toLocaleString('en-IN')}`,
             Transactions: r.count,
-        })));
+        }));
 
+        if (isAuditor) {
+            data.push({
+                Category: '',
+                Type: '',
+                'Total Amount': '',
+                Transactions: ''
+            } as any);
+            data.push({
+                Category: 'AUDIT EXPORT WATERMARK',
+                Type: `Exported by: ${user?.profile?.name || user?.email}`,
+                'Total Amount': `Date: ${new Date().toLocaleString('en-IN')}`,
+                Transactions: 'DO NOT MODIFY'
+            } as any);
+        }
+
+        const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Category Report');
 
-        const filename = `category-report-${new Date().toISOString().split('T')[0]}.xlsx`;
+        const filename = `${isAuditor ? 'Audit_' : ''}category-report-${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, filename);
     };
 
-    // Export to PDF
+    // Export to PDF with optional watermark
     const exportToPDF = () => {
         if (!reportData) return;
 
+        const isAuditor = user?.profile?.role === 'auditor';
         const doc = new jsPDF();
 
         doc.setFontSize(18);
@@ -73,6 +95,13 @@ export default function ReportsPage() {
             doc.text(`Period: ${startDate} to ${endDate}`, 14, 36);
         }
 
+        if (isAuditor) {
+            doc.setTextColor(200, 0, 0);
+            doc.setFontSize(10);
+            doc.text('READ-ONLY AUDIT EXPORT - FOR COMPLIANCE ONLY', 14, 42);
+            doc.setTextColor(0, 0, 0);
+        }
+
         const tableData = reportData.map((r: any) => [
             r.category,
             r.type,
@@ -81,17 +110,30 @@ export default function ReportsPage() {
         ]);
 
         doc.autoTable({
-            startY: 45,
+            startY: isAuditor ? 48 : 45,
             head: [['Category', 'Type', 'Total Amount', 'Transactions']],
             body: tableData,
         });
 
-        const filename = `category-report-${new Date().toISOString().split('T')[0]}.pdf`;
+        if (isAuditor) {
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(`Audit Watermark: Exported by ${user?.profile?.name || user?.email} on ${new Date().toLocaleString('en-IN')}`, 14, pageHeight - 10);
+        }
+
+        const filename = `${isAuditor ? 'Audit_' : ''}category-report-${new Date().toISOString().split('T')[0]}.pdf`;
         doc.save(filename);
     };
 
     return (
         <div className="max-w-7xl mx-auto p-6">
+            {user?.profile?.role === 'auditor' && (
+                <AuditorBanner
+                    accessEndDate={user?.profile?.access_end_date || null}
+                    userName={user?.profile?.name || user?.email || 'Auditor'}
+                />
+            )}
             <div className="mb-6">
                 <h1 className="text-3xl font-bold text-gray-900">Financial Reports</h1>
                 <p className="text-gray-600 mt-2">Category-wise breakdown and analysis.</p>

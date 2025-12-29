@@ -1,0 +1,3032 @@
+================================================================================
+PATH: database\add-auditor-mode.sql
+FILENAME: add-auditor-mode.sql
+================================================================================
+
+-- =====================================================
+-- PHASE 1: Auditor Mode - Database Migration (Updated)
+-- =====================================================
+-- This migration adds missing auditor features to existing schema
+
+-- 1. Add time-bound access tracking columns to users table
+-- (access_start_date and access_end_date already exist)
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS auditor_access_granted_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS auditor_access_expires_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS auditor_access_granted_by UUID REFERENCES users(id);
+
+-- Create index for expiry checks
+CREATE INDEX IF NOT EXISTS idx_users_auditor_expiry 
+ON users(auditor_access_expires_at)
+WHERE role = 'auditor';
+
+-- 2. Update auditor_access_log to match our needs
+-- (Table already exists, just ensure it has what we need)
+
+-- 3. Add RLS policies for auditor read-only access
+
+-- Enable RLS on tables if not already enabled
+ALTER TABLE daily_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auditor_access_log ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing auditor policies if they exist (to recreate them)
+DROP POLICY IF EXISTS "auditors_view_locked_records" ON daily_records;
+DROP POLICY IF EXISTS "auditors_view_transactions" ON transactions;
+DROP POLICY IF EXISTS "auditors_view_own_actions" ON auditor_access_log;
+DROP POLICY IF EXISTS "admins_view_all_auditor_actions" ON auditor_access_log;
+
+-- Auditors can only view LOCKED daily records with valid access
+CREATE POLICY "auditors_view_locked_records"
+ON daily_records FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'auditor'
+    AND (auditor_access_expires_at IS NULL OR auditor_access_expires_at > NOW())
+  )
+  AND status = 'locked'
+);
+
+-- Auditors can view transactions for locked records only
+CREATE POLICY "auditors_view_transactions"
+ON transactions FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'auditor'
+    AND (auditor_access_expires_at IS NULL OR auditor_access_expires_at > NOW())
+  )
+  AND daily_record_id IN (
+    SELECT id FROM daily_records WHERE status = 'locked'
+  )
+);
+
+-- Auditors can only view their own access logs
+CREATE POLICY "auditors_view_own_actions"
+ON auditor_access_log FOR SELECT
+TO authenticated
+USING (auditor_id = auth.uid());
+
+-- Admins can view all auditor actions
+CREATE POLICY "admins_view_all_auditor_actions"
+ON auditor_access_log FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role IN ('master_admin', 'superadmin')
+  )
+);
+
+-- System can insert auditor actions (for logging)
+DROP POLICY IF EXISTS "system_insert_auditor_actions" ON auditor_access_log;
+CREATE POLICY "system_insert_auditor_actions"
+ON auditor_access_log FOR INSERT
+TO authenticated
+WITH CHECK (auditor_id = auth.uid());
+
+-- 4. Ensure auditors CANNOT modify anything (defensive policies)
+
+-- Prevent auditors from inserting daily records
+DROP POLICY IF EXISTS "auditors_cannot_insert_daily_records" ON daily_records;
+CREATE POLICY "auditors_cannot_insert_daily_records"
+ON daily_records FOR INSERT
+TO authenticated
+WITH CHECK (
+  NOT EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'auditor'
+  )
+);
+
+-- Prevent auditors from updating daily records
+DROP POLICY IF EXISTS "auditors_cannot_update_daily_records" ON daily_records;
+CREATE POLICY "auditors_cannot_update_daily_records"
+ON daily_records FOR UPDATE
+TO authenticated
+USING (
+  NOT EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'auditor'
+  )
+);
+
+-- Prevent auditors from deleting daily records
+DROP POLICY IF EXISTS "auditors_cannot_delete_daily_records" ON daily_records;
+CREATE POLICY "auditors_cannot_delete_daily_records"
+ON daily_records FOR DELETE
+TO authenticated
+USING (
+  NOT EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'auditor'
+  )
+);
+
+-- Same for transactions
+DROP POLICY IF EXISTS "auditors_cannot_insert_transactions" ON transactions;
+CREATE POLICY "auditors_cannot_insert_transactions"
+ON transactions FOR INSERT
+TO authenticated
+WITH CHECK (
+  NOT EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'auditor'
+  )
+);
+
+DROP POLICY IF EXISTS "auditors_cannot_update_transactions" ON transactions;
+CREATE POLICY "auditors_cannot_update_transactions"
+ON transactions FOR UPDATE
+TO authenticated
+USING (
+  NOT EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'auditor'
+  )
+);
+
+DROP POLICY IF EXISTS "auditors_cannot_delete_transactions" ON transactions;
+CREATE POLICY "auditors_cannot_delete_transactions"
+ON transactions FOR DELETE
+TO authenticated
+USING (
+  NOT EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'auditor'
+  )
+);
+
+-- 5. Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_auditor_access_log_auditor 
+ON auditor_access_log(auditor_id, accessed_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_auditor_access_log_accessed 
+ON auditor_access_log(accessed_at DESC);
+
+-- 6. Add comments for documentation
+COMMENT ON COLUMN users.auditor_access_granted_at IS 'Timestamp when auditor access was granted';
+COMMENT ON COLUMN users.auditor_access_expires_at IS 'Timestamp when auditor access expires';
+COMMENT ON COLUMN users.auditor_access_granted_by IS 'Admin user who granted the access';
+COMMENT ON TABLE auditor_access_log IS 'Logs all actions performed by auditors for compliance tracking';
+
+-- Migration complete
+SELECT 'Auditor mode migration completed successfully' AS status;
+
+
+================================================================================
+PATH: database\add-auditor-role.sql
+FILENAME: add-auditor-role.sql
+================================================================================
+
+-- 1. Update the Check Constraint on users table to allow 'auditor' role
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check 
+  CHECK (role IN ('master_admin', 'ho_accountant', 'outlet_manager', 'outlet_staff', 'auditor'));
+
+-- 2. Create RLS Policies for Auditor Role
+
+-- Outlets: View all outlets
+CREATE POLICY "Auditors view all outlets" ON outlets
+  FOR SELECT
+  USING (
+    auth.uid() IN (
+      SELECT id FROM users WHERE role = 'auditor'
+    )
+  );
+
+-- Users: View all users (to see who created records)
+CREATE POLICY "Auditors view all users" ON users
+  FOR SELECT
+  USING (
+    auth.uid() IN (
+      SELECT id FROM users WHERE role = 'auditor'
+    )
+  );
+
+-- Daily Records: View ONLY 'locked' records
+CREATE POLICY "Auditors view locked records only" ON daily_records
+  FOR SELECT
+  USING (
+    auth.uid() IN (
+      SELECT id FROM users WHERE role = 'auditor'
+    )
+    AND status = 'locked'
+  );
+
+-- Transactions: View transactions belonging to 'locked' daily records
+CREATE POLICY "Auditors view locked transactions" ON transactions
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'locked'
+    )
+    AND auth.uid() IN (
+      SELECT id FROM users WHERE role = 'auditor'
+    )
+  );
+
+-- Monthly Summaries: View all summaries (these are derived data)
+CREATE POLICY "Auditors view monthly summaries" ON monthly_summaries
+  FOR SELECT
+  USING (
+    auth.uid() IN (
+      SELECT id FROM users WHERE role = 'auditor'
+    )
+  );
+
+
+================================================================================
+PATH: database\add-sheets-sync-tracking.sql
+FILENAME: add-sheets-sync-tracking.sql
+================================================================================
+
+-- STEP 4: Google Sheets Sync - Database Schema Updates
+-- Add sync tracking columns to daily_records table
+-- Create sheet_sync_log table for audit trail
+
+-- 1. Add sync tracking columns to daily_records
+ALTER TABLE daily_records
+ADD COLUMN IF NOT EXISTS synced_to_sheets BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS sheet_sync_error TEXT;
+
+-- Add index for filtering unsynced records
+CREATE INDEX IF NOT EXISTS idx_daily_records_sync_status 
+ON daily_records(synced_to_sheets, status) 
+WHERE status = 'locked';
+
+-- Add comment
+COMMENT ON COLUMN daily_records.synced_to_sheets IS 'Flag indicating if record has been synced to Google Sheets';
+COMMENT ON COLUMN daily_records.last_synced_at IS 'Timestamp of last successful sync to Google Sheets';
+COMMENT ON COLUMN daily_records.sheet_sync_error IS 'Error message if sync failed, NULL on success';
+
+-- 2. Create sheet_sync_log table for detailed audit trail
+CREATE TABLE IF NOT EXISTS sheet_sync_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+    spreadsheet_id TEXT,
+    spreadsheet_url TEXT,
+    sync_status TEXT NOT NULL CHECK (sync_status IN ('success', 'failed', 'pending')),
+    error_message TEXT,
+    synced_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Metadata
+    synced_by UUID REFERENCES users(id),
+    sync_trigger TEXT CHECK (sync_trigger IN ('auto', 'manual', 'cron', 'retry'))
+);
+
+-- Add indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_sheet_sync_log_record 
+ON sheet_sync_log(daily_record_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_sheet_sync_log_status 
+ON sheet_sync_log(sync_status, synced_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_sheet_sync_log_failures
+ON sheet_sync_log(sync_status, daily_record_id)
+WHERE sync_status = 'failed';
+
+-- Add comments
+COMMENT ON TABLE sheet_sync_log IS 'Audit trail for all Google Sheets synchronization attempts';
+COMMENT ON COLUMN sheet_sync_log.sync_trigger IS 'How the sync was triggered: auto (on lock), manual (user button), cron (scheduled), retry (automatic retry)';
+
+-- 3. Add RLS policies for sheet_sync_log
+ALTER TABLE sheet_sync_log ENABLE ROW LEVEL SECURITY;
+
+-- HO accountants and superadmins can view all sync logs
+CREATE POLICY "HO and admins can view sync logs"
+ON sheet_sync_log FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role IN ('ho_accountant', 'superadmin', 'master_admin')
+    )
+);
+
+-- Only system can insert sync logs (via API)
+CREATE POLICY "System can insert sync logs"
+ON sheet_sync_log FOR INSERT
+WITH CHECK (true);
+
+-- Grant necessary permissions
+GRANT SELECT ON sheet_sync_log TO authenticated;
+GRANT INSERT ON sheet_sync_log TO authenticated;
+
+
+================================================================================
+PATH: database\add-time-bound-access.sql
+FILENAME: add-time-bound-access.sql
+================================================================================
+
+-- =====================================================================
+-- TIME-BOUND ACCESS CONTROL
+-- =====================================================================
+-- Purpose: Add time-bound access columns and validation function
+-- Created: 2025-12-24
+-- =====================================================================
+
+-- Add time-bound access columns to users table
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS access_start_date DATE,
+ADD COLUMN IF NOT EXISTS access_end_date DATE;
+
+-- Create function to check if user's access is currently valid
+CREATE OR REPLACE FUNCTION is_access_valid(user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    start_date DATE;
+    end_date DATE;
+    current_date DATE := CURRENT_DATE;
+    user_role TEXT;
+BEGIN
+    -- Get user access dates and role
+    SELECT access_start_date, access_end_date, role
+    INTO start_date, end_date, user_role
+    FROM users 
+    WHERE id = user_id;
+    
+    -- If user doesn't exist, return false
+    IF user_role IS NULL THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- If user is not an auditor, time bounds don't apply
+    IF user_role != 'auditor' THEN
+        RETURN TRUE;
+    END IF;
+    
+    -- If no dates set for auditor, access is valid (indefinite)
+    IF start_date IS NULL AND end_date IS NULL THEN
+        RETURN TRUE;
+    END IF;
+    
+    -- Check if current date is within the valid range
+    RETURN (
+        (start_date IS NULL OR current_date >= start_date) AND
+        (end_date IS NULL OR current_date <= end_date)
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create function to get days until access expires
+CREATE OR REPLACE FUNCTION days_until_expiry(user_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+    end_date DATE;
+    current_date DATE := CURRENT_DATE;
+BEGIN
+    SELECT access_end_date
+    INTO end_date
+    FROM users 
+    WHERE id = user_id;
+    
+    -- If no expiry date, return NULL (indefinite access)
+    IF end_date IS NULL THEN
+        RETURN NULL;
+    END IF;
+    
+    -- Calculate days remaining
+    RETURN end_date - current_date;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Add index for efficient access validation queries
+CREATE INDEX IF NOT EXISTS idx_users_access_dates 
+ON users(access_end_date) 
+WHERE role = 'auditor' AND access_end_date IS NOT NULL;
+
+-- Comments for documentation
+COMMENT ON COLUMN users.access_start_date IS 'Date when user access becomes active (primarily for auditors)';
+COMMENT ON COLUMN users.access_end_date IS 'Date when user access expires (primarily for auditors)';
+COMMENT ON FUNCTION is_access_valid(UUID) IS 'Checks if a user has valid time-bound access';
+COMMENT ON FUNCTION days_until_expiry(UUID) IS 'Returns number of days until access expires, NULL if indefinite';
+
+-- Verification queries
+SELECT 
+    column_name,
+    data_type,
+    is_nullable
+FROM information_schema.columns
+WHERE table_name = 'users'
+AND column_name IN ('access_start_date', 'access_end_date');
+
+-- Test the validation function
+SELECT 
+    id,
+    email,
+    role,
+    access_start_date,
+    access_end_date,
+    is_access_valid(id) as has_valid_access,
+    days_until_expiry(id) as days_remaining
+FROM users
+WHERE role = 'auditor';
+
+
+================================================================================
+PATH: database\assign-staff-outlet.sql
+FILENAME: assign-staff-outlet.sql
+================================================================================
+
+-- Assign outlet to staff user to fix "Loading daily record..." issue
+UPDATE users SET outlet_id = '9e0c4614-53cf-40d3-abdd-a1d0183c3909' 
+WHERE email = 'staff.test@sahakar.com';
+
+-- Verify the assignment
+SELECT email, name, role, outlet_id FROM users WHERE email = 'staff.test@sahakar.com';
+
+
+================================================================================
+PATH: database\auditor-access-log.sql
+FILENAME: auditor-access-log.sql
+================================================================================
+
+-- =====================================================================
+-- AUDITOR ACCESS LOG TABLE
+-- =====================================================================
+-- Purpose: Track all auditor data access for compliance and audit trail
+-- Created: 2025-12-24
+-- =====================================================================
+
+-- Create auditor access log table
+CREATE TABLE IF NOT EXISTS auditor_access_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    auditor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    outlet_id UUID REFERENCES outlets(id),
+    action TEXT NOT NULL, -- 'view_dashboard', 'view_record', 'export_excel', 'export_pdf'
+    entity_type TEXT, -- 'daily_record', 'transaction', etc.
+    entity_id UUID,
+    accessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ip_address TEXT,
+    user_agent TEXT,
+    
+    -- Constraints
+    CONSTRAINT valid_action CHECK (
+        action IN ('view_dashboard', 'view_record', 'view_transaction', 'export_excel', 'export_pdf', 'filter_data')
+    )
+);
+
+-- Index for auditor activity queries
+CREATE INDEX IF NOT EXISTS idx_auditor_access_log_auditor 
+ON auditor_access_log(auditor_id, accessed_at DESC);
+
+-- Index for outlet-wise access tracking
+CREATE INDEX IF NOT EXISTS idx_auditor_access_log_outlet 
+ON auditor_access_log(outlet_id, accessed_at DESC);
+
+-- Index for action-based queries
+CREATE INDEX IF NOT EXISTS idx_auditor_access_log_action 
+ON auditor_access_log(action, accessed_at DESC);
+
+-- Enable Row Level Security
+ALTER TABLE auditor_access_log ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Only superadmin can read audit logs
+CREATE POLICY "superadmin_can_read_audit_logs"
+ON auditor_access_log
+FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'superadmin'
+    )
+);
+
+-- RLS Policy: Auditors can insert their own logs
+CREATE POLICY "auditors_can_insert_own_logs"
+ON auditor_access_log
+FOR INSERT
+WITH CHECK (
+    auditor_id = auth.uid()
+    AND EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'auditor'
+    )
+);
+
+-- Comment for documentation
+COMMENT ON TABLE auditor_access_log IS 'Tracks all data access by auditors for compliance and audit purposes';
+COMMENT ON COLUMN auditor_access_log.action IS 'Type of action performed: view_dashboard, view_record, export_excel, export_pdf';
+COMMENT ON COLUMN auditor_access_log.entity_type IS 'Type of entity accessed: daily_record, transaction';
+
+-- Verification query
+SELECT 
+    table_name,
+    column_name,
+    data_type,
+    is_nullable
+FROM information_schema.columns
+WHERE table_name = 'auditor_access_log'
+ORDER BY ordinal_position;
+
+
+================================================================================
+PATH: database\auditor-rls-policies.sql
+FILENAME: auditor-rls-policies.sql
+================================================================================
+
+-- =====================================================================
+-- AUDITOR RLS POLICIES
+-- =====================================================================
+-- Purpose: Restrict auditors to read-only access of locked data only
+-- Created: 2025-12-24
+-- =====================================================================
+
+-- =================================================================
+-- AUDITOR READ-ONLY ACCESS (LOCKED DATA ONLY)
+-- =================================================================
+
+-- Daily Records: Auditors can ONLY read locked records
+CREATE POLICY "auditors_read_locked_daily_records"
+ON daily_records
+FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'auditor'
+        AND is_access_valid(users.id) = TRUE
+    )
+    AND status = 'locked'
+);
+
+-- Transactions: Auditors can read transactions of locked daily records only
+CREATE POLICY "auditors_read_locked_transactions"
+ON transactions
+FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'auditor'
+        AND is_access_valid(users.id) = TRUE
+    )
+    AND daily_record_id IN (
+        SELECT id FROM daily_records WHERE status = 'locked'
+    )
+);
+
+-- Outlets: Auditors can read outlet info for context
+CREATE POLICY "auditors_read_outlets"
+ON outlets
+FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'auditor'
+        AND is_access_valid(users.id) = TRUE
+    )
+);
+
+-- Categories: Auditors can read categories for transaction categorization
+CREATE POLICY "auditors_read_categories"
+ON categories
+FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'auditor'
+        AND is_access_valid(users.id) = TRUE
+    )
+);
+
+-- Users: Auditors can read basic user info (for audit trail context)
+CREATE POLICY "auditors_read_users"
+ON users
+FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users u
+        WHERE u.id = auth.uid()
+        AND u.role = 'auditor'
+        AND is_access_valid(u.id) = TRUE
+    )
+);
+
+-- =================================================================
+-- PREVENT AUDITOR MODIFICATIONS (ALL TABLES)
+-- =================================================================
+
+-- Block auditors from INSERT/UPDATE/DELETE on daily_records
+CREATE POLICY "auditors_cannot_modify_daily_records"
+ON daily_records
+AS RESTRICTIVE
+FOR ALL
+USING (
+    NOT EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'auditor'
+    )
+);
+
+-- Block auditors from INSERT/UPDATE/DELETE on transactions
+CREATE POLICY "auditors_cannot_modify_transactions"
+ON transactions
+AS RESTRICTIVE
+FOR ALL
+USING (
+    NOT EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'auditor'
+    )
+);
+
+-- Block auditors from modifying outlets
+CREATE POLICY "auditors_cannot_modify_outlets"
+ON outlets
+AS RESTRICTIVE
+FOR ALL
+USING (
+    NOT EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'auditor'
+    )
+);
+
+-- Block auditors from modifying categories
+CREATE POLICY "auditors_cannot_modify_categories"
+ON categories
+AS RESTRICTIVE
+FOR ALL
+USING (
+    NOT EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+        AND users.role = 'auditor'
+    )
+);
+
+-- Block auditors from modifying users
+CREATE POLICY "auditors_cannot_modify_users"
+ON users
+AS RESTRICTIVE
+FOR ALL
+USING (
+    NOT EXISTS (
+        SELECT 1 FROM users u
+        WHERE u.id = auth.uid()
+        AND u.role = 'auditor'
+    )
+);
+
+-- =================================================================
+-- VERIFICATION & TESTING
+-- =================================================================
+
+-- List all policies for auditor role
+SELECT 
+    schemaname,
+    tablename,
+    policyname,
+    permissive,
+    roles,
+    cmd,
+    qual
+FROM pg_policies
+WHERE policyname LIKE '%auditor%'
+ORDER BY tablename, policyname;
+
+-- Test query (run as auditor user):
+-- Should only return locked records
+/*
+SELECT COUNT(*) as locked_records
+FROM daily_records
+WHERE status = 'locked';
+
+SELECT COUNT(*) as all_records
+FROM daily_records; -- Should fail or return only locked ones for auditors
+*/
+
+COMMENT ON POLICY "auditors_read_locked_daily_records" ON daily_records IS 'Allows auditors to read only locked daily records with valid time-bound access';
+COMMENT ON POLICY "auditors_cannot_modify_daily_records" ON daily_records IS 'Prevents auditors from INSERT/UPDATE/DELETE operations';
+
+
+================================================================================
+PATH: database\auto-sync-trigger.sql
+FILENAME: auto-sync-trigger.sql
+================================================================================
+
+-- ============================================================================
+-- AUTO-SYNC GOOGLE SHEETS ON RECORD LOCK
+-- ============================================================================
+-- This creates a database trigger that automatically syncs locked records
+-- to Google Sheets when a daily record status changes to 'locked'
+-- ============================================================================
+
+-- Create function to call webhook
+CREATE OR REPLACE FUNCTION trigger_google_sheets_sync()
+RETURNS TRIGGER AS $$
+DECLARE
+    webhook_url TEXT;
+BEGIN
+    -- Only trigger if status changed to 'locked'
+    IF NEW.status = 'locked' AND (OLD.status IS DISTINCT FROM 'locked') THEN
+        
+        -- Get the webhook URL from environment (set in Supabase dashboard)
+        -- You'll need to set this in Supabase Settings → Database → Extensions → pg_net
+        webhook_url := current_setting('app.settings.sync_webhook_url', TRUE);
+        
+        -- Call the sync API endpoint (requires pg_net extension or use pg_cron)
+        -- For now, we'll log the event and you can set up a cron job to check for new locked records
+        
+        RAISE NOTICE 'Record locked: % - Triggering Google Sheets sync', NEW.id;
+        
+        -- Option 1: Use pg_net (if available)
+        -- PERFORM net.http_post(
+        --     url := webhook_url || '/api/sync/google-sheets',
+        --     headers := '{"Content-Type": "application/json"}'::jsonb,
+        --     body := jsonb_build_object('record_id', NEW.id)
+        -- );
+        
+        -- Option 2: Update a flag for cron job to process
+        NEW.synced_to_sheet := FALSE;
+        
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger on daily_records table
+DROP TRIGGER IF EXISTS auto_sync_on_lock ON daily_records;
+
+CREATE TRIGGER auto_sync_on_lock
+    BEFORE UPDATE ON daily_records
+    FOR EACH ROW
+    EXECUTE FUNCTION trigger_google_sheets_sync();
+
+-- ============================================================================
+-- ALTERNATIVE: SCHEDULED SYNC JOB
+-- ============================================================================
+-- If you prefer a scheduled approach instead of real-time
+
+-- Create function to sync pending records
+CREATE OR REPLACE FUNCTION sync_pending_locked_records()
+RETURNS void AS $$
+DECLARE
+    record_count INTEGER;
+BEGIN
+    -- Count records that need syncing
+    SELECT COUNT(*) INTO record_count
+    FROM daily_records
+    WHERE status = 'locked' 
+    AND (synced_to_sheet = FALSE OR synced_to_sheet IS NULL);
+    
+    IF record_count > 0 THEN
+        RAISE NOTICE 'Found % locked records pending sync', record_count;
+        
+        -- You would call your API here
+        -- For now, just mark them as needing attention
+        -- The actual sync will happen via the API endpoint
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Schedule this to run every hour using pg_cron (if available):
+-- SELECT cron.schedule(
+--     'sync-locked-records',
+--     '0 * * * *',  -- Every hour
+--     $$SELECT sync_pending_locked_records()$$
+-- );
+
+-- ============================================================================
+-- MANUAL TRIGGER ALTERNATIVE
+-- ============================================================================
+-- If you don't have pg_net or pg_cron, use a simple flag system
+
+-- The trigger above already sets synced_to_sheet = FALSE
+-- Your sync API can query for these records:
+
+-- SELECT * FROM daily_records 
+-- WHERE status = 'locked' 
+-- AND (synced_to_sheet = FALSE OR synced_to_sheet IS NULL);
+
+-- Then mark them as synced after successful sync:
+-- UPDATE daily_records SET synced_to_sheet = TRUE WHERE id = ...
+
+-- ============================================================================
+-- TESTING
+-- ============================================================================
+-- Test the trigger:
+-- UPDATE daily_records SET status = 'locked' WHERE id = '...';
+-- Check the logs for the NOTICE message
+
+-- ============================================================================
+-- NOTES
+-- ============================================================================
+-- 1. For real-time webhooks, you need pg_net extension enabled in Supabase
+-- 2. For scheduled jobs, you need pg_cron extension
+-- 3. The fallback is to query for unsynced locked records via API
+-- 4. Current implementation: Trigger sets synced_to_sheet = FALSE,
+--    and your sync API should check for these records
+-- ============================================================================
+
+
+================================================================================
+PATH: database\current_schema.sql
+FILENAME: current_schema.sql
+================================================================================
+
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.audit_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  action text,
+  entity text,
+  entity_id uuid,
+  old_data jsonb,
+  new_data jsonb,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT audit_logs_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.auditor_access_log (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  auditor_id uuid NOT NULL,
+  outlet_id uuid,
+  action text NOT NULL CHECK (action = ANY (ARRAY['view_dashboard'::text, 'view_record'::text, 'view_transaction'::text, 'export_excel'::text, 'export_pdf'::text, 'filter_data'::text])),
+  entity_type text,
+  entity_id uuid,
+  accessed_at timestamp with time zone NOT NULL DEFAULT now(),
+  ip_address text,
+  user_agent text,
+  CONSTRAINT auditor_access_log_pkey PRIMARY KEY (id),
+  CONSTRAINT auditor_access_log_auditor_id_fkey FOREIGN KEY (auditor_id) REFERENCES public.users(id),
+  CONSTRAINT auditor_access_log_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
+CREATE TABLE public.auditor_outlets (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  outlet_id uuid,
+  CONSTRAINT auditor_outlets_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.business_days (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid,
+  date date NOT NULL,
+  opening_cash numeric NOT NULL,
+  opening_upi numeric NOT NULL,
+  closing_cash numeric,
+  closing_upi numeric,
+  status USER-DEFINED DEFAULT 'DRAFT'::day_status,
+  submitted_by uuid,
+  submitted_at timestamp without time zone,
+  locked_by uuid,
+  locked_at timestamp without time zone,
+  CONSTRAINT business_days_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.categories (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  code character varying NOT NULL UNIQUE,
+  name character varying NOT NULL,
+  type character varying NOT NULL CHECK (type::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])),
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT categories_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.daily_records (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  outlet_id uuid NOT NULL,
+  date date NOT NULL,
+  particulars text NOT NULL,
+  amount numeric NOT NULL,
+  category text NOT NULL,
+  payment_mode text,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  synced_to_sheets boolean DEFAULT false,
+  opening_cash numeric DEFAULT 0,
+  opening_upi numeric DEFAULT 0,
+  closing_cash numeric,
+  closing_upi numeric,
+  total_income numeric,
+  total_expense numeric,
+  status character varying DEFAULT 'draft'::character varying,
+  submitted_at timestamp with time zone,
+  submitted_by uuid,
+  locked_at timestamp with time zone,
+  locked_by uuid,
+  CONSTRAINT daily_records_pkey PRIMARY KEY (id),
+  CONSTRAINT daily_entries_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT daily_entries_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
+  CONSTRAINT daily_records_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id),
+  CONSTRAINT daily_records_locked_by_fkey FOREIGN KEY (locked_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.daily_totals (
+  business_day_id uuid NOT NULL,
+  income_cash numeric,
+  income_upi numeric,
+  expense_cash numeric,
+  expense_upi numeric,
+  CONSTRAINT daily_totals_pkey PRIMARY KEY (business_day_id),
+  CONSTRAINT daily_totals_business_day_id_fkey FOREIGN KEY (business_day_id) REFERENCES public.business_days(id)
+);
+CREATE TABLE public.monthly_summaries (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid NOT NULL,
+  month date NOT NULL,
+  total_income numeric DEFAULT 0,
+  total_expense numeric DEFAULT 0,
+  total_cash_in numeric DEFAULT 0,
+  total_cash_out numeric DEFAULT 0,
+  total_upi_in numeric DEFAULT 0,
+  total_upi_out numeric DEFAULT 0,
+  net_profit numeric DEFAULT 0,
+  opening_balance numeric DEFAULT 0,
+  closing_balance numeric DEFAULT 0,
+  days_count integer DEFAULT 0,
+  generated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT monthly_summaries_pkey PRIMARY KEY (id),
+  CONSTRAINT monthly_summaries_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
+CREATE TABLE public.outlets (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  location text,
+  created_at timestamp with time zone DEFAULT now(),
+  code character varying NOT NULL,
+  address text,
+  phone character varying,
+  email character varying,
+  google_sheet_id character varying,
+  is_active boolean DEFAULT true,
+  updated_at timestamp with time zone DEFAULT now(),
+  type character varying NOT NULL DEFAULT 'hyper_pharmacy'::character varying CHECK (type::text = ANY (ARRAY['hyper_pharmacy'::character varying, 'smart_clinic'::character varying]::text[])),
+  CONSTRAINT outlets_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.roles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL UNIQUE,
+  CONSTRAINT roles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  daily_record_id uuid,
+  type character varying NOT NULL CHECK (type::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])),
+  category character varying NOT NULL,
+  payment_mode character varying NOT NULL CHECK (payment_mode::text = ANY (ARRAY['cash'::character varying, 'upi'::character varying]::text[])),
+  amount numeric NOT NULL CHECK (amount > 0::numeric),
+  description text,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  idempotency_key text,
+  CONSTRAINT transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT transactions_daily_record_id_fkey FOREIGN KEY (daily_record_id) REFERENCES public.daily_records(id),
+  CONSTRAINT transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_outlets (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  outlet_id uuid,
+  CONSTRAINT user_outlets_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  email text NOT NULL UNIQUE,
+  name text NOT NULL,
+  role text NOT NULL CHECK (role = ANY (ARRAY['master_admin'::text, 'ho_accountant'::text, 'outlet_manager'::text, 'outlet_staff'::text, 'auditor'::text, 'superadmin'::text])),
+  outlet_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  access_start_date date,
+  access_end_date date,
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
+  CONSTRAINT users_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
+
+================================================================================
+PATH: database\expand-audit-logs.sql
+FILENAME: expand-audit-logs.sql
+================================================================================
+
+-- =====================================================================
+-- EXPAND AUDIT LOGS TABLE
+-- =====================================================================
+-- Purpose: Add columns for enhanced audit trail (reason, IP, severity)
+-- Created: 2025-12-24
+-- Note: Working with existing schema (entity, old_data, new_data columns)
+-- =====================================================================
+
+-- Add new columns to audit_logs table if they don't exist
+ALTER TABLE audit_logs 
+ADD COLUMN IF NOT EXISTS reason TEXT,
+ADD COLUMN IF NOT EXISTS ip_address TEXT,
+ADD COLUMN IF NOT EXISTS user_agent TEXT,
+ADD COLUMN IF NOT EXISTS severity TEXT DEFAULT 'normal' 
+    CHECK (severity IN ('normal', 'warning', 'critical'));
+
+-- Create index for querying by severity (critical actions first)
+CREATE INDEX IF NOT EXISTS idx_audit_logs_severity 
+ON audit_logs(severity, created_at DESC);
+
+-- Create index for user activity tracking
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_action 
+ON audit_logs(user_id, action, created_at DESC);
+
+-- Create index for entity tracking
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity 
+ON audit_logs(entity, entity_id, created_at DESC);
+
+-- Add comments for documentation
+COMMENT ON COLUMN audit_logs.reason IS 
+'Mandatory for critical actions like unlock_day. Optional for normal actions.';
+
+COMMENT ON COLUMN audit_logs.ip_address IS 
+'IP address of the user performing the action (for security audit)';
+
+COMMENT ON COLUMN audit_logs.user_agent IS 
+'Browser/client user agent (for device tracking)';
+
+COMMENT ON COLUMN audit_logs.severity IS 
+'Severity level: normal (default), warning (important), critical (requires immediate attention)';
+
+-- Verification query - check if new columns were added
+SELECT 
+    column_name,
+    data_type,
+    is_nullable,
+    column_default
+FROM information_schema.columns
+WHERE table_name = 'audit_logs'
+AND column_name IN ('reason', 'ip_address', 'user_agent', 'severity')
+ORDER BY column_name;
+
+SELECT 'audit_logs table expanded successfully' as status;
+
+
+
+================================================================================
+PATH: database\fix-auditor-migration.sql
+FILENAME: fix-auditor-migration.sql
+================================================================================
+
+-- FIX: Add 'superadmin' to the allowed roles list to match existing data
+-- The previous script failed because 'superadmin' was missing from the check list
+
+-- 1. Update the Check Constraint (Safe Mode)
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+
+ALTER TABLE users ADD CONSTRAINT users_role_check 
+  CHECK (role IN (
+    'master_admin', 
+    'ho_accountant', 
+    'outlet_manager', 
+    'outlet_staff', 
+    'auditor',
+    'superadmin'  -- Added this to fix the violation
+  ));
+
+-- 2. Re-apply RLS Policies (Idempotent)
+
+-- Drop existing policies to avoid conflicts if they were partially created
+DROP POLICY IF EXISTS "Auditors view all outlets" ON outlets;
+DROP POLICY IF EXISTS "Auditors view all users" ON users;
+DROP POLICY IF EXISTS "Auditors view locked records only" ON daily_records;
+DROP POLICY IF EXISTS "Auditors view locked transactions" ON transactions;
+DROP POLICY IF EXISTS "Auditors view monthly summaries" ON monthly_summaries;
+
+-- Re-create Policies
+CREATE POLICY "Auditors view all outlets" ON outlets FOR SELECT USING (auth.uid() IN (SELECT id FROM users WHERE role = 'auditor'));
+CREATE POLICY "Auditors view all users" ON users FOR SELECT USING (auth.uid() IN (SELECT id FROM users WHERE role = 'auditor'));
+CREATE POLICY "Auditors view locked records only" ON daily_records FOR SELECT USING (auth.uid() IN (SELECT id FROM users WHERE role = 'auditor') AND status = 'locked');
+CREATE POLICY "Auditors view locked transactions" ON transactions FOR SELECT USING (EXISTS (SELECT 1 FROM daily_records dr WHERE dr.id = transactions.daily_record_id AND dr.status = 'locked') AND auth.uid() IN (SELECT id FROM users WHERE role = 'auditor'));
+CREATE POLICY "Auditors view monthly summaries" ON monthly_summaries FOR SELECT USING (auth.uid() IN (SELECT id FROM users WHERE role = 'auditor'));
+
+
+================================================================================
+PATH: database\fix-auditor-migration_v2.sql
+FILENAME: fix-auditor-migration_v2.sql
+================================================================================
+
+-- 1. FIX: Update User Check Constraint (Including 'superadmin')
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+
+ALTER TABLE users ADD CONSTRAINT users_role_check 
+  CHECK (role IN (
+    'master_admin', 
+    'ho_accountant', 
+    'outlet_manager', 
+    'outlet_staff', 
+    'auditor',
+    'superadmin'
+  ));
+
+-- 2. FIX: Create monthly_summaries if missing (to prevent Policy error)
+CREATE TABLE IF NOT EXISTS monthly_summaries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  outlet_id UUID NOT NULL REFERENCES outlets(id) ON DELETE CASCADE,
+  month DATE NOT NULL,
+  total_income DECIMAL(12, 2) DEFAULT 0,
+  total_expense DECIMAL(12, 2) DEFAULT 0,
+  total_cash_in DECIMAL(12, 2) DEFAULT 0,
+  total_cash_out DECIMAL(12, 2) DEFAULT 0,
+  total_upi_in DECIMAL(12, 2) DEFAULT 0,
+  total_upi_out DECIMAL(12, 2) DEFAULT 0,
+  net_profit DECIMAL(12, 2) DEFAULT 0,
+  opening_balance DECIMAL(12, 2) DEFAULT 0,
+  closing_balance DECIMAL(12, 2) DEFAULT 0,
+  days_count INTEGER DEFAULT 0,
+  generated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(outlet_id, month)
+);
+
+-- Enable RLS on monthly_summaries if it was just created
+ALTER TABLE monthly_summaries ENABLE ROW LEVEL SECURITY;
+
+-- 3. Safely Re-apply RLS Policies
+DROP POLICY IF EXISTS "Auditors view all outlets" ON outlets;
+DROP POLICY IF EXISTS "Auditors view all users" ON users;
+DROP POLICY IF EXISTS "Auditors view locked records only" ON daily_records;
+DROP POLICY IF EXISTS "Auditors view locked transactions" ON transactions;
+DROP POLICY IF EXISTS "Auditors view monthly summaries" ON monthly_summaries;
+
+CREATE POLICY "Auditors view all outlets" ON outlets FOR SELECT USING (auth.uid() IN (SELECT id FROM users WHERE role = 'auditor'));
+CREATE POLICY "Auditors view all users" ON users FOR SELECT USING (auth.uid() IN (SELECT id FROM users WHERE role = 'auditor'));
+CREATE POLICY "Auditors view locked records only" ON daily_records FOR SELECT USING (auth.uid() IN (SELECT id FROM users WHERE role = 'auditor') AND status = 'locked');
+CREATE POLICY "Auditors view locked transactions" ON transactions FOR SELECT USING (EXISTS (SELECT 1 FROM daily_records dr WHERE dr.id = transactions.daily_record_id AND dr.status = 'locked') AND auth.uid() IN (SELECT id FROM users WHERE role = 'auditor'));
+CREATE POLICY "Auditors view monthly summaries" ON monthly_summaries FOR SELECT USING (auth.uid() IN (SELECT id FROM users WHERE role = 'auditor'));
+
+
+================================================================================
+PATH: database\fix-demo-profiles.sql
+FILENAME: fix-demo-profiles.sql
+================================================================================
+
+-- =====================================================
+-- Fix: Profile Not Found - Add Demo User Profiles
+-- =====================================================
+-- This script creates user profiles for all demo accounts
+
+-- Insert demo user profiles (if they don't exist)
+INSERT INTO users (id, email, name, role, created_at)
+SELECT 
+    auth.users.id,
+    auth.users.email,
+    CASE 
+        WHEN auth.users.email = 'frpboy12@gmail.com' THEN 'Superadmin User'
+        WHEN auth.users.email = 'paymentstarlexpmna@gmail.com' THEN 'HO Accountant'
+        WHEN auth.users.email = 'manager.test@sahakar.com' THEN 'Manager User'
+        WHEN auth.users.email = 'staff.test@sahakar.com' THEN 'Staff User'
+        WHEN auth.users.email = 'auditor.test@sahakar.com' THEN 'Auditor User'
+    END as name,
+    CASE 
+        WHEN auth.users.email = 'frpboy12@gmail.com' THEN 'superadmin'
+        WHEN auth.users.email = 'paymentstarlexpmna@gmail.com' THEN 'ho_accountant'
+        WHEN auth.users.email = 'manager.test@sahakar.com' THEN 'outlet_manager'
+        WHEN auth.users.email = 'staff.test@sahakar.com' THEN 'outlet_staff'
+        WHEN auth.users.email = 'auditor.test@sahakar.com' THEN 'auditor'
+    END as role,
+    NOW() as created_at
+FROM auth.users
+WHERE auth.users.email IN (
+    'frpboy12@gmail.com',
+    'paymentstarlexpmna@gmail.com',
+    'manager.test@sahakar.com',
+    'staff.test@sahakar.com',
+    'auditor.test@sahakar.com'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Verify the insert
+SELECT id, email, name, role 
+FROM users 
+WHERE email IN (
+    'frpboy12@gmail.com',
+    'paymentstarlexpmna@gmail.com',
+    'manager.test@sahakar.com',
+    'staff.test@sahakar.com',
+    'auditor.test@sahakar.com'
+);
+
+
+================================================================================
+PATH: database\fix-production-issues.sql
+FILENAME: fix-production-issues.sql
+================================================================================
+
+-- Add idempotency_key column to transactions table
+ALTER TABLE transactions 
+ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
+
+-- Create unique index on idempotency_key (NULL values allowed, multiples NULL ok)
+CREATE UNIQUE INDEX IF NOT EXISTS transactions_idempotency_key_idx 
+ON transactions(idempotency_key) 
+WHERE idempotency_key IS NOT NULL;
+
+-- Add unique constraint on outlet_id + date for daily_records
+-- This prevents race condition where two requests create duplicate records
+ALTER TABLE daily_records 
+ADD CONSTRAINT daily_records_outlet_date_unique 
+UNIQUE (outlet_id, date);
+
+-- Add check constraints for data integrity
+ALTER TABLE transactions
+ADD CONSTRAINT transactions_amount_positive 
+CHECK (amount > 0);
+
+ALTER TABLE transactions
+ADD CONSTRAINT transactions_type_valid 
+CHECK (type IN ('income', 'expense'));
+
+ALTER TABLE transactions
+ADD CONSTRAINT transactions_payment_mode_valid 
+CHECK (payment_mode IN ('cash', 'upi'));
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS transactions_daily_record_idx 
+ON transactions(daily_record_id);
+
+CREATE INDEX IF NOT EXISTS transactions_created_at_idx 
+ON transactions(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS daily_records_outlet_date_idx 
+ON daily_records(outlet_id, date DESC);
+
+CREATE INDEX IF NOT EXISTS daily_records_status_idx 
+ON daily_records(status);
+
+-- Comments
+COMMENT ON COLUMN transactions.idempotency_key IS 
+'Client-generated key to prevent duplicate transactions on retry';
+
+COMMENT ON CONSTRAINT daily_records_outlet_date_unique ON daily_records IS 
+'Ensures only one daily record per outlet per date, prevents race conditions';
+
+
+================================================================================
+PATH: database\fix-rls-aggressive.sql
+FILENAME: fix-rls-aggressive.sql
+================================================================================
+
+-- AGGRESSIVE FIX: Remove ALL recursive RLS policies on users table
+-- The old policies are still there causing infinite recursion
+-- This will drop EVERYTHING and start fresh
+
+-- Run this in Supabase SQL Editor
+
+-- Step 1: Drop EVERY policy on users table (including the recursive ones)
+DROP POLICY IF EXISTS "HO can view all" ON users;
+DROP POLICY IF EXISTS "Superadmin can manage all users" ON users;
+DROP POLICY IF EXISTS "Superadmin can view all" ON users;
+DROP POLICY IF EXISTS "Users can read own profile" ON users;
+DROP POLICY IF EXISTS "Users can update own profile" ON users;
+DROP POLICY IF EXISTS "Users can view own profile" ON users;
+DROP POLICY IF EXISTS "Users can view same outlet" ON users;
+DROP POLICY IF EXISTS "Enable read access for own profile" ON users;
+DROP POLICY IF EXISTS "Enable all access for service role" ON users;
+DROP POLICY IF EXISTS "Enable update for own profile" ON users;
+
+-- Step 2: Disable RLS temporarily
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+
+-- Step 3: Re-enable RLS
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Step 4: Create ONLY ONE simple policy - users can read their own profile
+-- This is the ONLY policy we need for login to work
+CREATE POLICY "allow_own_profile_read" ON users
+  FOR SELECT 
+  USING (auth.uid() = id);
+
+-- Step 5: Allow service role full access (for server-side operations)
+CREATE POLICY "allow_service_role" ON users
+  FOR ALL 
+  USING (auth.jwt()->>'role' = 'service_role');
+
+-- Verify - should only see 2 policies now
+SELECT policyname, cmd, qual
+FROM pg_policies
+WHERE tablename = 'users'
+ORDER BY policyname;
+
+
+================================================================================
+PATH: database\fix-rls-final.sql
+FILENAME: fix-rls-final.sql
+================================================================================
+
+-- FINAL FIX for infinite recursion in users table RLS policy
+-- The previous fix still had recursion because policies were querying users table
+-- This fix uses a simpler approach: allow users to read their own row directly
+
+-- Run this in Supabase SQL Editor
+
+-- Step 1: Drop ALL existing policies on users table
+DROP POLICY IF EXISTS "Users can view own profile" ON users;
+DROP POLICY IF EXISTS "Users can view same outlet" ON users;
+DROP POLICY IF EXISTS "Superadmin can view all" ON users;
+DROP POLICY IF EXISTS "HO can view all" ON users;
+DROP POLICY IF EXISTS "Users can update own profile" ON users;
+DROP POLICY IF EXISTS "Users can read own profile" ON users;
+DROP POLICY IF EXISTS "Superadmin can manage all users" ON users;
+
+-- Step 2: Temporarily DISABLE RLS on users table to break the cycle
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+
+-- Step 3: Re-enable RLS
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Step 4: Create a SINGLE simple policy for reading your own profile
+-- This doesn't query the users table, so no recursion!
+CREATE POLICY "Enable read access for own profile" ON users
+  FOR SELECT 
+  USING (auth.uid() = id);
+
+-- Step 5: Allow superadmin full access (but we'll manage this at app level for now)
+CREATE POLICY "Enable all access for service role" ON users
+  FOR ALL 
+  USING (auth.jwt()->>'role' = 'service_role');
+
+-- Step 6: Allow users to update their own profile
+CREATE POLICY "Enable update for own profile" ON users
+  FOR UPDATE 
+  USING (auth.uid() = id);
+
+-- Verify the new policies
+SELECT schemaname, tablename, policyname, permissive, roles, cmd
+FROM pg_policies
+WHERE tablename = 'users'
+ORDER BY policyname;
+
+-- Test query (should work now without recursion)
+-- SELECT * FROM users WHERE id = auth.uid();
+
+
+================================================================================
+PATH: database\fix-staff-outlet.sql
+FILENAME: fix-staff-outlet.sql
+================================================================================
+
+-- Assign staff.test@sahakar.com to Main Outlet
+UPDATE users 
+SET outlet_id = (SELECT id FROM outlets WHERE name = 'Main Outlet' LIMIT 1)
+WHERE email = 'staff.test@sahakar.com';
+
+-- Also ensure staff@example.com (used in some logs) is assigned if it exists
+UPDATE users 
+SET outlet_id = (SELECT id FROM outlets WHERE name = 'Main Outlet' LIMIT 1)
+WHERE email = 'staff@example.com';
+
+-- Verify the update
+SELECT u.email, o.name as outlet_name 
+FROM users u 
+JOIN outlets o ON u.outlet_id = o.id 
+WHERE u.email IN ('staff.test@sahakar.com', 'staff@example.com');
+
+
+================================================================================
+PATH: database\fix-transactions-table.sql
+FILENAME: fix-transactions-table.sql
+================================================================================
+
+-- Fix for existing transactions table
+-- Run this in Supabase SQL Editor to fix the schema
+
+-- Drop existing transactions table if it has wrong schema
+DROP TABLE IF EXISTS transactions CASCADE;
+
+-- Recreate transactions table with correct schema
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  daily_record_id UUID REFERENCES daily_records(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
+  category VARCHAR(100) NOT NULL,
+  payment_mode VARCHAR(10) NOT NULL CHECK (payment_mode IN ('cash', 'upi')),
+  amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+  description TEXT,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX idx_transactions_daily_record ON transactions(daily_record_id);
+CREATE INDEX idx_transactions_created_by ON transactions(created_by);
+CREATE INDEX idx_transactions_type ON transactions(type);
+CREATE INDEX idx_transactions_date ON transactions(created_at);
+
+-- Enable RLS
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies
+CREATE POLICY "Users can view transactions from their outlet" ON transactions
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND (u.role IN ('superadmin', 'ho_accountant') OR u.outlet_id = dr.outlet_id)
+    )
+  );
+
+CREATE POLICY "Staff can create transactions for their outlet" ON transactions
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'draft'
+      AND (u.role = 'superadmin' OR u.outlet_id = dr.outlet_id)
+    )
+  );
+
+CREATE POLICY "Users can update their own transactions in draft" ON transactions
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'draft'
+      AND (u.role = 'superadmin' OR (transactions.created_by = auth.uid() AND u.outlet_id = dr.outlet_id))
+    )
+  );
+
+CREATE POLICY "Users can delete their own transactions in draft" ON transactions
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'draft'
+      AND (u.role = 'superadmin' OR (transactions.created_by = auth.uid() AND u.outlet_id = dr.outlet_id))
+    )
+  );
+
+-- Verify
+SELECT 'transactions table recreated' as status, count(*) as columns 
+FROM information_schema.columns 
+WHERE table_name = 'transactions';
+
+
+================================================================================
+PATH: database\fix-users-profile-rls.sql
+FILENAME: fix-users-profile-rls.sql
+================================================================================
+
+-- FIX: RLS Policy for Users to Read Their Own Profile
+-- This policy is CRITICAL for authentication to work properly
+
+-- Drop existing policy if it exists (to avoid conflicts)
+DROP POLICY IF EXISTS "Users can read own profile" ON users;
+DROP POLICY IF EXISTS "allow_own_profile_read" ON users;
+
+-- Create policy: Allow authenticated users to read ONLY their own profile row
+CREATE POLICY "Users can read own profile" ON users
+    FOR SELECT
+    USING (auth.uid() = id);
+
+-- Optional: Also allow service role full access (for admin operations)
+DROP POLICY IF EXISTS "Service role full access" ON users;
+CREATE POLICY "Service role full access" ON users
+    FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- Verify RLS is enabled
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+
+================================================================================
+PATH: database\fix-users-rls-recursion.sql
+FILENAME: fix-users-rls-recursion.sql
+================================================================================
+
+-- Fix for infinite recursion in users table RLS policy
+-- Run this in Supabase SQL Editor
+
+-- Drop all existing policies on users table
+DROP POLICY IF EXISTS "Users can view their own data" ON users;
+DROP POLICY IF EXISTS "Users can view users in their outlet" ON users;
+DROP POLICY IF EXISTS "Superadmin can view all users" ON users;
+DROP POLICY IF EXISTS "Users can update their own data" ON users;
+
+-- Create simple, non-recursive policies
+
+-- Policy 1: Users can view their own profile
+CREATE POLICY "Users can view own profile" ON users
+  FOR SELECT USING (auth.uid() = id);
+
+-- Policy 2: Superadmin can view all users
+CREATE POLICY "Superadmin can view all" ON users
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid() 
+      AND u.role = 'superadmin'
+    )
+  );
+
+-- Policy 3: Users can view other users in same outlet
+CREATE POLICY "Users can view same outlet" ON users
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid()
+      AND u.outlet_id = users.outlet_id
+    )
+  );
+
+-- Policy 4: HO Accountant can view all users
+CREATE POLICY "HO can view all" ON users
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid()
+      AND u.role = 'ho_accountant'
+    )
+  );
+
+-- Policy 5: Users can update their own profile
+CREATE POLICY "Users can update own profile" ON users
+  FOR UPDATE USING (auth.uid() = id);
+
+-- Verify policies
+SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual
+FROM pg_policies
+WHERE tablename = 'users';
+
+
+================================================================================
+PATH: database\fix-users-rls-v2.sql
+FILENAME: fix-users-rls-v2.sql
+================================================================================
+
+-- CRITICAL FIX: Drop ALL existing RLS policies on users table to prevent recursion
+-- Then create a simple, non-recursive policy
+
+-- Step 1: Drop ALL existing policies (this prevents conflicts)
+DO $$ 
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (SELECT policyname FROM pg_policies WHERE tablename = 'users') 
+    LOOP
+        EXECUTE 'DROP POLICY IF EXISTS "' || r.policyname || '" ON users';
+    END LOOP;
+END $$;
+
+-- Step 2: Ensure RLS is enabled
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Step 3: Create simple, non-recursive policy allowing users to read their own row
+CREATE POLICY "allow_own_profile_read" ON users
+    FOR SELECT
+    USING (auth.uid() = id);
+
+-- Step 4: Allow service role full access (for admin operations)
+CREATE POLICY "allow_service_role_all" ON users
+    FOR ALL
+    USING (auth.role() = 'service_role');
+
+
+================================================================================
+PATH: database\large-transaction-alert.sql
+FILENAME: large-transaction-alert.sql
+================================================================================
+
+-- =====================================================================
+-- LARGE TRANSACTION ALERT TRIGGER
+-- =====================================================================
+-- Purpose: Automatically log an alert if a transaction exceeds ₹10,000
+-- Created: 2025-12-25
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION log_large_transaction()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_outlet_id UUID;
+    v_user_id UUID;
+BEGIN
+    -- Get the outlet_id from the daily record
+    SELECT outlet_id INTO v_outlet_id 
+    FROM daily_records 
+    WHERE id = NEW.daily_record_id;
+
+    -- Use NEW.created_by or the session user
+    v_user_id := COALESCE(NEW.created_by, auth.uid());
+
+    -- Check if transaction amount exceeds threshold (₹10,000)
+    IF NEW.amount > 10000 THEN
+        INSERT INTO audit_logs (
+            user_id,
+            outlet_id,
+            action,
+            entity,
+            entity_id,
+            new_data,
+            severity,
+            reason
+        ) VALUES (
+            v_user_id,
+            v_outlet_id,
+            'large_transaction_alert',
+            'transaction',
+            NEW.id,
+            json_build_object(
+                'amount', NEW.amount,
+                'payment_mode', NEW.payment_mode,
+                'type', NEW.type,
+                'category', NEW.category,
+                'description', NEW.description
+            ),
+            'warning',
+            'Transaction exceeds ₹10,000 threshold'
+        );
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Drop trigger if exists to allow re-runs
+DROP TRIGGER IF EXISTS tr_large_transaction_alert ON transactions;
+
+-- Create the trigger
+CREATE TRIGGER tr_large_transaction_alert
+AFTER INSERT ON transactions
+FOR EACH ROW
+EXECUTE FUNCTION log_large_transaction();
+
+-- Add comment for documentation
+COMMENT ON FUNCTION log_large_transaction() IS 
+'Automatically logs a warning in audit_logs when a single transaction amount exceeds ₹10,000.';
+
+-- Verification
+SELECT 'large_transaction_alert trigger created successfully' as status;
+
+
+================================================================================
+PATH: database\performance-indexes.sql
+FILENAME: performance-indexes.sql
+================================================================================
+
+-- ============================================================================
+-- SAHAKAR ACCOUNTS - PERFORMANCE INDEXES (CORRECTED)
+-- ============================================================================
+-- Critical indexes to improve query performance
+-- Run this in Supabase SQL Editor
+-- Expected impact: 10-100x faster queries on indexed columns
+-- ============================================================================
+-- Note: Some indexes may already exist from schema.sql
+-- Using IF NOT EXISTS to prevent errors
+-- ============================================================================
+
+-- 1. DAILY RECORDS - Most queried table
+-- Used by: Staff dashboard, Manager dashboard, Balance summary
+
+-- Check if index exists before creating
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_daily_records_outlet_date'
+    ) THEN
+        CREATE INDEX idx_daily_records_outlet_date 
+        ON daily_records(outlet_id, date DESC);
+    END IF;
+END $$;
+
+-- For finding today's record (most common query)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_daily_records_date'
+    ) THEN
+        CREATE INDEX idx_daily_records_date 
+        ON daily_records(date DESC);
+    END IF;
+END $$;
+
+-- Note: idx_daily_records_status already exists in schema.sql
+
+-- 2. TRANSACTIONS - Heavy read/write table
+-- Note: idx_transactions_daily_record already exists in schema.sql
+
+-- For transaction history by date
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_transactions_date'
+    ) THEN
+        CREATE INDEX idx_transactions_date 
+        ON transactions(date DESC);
+    END IF;
+END $$;
+
+-- For filtering by payment mode
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_transactions_payment_mode'
+    ) THEN
+        CREATE INDEX idx_transactions_payment_mode 
+        ON transactions(payment_mode);
+    END IF;
+END $$;
+
+-- 3. AUDIT LOGS - For auditor view
+-- Note: Some indexes already exist in schema.sql
+
+-- For filtering by entity type and date
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_audit_logs_entity_date'
+    ) THEN
+        CREATE INDEX idx_audit_logs_entity_date 
+        ON audit_logs(entity_type, created_at DESC);
+    END IF;
+END $$;
+
+-- For filtering by action
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_audit_logs_action'
+    ) THEN
+        CREATE INDEX idx_audit_logs_action 
+        ON audit_logs(action);
+    END IF;
+END $$;
+
+-- 4. USERS - Authentication & lookup
+-- For fast email-based login
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_users_email'
+    ) THEN
+        CREATE INDEX idx_users_email 
+        ON users(email);
+    END IF;
+END $$;
+
+-- For outlet-based user filtering
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_users_outlet'
+    ) THEN
+        CREATE INDEX idx_users_outlet 
+        ON users(outlet_id) WHERE outlet_id IS NOT NULL;
+    END IF;
+END $$;
+
+-- Note: idx_users_role already exists in schema.sql
+
+-- 5. OUTLETS - Reference data
+-- For fast outlet lookup by code
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_outlets_code'
+    ) THEN
+        CREATE INDEX idx_outlets_code 
+        ON outlets(code);
+    END IF;
+END $$;
+
+-- ============================================================================
+-- VERIFICATION QUERIES
+-- ============================================================================
+-- Run these to verify indexes are being used:
+
+-- Check if indexes exist:
+-- SELECT tablename, indexname FROM pg_indexes 
+-- WHERE tablename IN ('daily_records', 'transactions', 'users', 'outlets', 'audit_logs')
+-- ORDER BY tablename, indexname;
+
+-- Check query plan (should show "Index Scan" not "Seq Scan"):
+-- EXPLAIN ANALYZE SELECT * FROM daily_records 
+-- WHERE outlet_id = '9e0c4614-53cf-40d3-abdd-a1d0183c3909' 
+-- ORDER BY date DESC LIMIT 1;
+
+-- ============================================================================
+-- EXPECTED IMPROVEMENTS
+-- ============================================================================
+-- Before: Daily record query: ~500-2000ms (sequential scan)
+-- After:  Daily record query: ~5-50ms (index scan)
+--
+-- Before: Transaction list: ~1000-3000ms
+-- After:  Transaction list: ~10-100ms
+--
+-- Before: User lookup: ~200-500ms
+-- After:  User lookup: ~5-20ms
+-- ============================================================================
+
+
+================================================================================
+PATH: database\phase3-schema.sql
+FILENAME: phase3-schema.sql
+================================================================================
+
+-- Phase 3: Transaction Management Database Schema
+-- Run this in Supabase SQL Editor
+
+-- IMPORTANT: Step 1 - Rename table FIRST before any foreign key references
+ALTER TABLE IF EXISTS daily_entries RENAME TO daily_records;
+
+-- Step 2: Add new columns to daily_records
+ALTER TABLE daily_records 
+  ADD COLUMN IF NOT EXISTS opening_cash DECIMAL(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS opening_upi DECIMAL(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS closing_cash DECIMAL(12,2),
+  ADD COLUMN IF NOT EXISTS closing_upi DECIMAL(12,2),
+  ADD COLUMN IF NOT EXISTS total_income DECIMAL(12,2),
+  ADD COLUMN IF NOT EXISTS total_expense DECIMAL(12,2),
+  ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'draft',
+  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS submitted_by UUID REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS locked_by UUID REFERENCES users(id);
+
+-- Step 3: DROP existing transactions table if it exists (handles stale/wrong schema)
+DROP TABLE IF EXISTS transactions CASCADE;
+
+-- Step 4: Create transactions table (NOW daily_records exists)
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  daily_record_id UUID REFERENCES daily_records(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
+  category VARCHAR(100) NOT NULL,
+  payment_mode VARCHAR(10) NOT NULL CHECK (payment_mode IN ('cash', 'upi')),
+  amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+  description TEXT,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for transactions
+CREATE INDEX IF NOT EXISTS idx_transactions_daily_record ON transactions(daily_record_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_by ON transactions(created_by);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(created_at);
+
+-- Step 4: Create categories table
+CREATE TABLE IF NOT EXISTS categories (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Step 5: Seed initial categories
+INSERT INTO categories (code, name, type) VALUES
+  ('consultation', 'Consultation Fees', 'income'),
+  ('medicine_sale', 'Medicine Sale', 'income'),
+  ('lab_test', 'Lab Test Fees', 'income'),
+  ('other_income', 'Other Income', 'income'),
+  ('medicine_purchase', 'Medicine Purchase', 'expense'),
+  ('staff_salary', 'Staff Salary', 'expense'),
+  ('clinic_expenses', 'Clinic Expenses', 'expense'),
+  ('transport', 'Transport', 'expense'),
+  ('rent', 'Rent', 'expense'),
+  ('utilities', 'Electricity/Water', 'expense'),
+  ('miscellaneous', 'Miscellaneous', 'expense')
+ON CONFLICT (code) DO NOTHING;
+
+-- Step 6: Create trigger function to auto-calculate balances
+CREATE OR REPLACE FUNCTION update_daily_record_balances()
+RETURNS TRIGGER AS $$
+DECLARE
+  record_id UUID;
+BEGIN
+  -- Get the daily_record_id from the transaction
+  record_id := COALESCE(NEW.daily_record_id, OLD.daily_record_id);
+  
+  -- Update the daily_record with calculated balances
+  UPDATE daily_records dr
+  SET 
+    total_income = (
+      SELECT COALESCE(SUM(amount), 0) 
+      FROM transactions 
+      WHERE daily_record_id = dr.id AND type = 'income'
+    ),
+    total_expense = (
+      SELECT COALESCE(SUM(amount), 0) 
+      FROM transactions 
+      WHERE daily_record_id = dr.id AND type = 'expense'
+    ),
+    closing_cash = dr.opening_cash + 
+      COALESCE((SELECT SUM(amount) FROM transactions WHERE daily_record_id = dr.id AND type = 'income' AND payment_mode = 'cash'), 0) -
+      COALESCE((SELECT SUM(amount) FROM transactions WHERE daily_record_id = dr.id AND type = 'expense' AND payment_mode = 'cash'), 0),
+    closing_upi = dr.opening_upi +
+      COALESCE((SELECT SUM(amount) FROM transactions WHERE daily_record_id = dr.id AND type = 'income' AND payment_mode = 'upi'), 0) -
+      COALESCE((SELECT SUM(amount) FROM transactions WHERE daily_record_id = dr.id AND type = 'expense' AND payment_mode = 'upi'), 0),
+    updated_at = NOW()
+  WHERE dr.id = record_id;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Step 7: Create trigger on transactions table
+DROP TRIGGER IF EXISTS transaction_balance_update ON transactions;
+CREATE TRIGGER transaction_balance_update
+AFTER INSERT OR UPDATE OR DELETE ON transactions
+FOR EACH ROW
+EXECUTE FUNCTION update_daily_record_balances();
+
+-- Step 8: Enable RLS on new tables
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+
+-- Step 9: Create RLS policies for transactions
+CREATE POLICY "Users can view transactions from their outlet" ON transactions
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND (u.role IN ('superadmin', 'ho_accountant') OR u.outlet_id = dr.outlet_id)
+    )
+  );
+
+CREATE POLICY "Staff can create transactions for their outlet" ON transactions
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'draft'
+      AND (u.role = 'superadmin' OR u.outlet_id = dr.outlet_id)
+    )
+  );
+
+CREATE POLICY "Users can update their own transactions in draft" ON transactions
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'draft'
+      AND (u.role = 'superadmin' OR (transactions.created_by = auth.uid() AND u.outlet_id = dr.outlet_id))
+    )
+  );
+
+CREATE POLICY "Users can delete their own transactions in draft" ON transactions
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'draft'
+      AND (u.role = 'superadmin' OR (transactions.created_by = auth.uid() AND u.outlet_id = dr.outlet_id))
+    )
+  );
+
+-- Step 10: Create RLS policies for categories
+CREATE POLICY "Anyone can view active categories" ON categories
+  FOR SELECT USING (is_active = true);
+
+-- Verify everything was created
+SELECT 'daily_records' as table_name, count(*) as columns FROM information_schema.columns WHERE table_name = 'daily_records'
+UNION ALL
+SELECT 'transactions', count(*) FROM information_schema.columns WHERE table_name = 'transactions'
+UNION ALL
+SELECT 'categories', count(*) FROM information_schema.columns WHERE table_name = 'categories';
+
+SELECT 'Categories seeded' as status, count(*) as count FROM categories;
+
+
+================================================================================
+PATH: database\rpc-lock-day.sql
+FILENAME: rpc-lock-day.sql
+================================================================================
+
+-- =====================================================================
+-- LOCK DAY RPC
+-- =====================================================================
+-- Purpose: HO Accountant locks submitted daily record
+-- Created: 2025-12-24
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION lock_day(
+    record_id UUID,
+    locked_by_user_id UUID,
+    lock_reason TEXT DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    record daily_records%ROWTYPE;
+    user_role TEXT;
+BEGIN
+    -- Get user role
+    SELECT role INTO user_role FROM users WHERE id = locked_by_user_id;
+    
+    -- Check user has lock permission (HO accountant or superadmin)
+    IF user_role NOT IN ('ho_accountant', 'superadmin') THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Only HO Accountant or Superadmin can lock records. Your role: ' || user_role
+        );
+    END IF;
+    
+    -- Get the record
+    SELECT * INTO record FROM daily_records WHERE id = record_id;
+    
+    IF NOT FOUND THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Record not found'
+        );
+    END IF;
+    
+    -- Validate status is submitted
+    IF record.status != 'submitted' THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Can only lock submitted records. Current status: ' || record.status
+        );
+    END IF;
+    
+    -- Update status to locked and reset sync flags
+    UPDATE daily_records
+    SET 
+        status = 'locked',
+        locked_by = locked_by_user_id,
+        locked_at = NOW(),
+        synced_to_sheets = FALSE,  -- Mark for Google Sheets sync
+        last_synced_at = NULL,     -- Reset sync timestamp
+        sheet_sync_error = NULL,   -- Clear any previous errors
+        updated_at = NOW()
+    WHERE id = record_id;
+    
+    -- Log to audit_logs with reason
+    INSERT INTO audit_logs (
+        user_id,
+        action,
+        entity,
+        entity_id,
+        new_data,
+        reason
+    ) VALUES (
+        locked_by_user_id,
+        'lock_day',
+        'daily_record',
+        record_id,
+        json_build_object(
+            'old_status', 'submitted',
+            'new_status', 'locked',
+            'date', record.date,
+            'outlet_id', record.outlet_id,
+            'total_income', record.total_income,
+            'total_expense', record.total_expense
+        ),
+        COALESCE(lock_reason, 'Locked by HO Accountant')
+    );
+    
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Record locked successfully. Ready for audit and Google Sheets sync.'
+    );
+END;
+$$;
+
+-- Grant execute permission to authenticated users (role check is inside function)
+GRANT EXECUTE ON FUNCTION lock_day(UUID, UUID, TEXT) TO authenticated;
+
+-- Add comment for documentation
+COMMENT ON FUNCTION lock_day(UUID, UUID, TEXT) IS 
+'HO Accountant locks submitted daily record after review. Sets synced_to_sheet flag for Google Sheets sync.';
+
+-- Verification query
+SELECT 'lock_day() function created successfully' as status;
+
+
+================================================================================
+PATH: database\rpc-submit-day.sql
+FILENAME: rpc-submit-day.sql
+================================================================================
+
+-- =====================================================================
+-- SUBMIT DAY RPC
+-- =====================================================================
+-- Purpose: Staff submits draft daily record for HO review
+-- Created: 2025-12-24
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION submit_day(
+    record_id UUID,
+    submitted_by_user_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    record daily_records%ROWTYPE;
+    result JSON;
+BEGIN
+    -- Get the record
+    SELECT * INTO record FROM daily_records WHERE id = record_id;
+    
+    IF NOT FOUND THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Record not found'
+        );
+    END IF;
+    
+    -- Validate status is draft
+    IF record.status != 'draft' THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Can only submit draft records. Current status: ' || record.status
+        );
+    END IF;
+    
+    -- Validate required fields (opening balances must be set)
+    IF record.opening_cash IS NULL OR record.opening_upi IS NULL THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Opening balances (cash and UPI) are required before submission'
+        );
+    END IF;
+    
+    -- Update status to submitted
+    UPDATE daily_records
+    SET 
+        status = 'submitted',
+        submitted_by = submitted_by_user_id,
+        submitted_at = NOW(),
+        updated_at = NOW()
+    WHERE id = record_id;
+    
+    -- Log to audit_logs
+    INSERT INTO audit_logs (
+        user_id,
+        action,
+        entity,
+        entity_id,
+        new_data
+    ) VALUES (
+        submitted_by_user_id,
+        'submit_day',
+        'daily_record',
+        record_id,
+        json_build_object(
+            'old_status', 'draft',
+            'new_status', 'submitted',
+            'date', record.date,
+            'outlet_id', record.outlet_id
+        )
+    );
+    
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Record submitted successfully for HO review'
+    );
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION submit_day(UUID, UUID) TO authenticated;
+
+-- Add comment for documentation
+COMMENT ON FUNCTION submit_day(UUID, UUID) IS 
+'Staff submits draft daily record for HO accountant review. Validates draft status and required fields before submission.';
+
+-- Verification query
+SELECT 'submit_day() function created successfully' as status;
+
+
+================================================================================
+PATH: database\rpc-unlock-day.sql
+FILENAME: rpc-unlock-day.sql
+================================================================================
+
+-- =====================================================================
+-- UNLOCK DAY RPC
+-- =====================================================================
+-- Purpose: Superadmin unlocks locked record (emergency only)
+-- Created: 2025-12-24
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION unlock_day(
+    record_id UUID,
+    admin_id UUID,
+    unlock_reason TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    record daily_records%ROWTYPE;
+    user_role TEXT;
+    previous_locker_email TEXT;
+BEGIN
+    -- Validate reason is provided (mandatory for audit trail)
+    IF unlock_reason IS NULL OR trim(unlock_reason) = '' THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Unlock reason is mandatory for audit compliance'
+        );
+    END IF;
+    
+    -- Get user role
+    SELECT role INTO user_role FROM users WHERE id = admin_id;
+    
+    -- Only Master Admin can unlock
+    IF user_role != 'master_admin' THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Unauthorized: Only Master Admin can unlock records.'
+        );
+    END IF;
+    
+    -- Get the record
+    SELECT * INTO record FROM daily_records WHERE id = record_id;
+    
+    IF NOT FOUND THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Record not found'
+        );
+    END IF;
+
+    -- Month-End Closure Enforcement: 
+    -- Prevent unlocking records from previous months (Backdated edits prevention)
+    IF date_trunc('month', record.date) < date_trunc('month', NOW()) THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Month-End Closure: Records from previous months cannot be unlocked for security and audit integrity.'
+        );
+    END IF;
+    
+    -- Can only unlock locked records
+    IF record.status != 'locked' THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Can only unlock locked records. Current status: ' || record.status
+        );
+    END IF;
+    
+    -- Get the email of who locked it (for notification)
+    SELECT email INTO previous_locker_email 
+    FROM users 
+    WHERE id = record.locked_by;
+    
+    -- Revert to submitted status
+    UPDATE daily_records
+    SET 
+        status = 'submitted',
+        locked_by = NULL,
+        locked_at = NULL,
+        updated_at = NOW()
+    WHERE id = record_id;
+    
+    -- Log critical action with full context
+    INSERT INTO audit_logs (
+        user_id,
+        action,
+        entity,
+        entity_id,
+        old_data,
+        new_data,
+        reason,
+        severity
+    ) VALUES (
+        admin_id,
+        'unlock_day',
+        'daily_record',
+        record_id,
+        json_build_object(
+            'status', 'locked',
+            'locked_by', record.locked_by,
+            'locked_by_email', previous_locker_email,
+            'locked_at', record.locked_at
+        ),
+        json_build_object(
+            'status', 'submitted',
+            'date', record.date,
+            'outlet_id', record.outlet_id
+        ),
+        unlock_reason,
+        'critical'
+    );
+    
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Record unlocked successfully',
+        'warning', 'HO Accountant (' || previous_locker_email || ') should be notified about this unlock',
+        'unlock_reason', unlock_reason
+    );
+END;
+$$;
+
+-- Grant execute permission to authenticated users (role check is inside function)
+GRANT EXECUTE ON FUNCTION unlock_day(UUID, UUID, TEXT) TO authenticated;
+
+-- Add comment for documentation
+COMMENT ON FUNCTION unlock_day(UUID, UUID, TEXT) IS 
+'Superadmin emergency unlock of locked records. Requires mandatory reason and logs as critical action.';
+
+-- Verification query
+SELECT 'unlock_day() function created successfully' as status;
+
+
+================================================================================
+PATH: database\schema.sql
+FILENAME: schema.sql
+================================================================================
+
+-- Sahakar Accounts Database Schema
+-- Run this in your Supabase SQL Editor
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================================================
+-- 1. ORGANIZATIONS TABLE
+-- ============================================================================
+CREATE TABLE organizations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  code VARCHAR(50) UNIQUE NOT NULL,
+  timezone VARCHAR(50) DEFAULT 'Asia/Kolkata',
+  locale VARCHAR(10) DEFAULT 'en-IN',
+  currency VARCHAR(3) DEFAULT 'INR',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================================
+-- 2. OUTLETS TABLE
+-- ============================================================================
+CREATE TABLE outlets (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  code VARCHAR(50) NOT NULL,
+  location VARCHAR(255),
+  phone VARCHAR(20),
+  email VARCHAR(255),
+  google_sheet_id VARCHAR(255),
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(organization_id, code)
+);
+
+CREATE INDEX idx_outlets_organization ON outlets(organization_id);
+CREATE INDEX idx_outlets_active ON outlets(is_active);
+
+-- ============================================================================
+-- 3. USERS TABLE
+-- ============================================================================
+CREATE TABLE users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  full_name VARCHAR(255) NOT NULL,
+  role VARCHAR(50) NOT NULL CHECK (role IN ('master_admin', 'ho_accountant', 'outlet_manager', 'outlet_staff')),
+  phone VARCHAR(20),
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_users_organization ON users(organization_id);
+CREATE INDEX idx_users_role ON users(role);
+
+-- ============================================================================
+-- 4. USER_OUTLET_ACCESS TABLE
+-- ============================================================================
+CREATE TABLE user_outlet_access (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  outlet_id UUID NOT NULL REFERENCES outlets(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, outlet_id)
+);
+
+CREATE INDEX idx_user_outlet_user ON user_outlet_access(user_id);
+CREATE INDEX idx_user_outlet_outlet ON user_outlet_access(outlet_id);
+
+-- ============================================================================
+-- 5. DAILY_RECORDS TABLE
+-- ============================================================================
+CREATE TABLE daily_records (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  outlet_id UUID NOT NULL REFERENCES outlets(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  opening_cash DECIMAL(12, 2) DEFAULT 0,
+  opening_upi DECIMAL(12, 2) DEFAULT 0,
+  closing_cash DECIMAL(12, 2) DEFAULT 0,
+  closing_upi DECIMAL(12, 2) DEFAULT 0,
+  total_income DECIMAL(12, 2) DEFAULT 0,
+  total_expense DECIMAL(12, 2) DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'locked')),
+  submitted_at TIMESTAMPTZ,
+  submitted_by UUID REFERENCES users(id),
+  locked_at TIMESTAMPTZ,
+  locked_by UUID REFERENCES users(id),
+  synced_to_sheet BOOLEAN DEFAULT false,
+  last_synced_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(outlet_id, date)
+);
+
+CREATE INDEX idx_daily_records_outlet_date ON daily_records(outlet_id, date);
+CREATE INDEX idx_daily_records_status ON daily_records(status);
+CREATE INDEX idx_daily_records_sync ON daily_records(synced_to_sheet) WHERE synced_to_sheet = false;
+
+-- ============================================================================
+-- 6. TRANSACTIONS TABLE
+-- ============================================================================
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  daily_record_id UUID NOT NULL REFERENCES daily_records(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
+  category VARCHAR(100) NOT NULL,
+  payment_mode VARCHAR(20) NOT NULL CHECK (payment_mode IN ('cash', 'upi')),
+  amount DECIMAL(12, 2) NOT NULL CHECK (amount >= 0),
+  description TEXT,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_transactions_daily_record ON transactions(daily_record_id);
+CREATE INDEX idx_transactions_type ON transactions(type);
+CREATE INDEX idx_transactions_category ON transactions(category);
+
+-- ============================================================================
+-- 7. MONTHLY_SUMMARIES TABLE
+-- ============================================================================
+CREATE TABLE monthly_summaries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  outlet_id UUID NOT NULL REFERENCES outlets(id) ON DELETE CASCADE,
+  month DATE NOT NULL,
+  total_income DECIMAL(12, 2) DEFAULT 0,
+  total_expense DECIMAL(12, 2) DEFAULT 0,
+  total_cash_in DECIMAL(12, 2) DEFAULT 0,
+  total_cash_out DECIMAL(12, 2) DEFAULT 0,
+  total_upi_in DECIMAL(12, 2) DEFAULT 0,
+  total_upi_out DECIMAL(12, 2) DEFAULT 0,
+  net_profit DECIMAL(12, 2) DEFAULT 0,
+  opening_balance DECIMAL(12, 2) DEFAULT 0,
+  closing_balance DECIMAL(12, 2) DEFAULT 0,
+  days_count INTEGER DEFAULT 0,
+  generated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(outlet_id, month)
+);
+
+CREATE INDEX idx_monthly_summaries_outlet_month ON monthly_summaries(outlet_id, month);
+
+-- ============================================================================
+-- 8. CATEGORIES TABLE
+-- ============================================================================
+CREATE TABLE categories (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
+  code VARCHAR(50) NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(organization_id, code)
+);
+
+CREATE INDEX idx_categories_organization ON categories(organization_id);
+CREATE INDEX idx_categories_type ON categories(type);
+
+-- ============================================================================
+-- 9. AUDIT_LOGS TABLE
+-- ============================================================================
+CREATE TABLE audit_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id),
+  outlet_id UUID REFERENCES outlets(id),
+  action VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(50),
+  entity_id UUID,
+  details JSONB,
+  ip_address INET,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_outlet ON audit_logs(outlet_id);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- ============================================================================
+
+-- Enable RLS
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE outlets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_outlet_access ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE monthly_summaries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own profile
+CREATE POLICY users_view_own ON users
+  FOR SELECT
+  USING (auth.uid() = id);
+
+-- Outlets: Users can see outlets based on role and access
+CREATE POLICY outlets_access ON outlets
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid()
+        AND (
+          u.role IN ('master_admin', 'ho_accountant')
+          OR
+          EXISTS (
+            SELECT 1 FROM user_outlet_access uoa
+            WHERE uoa.user_id = u.id
+              AND uoa.outlet_id = outlets.id
+          )
+        )
+    )
+  );
+
+-- Daily Records: Based on outlet access
+CREATE POLICY daily_records_access ON daily_records
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid()
+        AND (
+          u.role IN ('master_admin', 'ho_accountant')
+          OR
+          EXISTS (
+            SELECT 1 FROM user_outlet_access uoa
+            WHERE uoa.user_id = u.id
+              AND uoa.outlet_id = daily_records.outlet_id
+          )
+        )
+    )
+  );
+
+-- Daily Records: Users can insert/update their outlet records
+CREATE POLICY daily_records_modify ON daily_records
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid()
+        AND (
+          u.role IN ('master_admin', 'outlet_manager')
+          OR
+          (
+            u.role = 'outlet_staff'
+            AND status = 'draft'
+            AND EXISTS (
+              SELECT 1 FROM user_outlet_access uoa
+              WHERE uoa.user_id = u.id
+                AND uoa.outlet_id = daily_records.outlet_id
+            )
+          )
+        )
+    )
+  );
+
+-- Transactions: Based on daily record access
+CREATE POLICY transactions_access ON transactions
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      WHERE dr.id = transactions.daily_record_id
+        AND EXISTS (
+          SELECT 1 FROM users u
+          WHERE u.id = auth.uid()
+            AND (
+              u.role IN ('master_admin', 'ho_accountant')
+              OR
+              EXISTS (
+                SELECT 1 FROM user_outlet_access uoa
+                WHERE uoa.user_id = u.id
+                  AND uoa.outlet_id = dr.outlet_id
+              )
+            )
+        )
+    )
+  );
+
+-- Transactions: Users can add/modify transactions in draft daily records
+CREATE POLICY transactions_modify ON transactions
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+        AND dr.status = 'draft'
+        AND (
+          u.role IN ('master_admin', 'outlet_manager', 'outlet_staff')
+        )
+        AND (
+          u.role IN ('master_admin')
+          OR
+          EXISTS (
+            SELECT 1 FROM user_outlet_access uoa
+            WHERE uoa.user_id = u.id
+              AND uoa.outlet_id = dr.outlet_id
+          )
+        )
+    )
+  );
+
+-- Categories: Users can view categories from their organization
+CREATE POLICY categories_access ON categories
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = auth.uid()
+        AND u.organization_id = categories.organization_id
+    )
+  );
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Insert default organization
+INSERT INTO organizations (id, name, code)
+VALUES ('00000000-0000-0000-0000-000000000001', 'Sahakar Hyperpharmacies', 'SAHAKAR');
+
+-- Insert default categories
+INSERT INTO categories (organization_id, name, type, code) VALUES
+  ('00000000-0000-0000-0000-000000000001', 'Consultation', 'income', 'consultation'),
+  ('00000000-0000-0000-0000-000000000001', 'Medicine Sale', 'income', 'medicine_sale'),
+  ('00000000-0000-0000-0000-000000000001', 'Other Income', 'income', 'other_income'),
+  ('00000000-0000-0000-0000-000000000001', 'Medicine Purchase', 'expense', 'medicine_purchase'),
+  ('00000000-0000-0000-0000-000000000001', 'Staff Salary', 'expense', 'staff_salary'),
+  ('00000000-0000-0000-0000-000000000001', 'Clinic Expenses', 'expense', 'clinic_expenses'),
+  ('00000000-0000-0000-0000-000000000001', 'Transport', 'expense', 'transport'),
+  ('00000000-0000-0000-0000-000000000001', 'Rent', 'expense', 'rent'),
+  ('00000000-0000-0000-0000-000000000001', 'Utilities', 'expense', 'utilities'),
+  ('00000000-0000-0000-0000-000000000001', 'Miscellaneous', 'expense', 'miscellaneous');
+
+-- ============================================================================
+-- FUNCTIONS & TRIGGERS
+-- ============================================================================
+
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Triggers for updated_at
+CREATE TRIGGER update_organizations_updated_at BEFORE UPDATE ON organizations
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_outlets_updated_at BEFORE UPDATE ON outlets
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_daily_records_updated_at BEFORE UPDATE ON daily_records
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+================================================================================
+PATH: database\verify-rls-policies.sql
+FILENAME: verify-rls-policies.sql
+================================================================================
+
+-- =====================================================
+-- Verify RLS Policies on Users Table
+-- =====================================================
+-- This script checks and fixes RLS policies to ensure
+-- authenticated users can read their own profiles
+
+-- 1. Check existing policies on users table
+SELECT 
+    schemaname,
+    tablename,
+    policyname,
+    permissive,
+    roles,
+    cmd,
+    qual,
+    with_check
+FROM pg_policies 
+WHERE tablename = 'users';
+
+-- 2. If no policy exists for reading own profile, create it
+DO $$
+BEGIN
+    -- Drop existing policy if it exists
+    DROP POLICY IF EXISTS "Users can read own profile" ON users;
+    
+    -- Create policy allowing users to read their own profile
+    CREATE POLICY "Users can read own profile"
+    ON users FOR SELECT
+    USING (auth.uid() = id);
+    
+    RAISE NOTICE 'Policy created: Users can read own profile';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error creating policy: %', SQLERRM;
+END $$;
+
+-- 3. Verify the policy was created
+SELECT 
+    policyname,
+    cmd,
+    qual
+FROM pg_policies 
+WHERE tablename = 'users' 
+  AND policyname = 'Users can read own profile';
+
+-- 4. Test the policy by selecting own profile
+-- (Run this as an authenticated user in Supabase SQL Editor)
+SELECT id, email, name, role 
+FROM users 
+WHERE id = auth.uid();
+-- 5. Allow admins to update auditor access fields for any user
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS "Admins can update auditor access" ON users;
+    
+    CREATE POLICY "Admins can update auditor access"
+    ON users FOR UPDATE
+    TO authenticated
+    USING (
+      EXISTS (
+        SELECT 1 FROM users
+        WHERE id = auth.uid()
+        AND role IN ('master_admin', 'superadmin')
+      )
+    );
+    
+    RAISE NOTICE 'Policy created: Admins can update auditor access';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error creating policy: %', SQLERRM;
+END $$;
+
+
+================================================================================
+PATH: scripts\create-superadmin-profile.sql
+FILENAME: create-superadmin-profile.sql
+================================================================================
+
+-- Find the superadmin auth user and create their profile
+-- Run this in Supabase SQL Editor
+
+-- First, find the superadmin user ID
+SELECT id, email, created_at 
+FROM auth.users 
+WHERE email = 'frpboy12@gmail.com';
+
+-- Then insert the superadmin profile (replace [UUID] with the id from above)
+INSERT INTO users (id, email, name, role, outlet_id) VALUES
+  ('[UUID_FROM_ABOVE]', 'frpboy12@gmail.com', 'K4NN4N', 'superadmin', NULL)
+ON CONFLICT (id) DO UPDATE
+SET 
+  name = EXCLUDED.name,
+  role = EXCLUDED.role,
+  outlet_id =EXCLUDED.outlet_id;
+
+-- Verify all users
+SELECT 
+  u.id,
+  u.email,
+  u.name,
+  u.role,
+  o.name as outlet_name
+FROM users u
+LEFT JOIN outlets o ON u.outlet_id = o.id
+ORDER BY u.role, u.name;
+
+
+================================================================================
+PATH: supabase\migrations\20251222140415_complete_phase3_schema.sql
+FILENAME: 20251222140415_complete_phase3_schema.sql
+================================================================================
+
+-- Phase 3: Transaction Management Database Schema
+-- Run this in Supabase SQL Editor
+
+-- IMPORTANT: Step 1 - Rename table FIRST before any foreign key references
+ALTER TABLE IF EXISTS daily_entries RENAME TO daily_records;
+
+-- Step 2: Add new columns to daily_records
+ALTER TABLE daily_records 
+  ADD COLUMN IF NOT EXISTS opening_cash DECIMAL(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS opening_upi DECIMAL(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS closing_cash DECIMAL(12,2),
+  ADD COLUMN IF NOT EXISTS closing_upi DECIMAL(12,2),
+  ADD COLUMN IF NOT EXISTS total_income DECIMAL(12,2),
+  ADD COLUMN IF NOT EXISTS total_expense DECIMAL(12,2),
+  ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'draft',
+  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS submitted_by UUID REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS locked_by UUID REFERENCES users(id);
+
+-- Step 3: Create transactions table (NOW daily_records exists)
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  daily_record_id UUID REFERENCES daily_records(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
+  category VARCHAR(100) NOT NULL,
+  payment_mode VARCHAR(10) NOT NULL CHECK (payment_mode IN ('cash', 'upi')),
+  amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+  description TEXT,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for transactions
+CREATE INDEX IF NOT EXISTS idx_transactions_daily_record ON transactions(daily_record_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_by ON transactions(created_by);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(created_at);
+
+-- Step 4: Create categories table
+CREATE TABLE IF NOT EXISTS categories (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Step 5: Seed initial categories
+INSERT INTO categories (code, name, type) VALUES
+  ('consultation', 'Consultation Fees', 'income'),
+  ('medicine_sale', 'Medicine Sale', 'income'),
+  ('lab_test', 'Lab Test Fees', 'income'),
+  ('other_income', 'Other Income', 'income'),
+  ('medicine_purchase', 'Medicine Purchase', 'expense'),
+  ('staff_salary', 'Staff Salary', 'expense'),
+  ('clinic_expenses', 'Clinic Expenses', 'expense'),
+  ('transport', 'Transport', 'expense'),
+  ('rent', 'Rent', 'expense'),
+  ('utilities', 'Electricity/Water', 'expense'),
+  ('miscellaneous', 'Miscellaneous', 'expense')
+ON CONFLICT (code) DO NOTHING;
+
+-- Step 6: Create trigger function to auto-calculate balances
+CREATE OR REPLACE FUNCTION update_daily_record_balances()
+RETURNS TRIGGER AS $$
+DECLARE
+  record_id UUID;
+BEGIN
+  -- Get the daily_record_id from the transaction
+  record_id := COALESCE(NEW.daily_record_id, OLD.daily_record_id);
+  
+  -- Update the daily_record with calculated balances
+  UPDATE daily_records dr
+  SET 
+    total_income = (
+      SELECT COALESCE(SUM(amount), 0) 
+      FROM transactions 
+      WHERE daily_record_id = dr.id AND type = 'income'
+    ),
+    total_expense = (
+      SELECT COALESCE(SUM(amount), 0) 
+      FROM transactions 
+      WHERE daily_record_id = dr.id AND type = 'expense'
+    ),
+    closing_cash = dr.opening_cash + 
+      COALESCE((SELECT SUM(amount) FROM transactions WHERE daily_record_id = dr.id AND type = 'income' AND payment_mode = 'cash'), 0) -
+      COALESCE((SELECT SUM(amount) FROM transactions WHERE daily_record_id = dr.id AND type = 'expense' AND payment_mode = 'cash'), 0),
+    closing_upi = dr.opening_upi +
+      COALESCE((SELECT SUM(amount) FROM transactions WHERE daily_record_id = dr.id AND type = 'income' AND payment_mode = 'upi'), 0) -
+      COALESCE((SELECT SUM(amount) FROM transactions WHERE daily_record_id = dr.id AND type = 'expense' AND payment_mode = 'upi'), 0),
+    updated_at = NOW()
+  WHERE dr.id = record_id;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Step 7: Create trigger on transactions table
+DROP TRIGGER IF EXISTS transaction_balance_update ON transactions;
+CREATE TRIGGER transaction_balance_update
+AFTER INSERT OR UPDATE OR DELETE ON transactions
+FOR EACH ROW
+EXECUTE FUNCTION update_daily_record_balances();
+
+-- Step 8: Enable RLS on new tables
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+
+-- Step 9: Create RLS policies for transactions
+CREATE POLICY "Users can view transactions from their outlet" ON transactions
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND (u.role IN ('superadmin', 'ho_accountant') OR u.outlet_id = dr.outlet_id)
+    )
+  );
+
+CREATE POLICY "Staff can create transactions for their outlet" ON transactions
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'draft'
+      AND (u.role = 'superadmin' OR u.outlet_id = dr.outlet_id)
+    )
+  );
+
+CREATE POLICY "Users can update their own transactions in draft" ON transactions
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'draft'
+      AND (u.role = 'superadmin' OR (transactions.created_by = auth.uid() AND u.outlet_id = dr.outlet_id))
+    )
+  );
+
+CREATE POLICY "Users can delete their own transactions in draft" ON transactions
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM daily_records dr
+      JOIN users u ON u.id = auth.uid()
+      WHERE dr.id = transactions.daily_record_id
+      AND dr.status = 'draft'
+      AND (u.role = 'superadmin' OR (transactions.created_by = auth.uid() AND u.outlet_id = dr.outlet_id))
+    )
+  );
+
+-- Step 10: Create RLS policies for categories
+CREATE POLICY "Anyone can view active categories" ON categories
+  FOR SELECT USING (is_active = true);
+
+-- Verify everything was created
+SELECT 'daily_records' as table_name, count(*) as columns FROM information_schema.columns WHERE table_name = 'daily_records'
+UNION ALL
+SELECT 'transactions', count(*) FROM information_schema.columns WHERE table_name = 'transactions'
+UNION ALL
+SELECT 'categories', count(*) FROM information_schema.columns WHERE table_name = 'categories';
+
+SELECT 'Categories seeded' as status, count(*) as count FROM categories;
+
+

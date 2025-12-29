@@ -14,8 +14,9 @@ export async function POST(
         // Get current session
         const { data: { session } } = await supabase.auth.getSession();
 
-        if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const user = session?.user;
+        if (user?.role !== 'master_admin') {
+            return NextResponse.json({ error: 'Forbidden - Master Admin only' }, { status: 403 });
         }
 
         const { id } = params;

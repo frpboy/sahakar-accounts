@@ -7,6 +7,15 @@ interface TransactionFormProps {
     dailyRecordId: string;
 }
 
+interface TransactionCreatePayload {
+    dailyRecordId: string;
+    type: 'income' | 'expense';
+    category: string;
+    paymentMode: 'cash' | 'upi';
+    amount: number;
+    description?: string;
+}
+
 export function TransactionForm({ dailyRecordId }: TransactionFormProps) {
     const [type, setType] = useState<'income' | 'expense'>('income');
     const [category, setCategory] = useState('');
@@ -18,7 +27,7 @@ export function TransactionForm({ dailyRecordId }: TransactionFormProps) {
     const queryClient = useQueryClient();
 
     const createTransaction = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: TransactionCreatePayload) => {
             setIsSubmitting(true);
             try {
                 // Generate unique idempotency key to prevent duplicates

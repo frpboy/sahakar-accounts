@@ -7,13 +7,25 @@ interface TransactionSummaryProps {
     dailyRecordId: string;
 }
 
+type Transaction = {
+    id: string;
+    daily_record_id: string;
+    type: 'income' | 'expense';
+    category: string;
+    payment_mode: 'cash' | 'upi';
+    amount: number;
+    description: string | null;
+    date: string;
+    created_at: string;
+};
+
 export function TransactionSummary({ dailyRecordId }: TransactionSummaryProps) {
     const { data: transactions, isLoading } = useQuery({
         queryKey: ['transactions', dailyRecordId],
         queryFn: async () => {
-            const res = await fetch(`/api/transactions?daily_record_id=${dailyRecordId}`);
+            const res = await fetch(`/api/transactions?dailyRecordId=${dailyRecordId}`);
             if (!res.ok) throw new Error('Failed to fetch transactions');
-            return res.json();
+            return res.json() as Promise<Transaction[]>;
         }
     });
 
@@ -42,24 +54,28 @@ export function TransactionSummary({ dailyRecordId }: TransactionSummaryProps) {
     }
 
     // Group by type and payment mode
-    const incomeTransactions = transactions.filter((t: any) => t.type === 'income');
-    const expenseTransactions = transactions.filter((t: any) => t.type === 'expense');
+    const incomeTransactions = transactions.filter((t: Transaction) => t.type === 'income');
+    const expenseTransactions = transactions.filter((t: Transaction) => t.type === 'expense');
 
-    const cashIncome = incomeTransactions.filter((t: any) => t.payment_mode === 'cash')
-        .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-    const upiIncome = incomeTransactions.filter((t: any) => t.payment_mode === 'upi')
-        .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-    const cashExpense = expenseTransactions.filter((t: any) => t.payment_mode === 'cash')
-        .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-    const upiExpense = expenseTransactions.filter((t: any) => t.payment_mode === 'upi')
-        .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+    const cashIncome = incomeTransactions
+        .filter((t: Transaction) => t.payment_mode === 'cash')
+        .reduce((sum: number, t: Transaction) => sum + (t.amount || 0), 0);
+    const upiIncome = incomeTransactions
+        .filter((t: Transaction) => t.payment_mode === 'upi')
+        .reduce((sum: number, t: Transaction) => sum + (t.amount || 0), 0);
+    const cashExpense = expenseTransactions
+        .filter((t: Transaction) => t.payment_mode === 'cash')
+        .reduce((sum: number, t: Transaction) => sum + (t.amount || 0), 0);
+    const upiExpense = expenseTransactions
+        .filter((t: Transaction) => t.payment_mode === 'upi')
+        .reduce((sum: number, t: Transaction) => sum + (t.amount || 0), 0);
 
     const totalIncome = cashIncome + upiIncome;
     const totalExpense = cashExpense + upiExpense;
 
     // Group by category
     const categoryGroups: { [key: string]: { income: number; expense: number; count: number } } = {};
-    transactions.forEach((t: any) => {
+    transactions.forEach((t: Transaction) => {
         if (!categoryGroups[t.category]) {
             categoryGroups[t.category] = { income: 0, expense: 0, count: 0 };
         }

@@ -71,7 +71,7 @@ export function UnlockRecordModal({ recordId, recordDate, outletName, onClose }:
                         <div>
                             <p className="text-sm font-medium text-red-900 mb-1">⚠️ CRITICAL ACTION</p>
                             <p className="text-sm text-red-700">
-                                Unlocking will revert this record to "submitted" status and allow modifications.
+                                {`Unlocking will revert this record to "submitted" status and allow modifications.`}
                                 HO Accountant will be notified of this action.
                             </p>
                         </div>

@@ -307,7 +307,12 @@ async function parseDailySheet(
 // Process a single Excel workbook
 async function processWorkbook(filePath: string, outletId: string): Promise<void> {
     try {
-        const workbook = XLSX.readFile(filePath);
+        if (!fs.existsSync(filePath)) {
+            console.error(`  ❌ File not found: ${filePath}`);
+            return;
+        }
+        const data = fs.readFileSync(filePath);
+        const workbook = XLSX.read(data, { type: 'buffer' });
         console.log(`  📊 Processing: ${path.basename(filePath)}`);
         console.log(`  📋 Found ${workbook.SheetNames.length} sheets`);
 

@@ -5,6 +5,42 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cacheHelpers } from './db';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+type DailyRecordRealtimeRow = {
+    id: string;
+    outlet_id: string;
+    date: string;
+    opening_cash: number | null;
+    opening_upi: number | null;
+    closing_cash: number | null;
+    closing_upi: number | null;
+    total_income: number | null;
+    total_expense: number | null;
+    status: 'draft' | 'submitted' | 'locked';
+};
+
+type TransactionRealtimeRow = {
+    id: string;
+    daily_record_id: string;
+    type: 'income' | 'expense';
+    category: string;
+    payment_mode: 'cash' | 'upi';
+    amount: number;
+    description: string | null;
+    date: string;
+};
+
+type OutletRealtimeRow = {
+    id: string;
+    name: string;
+    code: string;
+    address?: string | null;
+    phone?: string | null;
+};
+
 // Real-time hook for daily records with caching
 export function useRealtimeDailyRecords(outletId?: string) {
     const queryClient = useQueryClient();
@@ -57,8 +93,22 @@ export function useRealtimeDailyRecords(outletId?: string) {
                     console.log('[Realtime] Daily record changed:', payload);
 
                     // Update cache
-                    if (payload.new) {
-                        await cacheHelpers.cacheDailyRecord(payload.new as any);
+                    if (isRecord(payload.new)) {
+                        const row = payload.new as Partial<DailyRecordRealtimeRow>;
+                        if (typeof row.id === 'string' && typeof row.outlet_id === 'string' && typeof row.date === 'string') {
+                            await cacheHelpers.cacheDailyRecord({
+                                id: row.id,
+                                outlet_id: row.outlet_id,
+                                date: row.date,
+                                opening_cash: typeof row.opening_cash === 'number' ? row.opening_cash : 0,
+                                opening_upi: typeof row.opening_upi === 'number' ? row.opening_upi : 0,
+                                closing_cash: typeof row.closing_cash === 'number' ? row.closing_cash : 0,
+                                closing_upi: typeof row.closing_upi === 'number' ? row.closing_upi : 0,
+                                total_income: typeof row.total_income === 'number' ? row.total_income : 0,
+                                total_expense: typeof row.total_expense === 'number' ? row.total_expense : 0,
+                                status: row.status === 'submitted' || row.status === 'locked' ? row.status : 'draft',
+                            });
+                        }
                     }
 
                     // Invalidate and refetch
@@ -133,8 +183,32 @@ export function useRealtimeTransactions(dailyRecordId?: string) {
                     console.log('[Realtime] Transaction changed:', payload);
 
                     // Update cache
-                    if (payload.new) {
-                        await cacheHelpers.cacheTransaction(payload.new as any);
+                    if (isRecord(payload.new)) {
+                        const row = payload.new as Partial<TransactionRealtimeRow>;
+                        if (
+                            typeof row.id === 'string' &&
+                            typeof row.daily_record_id === 'string' &&
+                            typeof row.type === 'string' &&
+                            typeof row.category === 'string' &&
+                            typeof row.payment_mode === 'string' &&
+                            typeof row.amount === 'number'
+                        ) {
+                            const dateValue =
+                                typeof row.date === 'string'
+                                    ? row.date
+                                    : new Date().toISOString().split('T')[0];
+
+                            await cacheHelpers.cacheTransaction({
+                                id: row.id,
+                                daily_record_id: row.daily_record_id,
+                                type: row.type === 'expense' ? 'expense' : 'income',
+                                category: row.category,
+                                payment_mode: row.payment_mode === 'upi' ? 'upi' : 'cash',
+                                amount: row.amount,
+                                description: typeof row.description === 'string' ? row.description : undefined,
+                                date: dateValue,
+                            });
+                        }
                     }
 
                     // Invalidate and refetch
@@ -200,8 +274,17 @@ export function useRealtimeOutlets() {
                     console.log('[Realtime] Outlet changed:', payload);
 
                     // Update cache
-                    if (payload.new) {
-                        await cacheHelpers.cacheOutlet(payload.new as any);
+                    if (isRecord(payload.new)) {
+                        const row = payload.new as Partial<OutletRealtimeRow>;
+                        if (typeof row.id === 'string' && typeof row.name === 'string' && typeof row.code === 'string') {
+                            await cacheHelpers.cacheOutlet({
+                                id: row.id,
+                                name: row.name,
+                                code: row.code,
+                                address: typeof row.address === 'string' ? row.address : undefined,
+                                phone: typeof row.phone === 'string' ? row.phone : undefined,
+                            });
+                        }
                     }
 
                     // Invalidate and refetch

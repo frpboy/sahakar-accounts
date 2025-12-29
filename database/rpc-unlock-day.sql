@@ -30,11 +30,11 @@ BEGIN
     -- Get user role
     SELECT role INTO user_role FROM users WHERE id = admin_id;
     
-    -- Only superadmin can unlock
-    IF user_role != 'superadmin' THEN
+    -- Only Master Admin can unlock
+    IF user_role != 'master_admin' THEN
         RETURN json_build_object(
             'success', false,
-            'error', 'Only Superadmin can unlock locked records. Your role: ' || user_role
+            'error', 'Unauthorized: Only Master Admin can unlock records.'
         );
     END IF;
     
@@ -45,6 +45,15 @@ BEGIN
         RETURN json_build_object(
             'success', false,
             'error', 'Record not found'
+        );
+    END IF;
+
+    -- Month-End Closure Enforcement: 
+    -- Prevent unlocking records from previous months (Backdated edits prevention)
+    IF date_trunc('month', record.date) < date_trunc('month', NOW()) THEN
+        RETURN json_build_object(
+            'success', false,
+            'error', 'Month-End Closure: Records from previous months cannot be unlocked for security and audit integrity.'
         );
     END IF;
     
@@ -99,9 +108,6 @@ BEGIN
         unlock_reason,
         'critical'
     );
-    
-    -- TODO: Send notification to HO Accountant (implement in future)
-    -- For now, return warning in response
     
     RETURN json_build_object(
         'success', true,

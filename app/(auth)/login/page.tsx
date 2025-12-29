@@ -22,9 +22,9 @@ function LoginForm() {
             await signIn(email, password);
             console.log('[LoginForm] Sign in successful, auth state will trigger redirect');
             // Don't redirect here - let the auth state listener handle it
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[LoginForm] Sign in error:', err);
-            setError(err.message || 'Failed to sign in');
+            setError(err instanceof Error ? err.message : 'Failed to sign in');
             setLoading(false);
         }
     };

@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
             .eq('id', session.user.id)
             .single();
 
-        if (user?.role !== 'superadmin') {
-            return NextResponse.json({ error: 'Forbidden - Superadmin only' }, { status: 403 });
+        if (user?.role !== 'master_admin') {
+            return NextResponse.json({ error: 'Forbidden - Master Admin only' }, { status: 403 });
         }
 
         // Get query parameters

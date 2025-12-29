@@ -21,7 +21,7 @@ export default async function DashboardPage() {
     let outlets: any[] = [];
 
     if (userProfile) {
-        if (['master_admin', 'ho_accountant', 'superadmin'].includes(userProfile.role)) {
+        if (['master_admin', 'ho_accountant'].includes(userProfile.role)) {
             const { data } = await supabase
                 .from('outlets')
                 .select('*')
