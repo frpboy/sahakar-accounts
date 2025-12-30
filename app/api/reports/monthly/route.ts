@@ -58,6 +58,14 @@ export async function GET(request: NextRequest) {
         endDate.setMonth(endDate.getMonth() + 1);
         const endDateStr = endDate.toISOString().split('T')[0];
 
+        // Fetch closure status
+        const { data: closureData } = await supabase
+            .from('monthly_closures')
+            .select('status, closed_at, closed_by')
+            .eq('outlet_id', outletId)
+            .eq('month_date', startDate)
+            .maybeSingle();
+
         const { data: records, error } = await supabase
             .from('daily_records')
             .select('*')
@@ -80,6 +88,9 @@ export async function GET(request: NextRequest) {
         const summary = {
             month,
             outlet_id: outletId,
+            closure_status: closureData?.status || 'open',
+            closed_at: closureData?.closed_at,
+            closed_by: closureData?.closed_by,
             days_count: records?.length || 0,
             total_income: 0,
             total_expense: 0,

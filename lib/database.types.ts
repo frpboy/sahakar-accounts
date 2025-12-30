@@ -355,6 +355,137 @@ export type Database = {
                 }
                 Relationships: []
             }
+            monthly_closure_snapshots: {
+                Row: {
+                    id: string
+                    outlet_id: string
+                    month_date: string
+                    version: number
+                    snapshot: Json
+                    snapshot_hash: string | null
+                    created_at: string
+                    created_by: string
+                }
+                Insert: {
+                    id?: string
+                    outlet_id: string
+                    month_date: string
+                    version?: number
+                    snapshot: Json
+                    snapshot_hash?: string | null
+                    created_at?: string
+                    created_by: string
+                }
+                Update: {
+                    outlet_id?: string
+                    month_date?: string
+                    version?: number
+                    snapshot?: Json
+                    snapshot_hash?: string | null
+                    created_at?: string
+                    created_by?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "monthly_closure_snapshots_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "monthly_closure_snapshots_created_by_fkey"
+                        columns: ["created_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            monthly_closures: {
+                Row: {
+                    id: string
+                    outlet_id: string
+                    month_date: string
+                    status: 'open' | 'closed' | string
+                    closed_at: string | null
+                    closed_by: string | null
+                    opening_cash: number
+                    opening_upi: number
+                    closing_cash: number
+                    closing_upi: number
+                    total_income: number
+                    total_expense: number
+                    days_count: number
+                    reopened_at: string | null
+                    reopened_by: string | null
+                    reopen_reason: string | null
+                    created_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    outlet_id: string
+                    month_date: string
+                    status: 'open' | 'closed' | string
+                    closed_at?: string | null
+                    closed_by?: string | null
+                    opening_cash?: number
+                    opening_upi?: number
+                    closing_cash?: number
+                    closing_upi?: number
+                    total_income?: number
+                    total_expense?: number
+                    days_count?: number
+                    reopened_at?: string | null
+                    reopened_by?: string | null
+                    reopen_reason?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    outlet_id?: string
+                    month_date?: string
+                    status?: 'open' | 'closed' | string
+                    closed_at?: string | null
+                    closed_by?: string | null
+                    opening_cash?: number
+                    opening_upi?: number
+                    closing_cash?: number
+                    closing_upi?: number
+                    total_income?: number
+                    total_expense?: number
+                    days_count?: number
+                    reopened_at?: string | null
+                    reopened_by?: string | null
+                    reopen_reason?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "monthly_closures_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "monthly_closures_closed_by_fkey"
+                        columns: ["closed_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "monthly_closures_reopened_by_fkey"
+                        columns: ["reopened_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             monthly_summaries: {
                 Row: {
                     id: string

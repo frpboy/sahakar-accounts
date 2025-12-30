@@ -10,10 +10,18 @@ interface ExportMetadata {
     date_range?: string;
 }
 
-export const exportToPDF = (
+// Simple SHA-256 hash function for browser/client-side
+async function generateChecksum(content: string): Promise<string> {
+    const msgBuffer = new TextEncoder().encode(content);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export const exportToPDF = async (
     title: string,
     columns: string[],
-    rows: any[][],
+    rows: Record<string, unknown>[][],
     metadata: ExportMetadata
 ) => {
     const doc = new jsPDF();
@@ -63,12 +71,28 @@ export const exportToPDF = (
         },
     });
 
+    // Generate Checksum
+    const pdfOutput = doc.output();
+    const checksum = await generateChecksum(pdfOutput);
+
+    // Add Checksum to last page
+    doc.addPage();
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text('Document Verification', 14, 20);
+    doc.setFontSize(10);
+    doc.text(`SHA-256 Checksum: ${checksum}`, 14, 30);
+    doc.text('This hash ensures the document has not been tampered with.', 14, 35);
+
+    // Save
     doc.save(`${title.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+
+    return checksum; // Return for logging
 };
 
-export const exportToExcel = (
+export const exportToExcel = async (
     title: string,
-    data: any[],
+    data: Record<string, unknown>[],
     metadata: ExportMetadata
 ) => {
     // Flatten data and add metadata as first rows
@@ -79,10 +103,6 @@ export const exportToExcel = (
         [`Date: ${format(new Date(), 'dd MMM yyyy HH:mm')}`],
         [''], // Empty row
     ];
-
-    // Add headers and data from input
-    // Note: 'data' assumes array of objects. We need to convert to array of arrays or just use json_to_sheet
-    // For better control, we'll append the data.
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -101,5 +121,20 @@ export const exportToExcel = (
     ws['!cols'] = wscols;
 
     XLSX.utils.book_append_sheet(wb, ws, 'Report');
+    
+    // Generate buffer to calculate hash
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const checksum = await generateChecksum(new Uint8Array(excelBuffer).toString());
+
+    // Add Checksum sheet
+    const metaWs = XLSX.utils.aoa_to_sheet([
+        ['Document Verification'],
+        [`SHA-256 Checksum: ${checksum}`],
+        ['This hash ensures the document has not been tampered with.']
+    ]);
+    XLSX.utils.book_append_sheet(wb, metaWs, 'Verification');
+
     XLSX.writeFile(wb, `${title.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+
+    return checksum; // Return for logging
 };

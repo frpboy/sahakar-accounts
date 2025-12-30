@@ -154,7 +154,7 @@ export default function AdminDashboard() {
 
                 {/* Monthly Report */}
                 <div>
-                    <MonthlyReport />
+                    <MonthlyReport showActions={true} />
                 </div>
             </div>
 

@@ -3,14 +3,19 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardCard } from '@/components/dashboard-card';
+import { MonthClosureActions } from '@/components/month-closure-actions';
 
-export function MonthlyReport() {
+interface MonthlyReportProps {
+    showActions?: boolean;
+}
+
+export function MonthlyReport({ showActions = false }: MonthlyReportProps) {
     const [month, setMonth] = useState(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
 
-    const { data: summary, isLoading } = useQuery({
+    const { data: summary, isLoading, refetch } = useQuery({
         queryKey: ['monthly-report', month],
         queryFn: async () => {
             const res = await fetch(`/api/reports/monthly?month=${month}`);
@@ -25,6 +30,15 @@ export function MonthlyReport() {
 
     return (
         <div className="space-y-6">
+            {summary && showActions && (
+                <MonthClosureActions
+                    outletId={summary.outlet_id}
+                    month={month}
+                    status={summary.closure_status}
+                    onStatusChange={refetch}
+                />
+            )}
+
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">Monthly Report</h2>
                 <input

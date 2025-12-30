@@ -229,7 +229,7 @@ export default function AccountantDashboard() {
 
                 {/* Monthly Report */}
                 <div className="mb-8">
-                    <MonthlyReport />
+                    <MonthlyReport showActions={true} />
                 </div>
 
                 {/* Reports Section */}
