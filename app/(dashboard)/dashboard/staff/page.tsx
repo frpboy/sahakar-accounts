@@ -11,6 +11,9 @@ import { OpeningBalanceModal } from '@/components/opening-balance-modal';
 import { TransactionSummary } from '@/components/transaction-summary';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
+import { PresenceIndicator } from '@/components/presence-indicator';
+import { ChatRoom } from '@/components/chat-room';
+import { AnnotationsPanel } from '@/components/annotations-panel';
 import { useRealtimeDailyRecords, useRealtimeTransactions } from '@/hooks/use-realtime';
 
 export default function StaffDashboard() {
@@ -81,6 +84,9 @@ export default function StaffDashboard() {
                             </span>
                         </div>
                     )}
+                    <div className="mt-2">
+                        <PresenceIndicator outletId={user?.profile?.outlet_id || null} />
+                    </div>
                 </div>
 
                 {/* Daily Record Status */}
@@ -132,6 +138,10 @@ export default function StaffDashboard() {
                         </div>
                         <div>
                             <TransactionList dailyRecordId={dailyRecord.id} />
+                            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <ChatRoom outletId={user?.profile?.outlet_id || null} />
+                                <AnnotationsPanel outletId={user?.profile?.outlet_id || null} pageKey="staff" />
+                            </div>
                         </div>
                     </div>
                 )}

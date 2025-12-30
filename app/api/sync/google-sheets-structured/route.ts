@@ -136,6 +136,35 @@ export async function POST(req: NextRequest) {
         requestBody: { values: summary }
       });
 
+      // Fetch transactions for this daily record and populate SALE TABLE (E-I)
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('id,type,payment_mode,amount,description')
+        .eq('daily_record_id', (r as any).id)
+        .order('created_at', { ascending: true })
+        .limit(27);
+      const saleRows: any[] = [];
+      let no = 1;
+      for (const t of (txs || [])) {
+        if ((t as any).type !== 'income') continue; // only income in sales table
+        const amt = Number((t as any).amount || 0);
+        const pm = (t as any).payment_mode;
+        const cash = pm === 'cash' ? amt : 0;
+        const upi = pm === 'upi' ? amt : 0;
+        const credit = 0; // not tracked in schema; leave as 0
+        saleRows.push([no, amt, cash, upi, credit, (t as any).description || '']);
+        no++;
+        if (no > 27) break;
+      }
+      if (saleRows.length > 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `${dayTab}!E2:I${2 + saleRows.length - 1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: saleRows }
+        });
+      }
+
       results.push({ record_id: (r as any).id, spreadsheetId, sheet: dayTab, status: 'synced' });
     }
 

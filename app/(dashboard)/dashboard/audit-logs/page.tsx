@@ -34,8 +34,14 @@ export default function AuditLogsViewer() {
             const params = new URLSearchParams();
             if (filters.severity !== 'all') params.append('severity', filters.severity);
             if (filters.action !== 'all') params.append('action', filters.action);
-            if (filters.startDate) params.append('start_date', filters.startDate);
-            if (filters.endDate) params.append('end_date', filters.endDate);
+            // Default to last 90 days if no filters
+            const now = new Date();
+            const defaultStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            const start = filters.startDate || defaultStart;
+            const end = filters.endDate || now.toISOString().slice(0, 10);
+            params.append('start_date', start);
+            params.append('end_date', end);
+            params.append('limit', '100');
 
             const res = await fetch(`/api/audit-logs?${params.toString()}`);
             if (!res.ok) throw new Error('Failed to fetch audit logs');
@@ -54,7 +60,7 @@ export default function AuditLogsViewer() {
     };
 
     return (
-        <ProtectedRoute allowedRoles={['superadmin']}>
+        <ProtectedRoute allowedRoles={['superadmin','master_admin','ho_accountant','auditor']}>
             <div className="max-w-7xl mx-auto p-6">
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">

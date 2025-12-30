@@ -98,10 +98,28 @@ export function usePresence(room: string) {
       setMembers(flattened as any[]);
     });
     ch.subscribe();
-    ch.track({ online: true });
+    ch.track({ online: true, lastActive: Date.now() });
     channelRef.current = ch;
     return () => { if (channelRef.current) supabaseBrowser.removeChannel(channelRef.current); };
   }, [room]);
   return { members };
+}
+
+export function useRealtimeAnnotations(outletId: string | null, pageKey: string, onChange: () => void) {
+  const [status, setStatus] = useState<Status>('connecting');
+  const channelRef = useRef<ReturnType<typeof supabaseBrowser.channel> | null>(null);
+  useEffect(() => {
+    if (!outletId) return;
+    const filter = `outlet_id=eq.${outletId},page_key=eq.${pageKey}`;
+    const ch = supabaseBrowser
+      .channel(`rt-anno-${outletId}-${pageKey}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_annotations', filter }, () => onChange())
+      .subscribe((s) => {
+        setStatus(s === 'SUBSCRIBED' ? 'online' : s === 'CHANNEL_ERROR' ? 'error' : 'connecting');
+      });
+    channelRef.current = ch;
+    return () => { if (channelRef.current) supabaseBrowser.removeChannel(channelRef.current); };
+  }, [outletId, pageKey, onChange]);
+  return { status };
 }
 

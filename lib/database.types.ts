@@ -140,7 +140,7 @@ export type Database = {
                 }
                 Insert: {
                     id?: string
-                    outlet_id?: string | null
+                    outlet_id: string | null
                     date: string
                     opening_cash: number
                     opening_upi: number
@@ -255,20 +255,6 @@ export type Database = {
                     {
                         foreignKeyName: "daily_entries_created_by_fkey"
                         columns: ["created_by"]
-                        isOneToOne: false
-                        referencedRelation: "users"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "daily_records_submitted_by_fkey"
-                        columns: ["submitted_by"]
-                        isOneToOne: false
-                        referencedRelation: "users"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "daily_records_locked_by_fkey"
-                        columns: ["locked_by"]
                         isOneToOne: false
                         referencedRelation: "users"
                         referencedColumns: ["id"]
@@ -534,7 +520,15 @@ export type Database = {
                     days_count?: number | null
                     generated_at?: string | null
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "monthly_summaries_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
             outlets: {
                 Row: {
@@ -653,61 +647,27 @@ export type Database = {
                 Row: {
                     id: string
                     email: string
-                    name: string
-                    role:
-                        | 'master_admin'
-                        | 'ho_accountant'
-                        | 'outlet_manager'
-                        | 'outlet_staff'
-                        | 'auditor'
-                        | 'superadmin'
-                        | string
+                    role: string
                     outlet_id: string | null
-                    created_at: string | null
-                    access_start_date: string | null
-                    access_end_date: string | null
-                    auditor_access_granted_at: string | null
-                    auditor_access_expires_at: string | null
-                    auditor_access_granted_by: string | null
+                    created_at: string
+                    updated_at: string
+                    profile: Json | null
                 }
                 Insert: {
-                    id: string
+                    id?: string
                     email: string
-                    name: string
-                    role:
-                        | 'master_admin'
-                        | 'ho_accountant'
-                        | 'outlet_manager'
-                        | 'outlet_staff'
-                        | 'auditor'
-                        | 'superadmin'
-                        | string
+                    role: string
                     outlet_id?: string | null
-                    created_at?: string | null
-                    access_start_date?: string | null
-                    access_end_date?: string | null
-                    auditor_access_granted_at?: string | null
-                    auditor_access_expires_at?: string | null
-                    auditor_access_granted_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                    profile?: Json | null
                 }
                 Update: {
                     email?: string
-                    name?: string
-                    role?:
-                        | 'master_admin'
-                        | 'ho_accountant'
-                        | 'outlet_manager'
-                        | 'outlet_staff'
-                        | 'auditor'
-                        | 'superadmin'
-                        | string
+                    role?: string
                     outlet_id?: string | null
-                    created_at?: string | null
-                    access_start_date?: string | null
-                    access_end_date?: string | null
-                    auditor_access_granted_at?: string | null
-                    auditor_access_expires_at?: string | null
-                    auditor_access_granted_by?: string | null
+                    updated_at?: string
+                    profile?: Json | null
                 }
                 Relationships: [
                     {
@@ -719,34 +679,155 @@ export type Database = {
                     }
                 ]
             }
-            daily_totals: {
+            anomalies: {
                 Row: {
-                    business_day_id: string
-                    income_cash: number | null
-                    income_upi: number | null
-                    expense_cash: number | null
-                    expense_upi: number | null
+                    id: string
+                    outlet_id: string | null
+                    title: string
+                    description: string | null
+                    severity: 'critical' | 'warning' | 'info'
+                    category: string
+                    metadata: Json | null
+                    detected_at: string
+                    resolved_at: string | null
+                    resolved_by: string | null
+                    created_at: string
+                    updated_at: string
                 }
                 Insert: {
-                    business_day_id: string
-                    income_cash?: number | null
-                    income_upi?: number | null
-                    expense_cash?: number | null
-                    expense_upi?: number | null
+                    id?: string
+                    outlet_id?: string | null
+                    title: string
+                    description?: string | null
+                    severity: 'critical' | 'warning' | 'info'
+                    category: string
+                    metadata?: Json | null
+                    detected_at?: string
+                    resolved_at?: string | null
+                    resolved_by?: string | null
+                    created_at?: string
+                    updated_at?: string
                 }
                 Update: {
-                    business_day_id?: string
-                    income_cash?: number | null
-                    income_upi?: number | null
-                    expense_cash?: number | null
-                    expense_upi?: number | null
+                    outlet_id?: string | null
+                    title?: string
+                    description?: string | null
+                    severity?: 'critical' | 'warning' | 'info'
+                    category?: string
+                    metadata?: Json | null
+                    detected_at?: string
+                    resolved_at?: string | null
+                    resolved_by?: string | null
+                    created_at?: string
+                    updated_at?: string
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "anomalies_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "anomalies_resolved_by_fkey"
+                        columns: ["resolved_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            anomaly_history: {
+                Row: {
+                    id: string
+                    anomaly_id: string
+                    status: string
+                    data_snapshot: Json | null
+                    recorded_at: string
+                }
+                Insert: {
+                    id?: string
+                    anomaly_id: string
+                    status: string
+                    data_snapshot?: Json | null
+                    recorded_at?: string
+                }
+                Update: {
+                    anomaly_id?: string
+                    status?: string
+                    data_snapshot?: Json | null
+                    recorded_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "anomaly_history_anomaly_id_fkey"
+                        columns: ["anomaly_id"]
+                        isOneToOne: false
+                        referencedRelation: "anomalies"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            export_logs: {
+                Row: {
+                    id: string
+                    user_id: string | null
+                    user_role: string | null
+                    export_type: 'csv' | 'json' | 'pdf'
+                    report_type: string | null
+                    file_hash: string | null
+                    record_count: number | null
+                    filters: Json | null
+                    status: 'processing' | 'completed' | 'failed'
+                    file_path: string | null
+                    created_at: string
+                    completed_at: string | null
+                    error_message: string | null
+                }
+                Insert: {
+                    id?: string
+                    user_id?: string | null
+                    user_role?: string | null
+                    export_type: 'csv' | 'json' | 'pdf'
+                    report_type?: string | null
+                    file_hash?: string | null
+                    record_count?: number | null
+                    filters?: Json | null
+                    status?: 'processing' | 'completed' | 'failed'
+                    file_path?: string | null
+                    created_at?: string
+                    completed_at?: string | null
+                    error_message?: string | null
+                }
+                Update: {
+                    user_id?: string | null
+                    user_role?: string | null
+                    export_type?: 'csv' | 'json' | 'pdf'
+                    report_type?: string | null
+                    file_hash?: string | null
+                    record_count?: number | null
+                    filters?: Json | null
+                    status?: 'processing' | 'completed' | 'failed'
+                    file_path?: string | null
+                    created_at?: string
+                    completed_at?: string | null
+                    error_message?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "export_logs_user_id_fkey"
+                        columns: ["user_id"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
         }
-        Views: { [_ in never]: never }
-        Functions: { [_ in never]: never }
-        Enums: { [_ in never]: never }
-        CompositeTypes: { [_ in never]: never }
+        Views: {}
+        Functions: {}
+        Enums: {}
+        CompositeTypes: {}
     }
-};
+}

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createAdminClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 import type { Database } from '@/lib/database.types';
 
@@ -106,6 +107,13 @@ export async function PATCH(
         }
 
         const body = (await request.json()) as PatchTransactionBody;
+        // Enforce submission window lock (2:00–6:59 AM local) for staff/manager
+        const now = new Date();
+        const hour = now.getHours();
+        const isLockWindow = hour >= 2 && hour < 7;
+        if (isLockWindow && ['outlet_staff', 'outlet_manager'].includes(profileRole || '')) {
+            return NextResponse.json({ error: 'Entries are locked between 2:00–6:59 AM' }, { status: 423 });
+        }
         const { id } = params;
 
         const { type, category, paymentMode, amount, description } = body;
@@ -128,6 +136,22 @@ export async function PATCH(
             console.error('Error updating transaction:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
+
+        // Audit log
+        try {
+            const admin = createAdminClient();
+            await admin
+                .from('audit_logs')
+                .insert({
+                    user_id: session.user.id,
+                    action: 'update_transaction',
+                    entity: 'transactions',
+                    entity_id: id,
+                    old_data: tx as any,
+                    new_data: data as any,
+                    severity: 'normal',
+                } as any);
+        } catch {}
 
         return NextResponse.json(data);
     } catch (error: unknown) {
@@ -215,6 +239,13 @@ export async function DELETE(
         }
 
         const { id } = params;
+        // Enforce submission window lock (2:00–6:59 AM local) for staff/manager
+        const now = new Date();
+        const hour = now.getHours();
+        const isLockWindow = hour >= 2 && hour < 7;
+        if (isLockWindow && ['outlet_staff', 'outlet_manager'].includes(profileRole || '')) {
+            return NextResponse.json({ error: 'Entries are locked between 2:00–6:59 AM' }, { status: 423 });
+        }
 
         const { error } = await supabase
             .from('transactions')
@@ -225,6 +256,21 @@ export async function DELETE(
             console.error('Error deleting transaction:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
+
+        try {
+            const admin = createAdminClient();
+            await admin
+                .from('audit_logs')
+                .insert({
+                    user_id: session.user.id,
+                    action: 'delete_transaction',
+                    entity: 'transactions',
+                    entity_id: id,
+                    old_data: tx as any,
+                    new_data: null,
+                    severity: 'warning',
+                } as any);
+        } catch {}
 
         return NextResponse.json({ success: true });
     } catch (error: unknown) {

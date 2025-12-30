@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { TransactionSchema } from '@/lib/validation';
 import { ZodError } from 'zod';
-import { createRouteClient } from '@/lib/supabase-server';
+import { createRouteClient, createAdminClient } from '@/lib/supabase-server';
 import type { Database } from '@/lib/database.types';
 
 function getErrorMessage(error: unknown): string {
@@ -121,6 +121,13 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
+        // Enforce submission window lock (2:00–6:59 AM local) for staff/manager
+        const now = new Date();
+        const hour = now.getHours();
+        const isLockWindow = hour >= 2 && hour < 7;
+        if (isLockWindow && ['outlet_staff', 'outlet_manager'].includes(profileRole || '')) {
+            return NextResponse.json({ error: 'Entries are locked between 2:00–6:59 AM' }, { status: 423 });
+        }
 
         // Idempotency check - prevents duplicate transactions on retry
         const idempotencyKey = request.headers.get('x-idempotency-key');
@@ -195,6 +202,22 @@ export async function POST(request: NextRequest) {
                 { status: 500 }
             );
         }
+
+        // Audit log
+        try {
+            const admin = createAdminClient();
+            await admin
+                .from('audit_logs')
+                .insert({
+                    user_id: session.user.id,
+                    action: 'create_transaction',
+                    entity: 'transactions',
+                    entity_id: (data as any)?.id,
+                    old_data: null,
+                    new_data: data as any,
+                    severity: 'normal',
+                } as any);
+        } catch {}
 
         return NextResponse.json(data, { status: 201 });
     } catch (error: unknown) {
