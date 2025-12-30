@@ -11,19 +11,23 @@ import { OpeningBalanceModal } from '@/components/opening-balance-modal';
 import { TransactionSummary } from '@/components/transaction-summary';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
+import { useRealtimeDailyRecords, useRealtimeTransactions } from '@/hooks/use-realtime';
 
 export default function StaffDashboard() {
     const { user } = useAuth();
     const [showOpeningModal, setShowOpeningModal] = useState(false);
 
     // Get today's daily record
-    const { data: dailyRecord, isLoading: recordLoading } = useQuery({
+    const { data: dailyRecord, isLoading: recordLoading, isError: recordError } = useQuery({
         queryKey: ['daily-record-today'],
         queryFn: async () => {
             const res = await fetch('/api/daily-records/today');
             if (!res.ok) throw new Error('Failed to fetch daily record');
             return res.json();
         },
+        staleTime: 0,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
     });
 
     // Fetch outlet information
@@ -52,12 +56,23 @@ export default function StaffDashboard() {
         }
     }, [dailyRecord]);
 
+    const { status: drRt } = useRealtimeDailyRecords(user?.profile?.outlet_id || null, () => {
+        window.location.reload();
+    });
+    const { status: trRt } = useRealtimeTransactions(dailyRecord?.id || null, () => {
+        window.location.reload();
+    });
+
     return (
         <ProtectedRoute allowedRoles={['outlet_staff', 'outlet_manager']}>
             <div className="p-6 max-w-7xl mx-auto">
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold text-gray-900">Staff Dashboard</h1>
                     <p className="text-gray-600 mt-2">Welcome, {user?.profile?.name}</p>
+                    <div className="mt-2 text-xs text-gray-600">
+                        <span className={`px-2 py-1 rounded-full ${drRt === 'online' ? 'bg-green-100 text-green-800' : drRt === 'error' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>Records: {drRt}</span>
+                        <span className={`ml-2 px-2 py-1 rounded-full ${trRt === 'online' ? 'bg-green-100 text-green-800' : trRt === 'error' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>Transactions: {trRt}</span>
+                    </div>
                     {outlet && (
                         <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
                             <Building2 className="w-4 h-4 text-blue-600" />
@@ -95,7 +110,11 @@ export default function StaffDashboard() {
 
                     {/* Transaction Form - Takes 2 columns */}
                     <div className="lg:col-span-2">
-                        {dailyRecord ? (
+                        {recordError ? (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+                                <p className="text-red-700">Failed to load daily record. Please ensure your user is assigned to an outlet.</p>
+                            </div>
+                        ) : dailyRecord ? (
                             <TransactionForm dailyRecordId={dailyRecord.id} />
                         ) : (
                             <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">

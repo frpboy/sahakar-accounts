@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { createAdminClient } from '@/lib/supabase-server';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -40,18 +41,20 @@ export async function GET(request: NextRequest) {
         const pageSize = parseInt(url.searchParams.get('limit') || '50');
         const offset = (page - 1) * pageSize;
 
-        // Base query
-        let query = supabase
+        // Use admin client to bypass RLS and retrieve logs for allowed roles
+        const admin = createAdminClient();
+        let query = admin
             .from('audit_logs')
             .select('*', { count: 'exact' });
 
         // Apply filters
         if (severity && severity !== 'all') {
-            query = query.eq('severity', severity);
+            const sev = (severity === 'critical' || severity === 'warning' || severity === 'normal') ? severity : 'normal';
+            query = query.eq('severity', sev);
         }
 
         if (action && action !== 'all') {
-            query = query.eq('action', action);
+            query = query.eq('action', action as any);
         }
 
         if (startDate) {

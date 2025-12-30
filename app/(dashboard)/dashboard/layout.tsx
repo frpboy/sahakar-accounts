@@ -3,6 +3,7 @@ import { DashboardNav } from '@/components/dashboard-nav';
 import { UserMenu } from '@/components/user-menu';
 import { AuthErrorState } from '@/components/auth-error-state';
 import type { UserProfile } from '@/lib/auth-context';
+import { PageAuditLogger } from '@/components/page-audit-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,6 +94,8 @@ export default async function DashboardLayout({
 
                 {/* Main content */}
                 <main className="flex-1 p-6 lg:p-8">
+                    {/* Audit page views */}
+                    <PageAuditLogger path={typeof location !== 'undefined' ? location.pathname : '/dashboard'} />
                     {children}
                 </main>
             </div>

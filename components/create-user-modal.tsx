@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, UserPlus, Loader2 } from 'lucide-react';
 
 interface CreateUserModalProps {
@@ -19,6 +20,9 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [approvalId, setApprovalId] = useState<string>('');
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,14 +36,19 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                 body: JSON.stringify(formData),
             });
 
-            if (!res.ok) {
+            if (!res.ok && res.status !== 202) {
                 const data = await res.json();
                 throw new Error(data.error || 'Failed to create user');
             }
 
-            // Success
-            onSuccess();
-            onClose();
+            if (res.status === 202) {
+                const data = await res.json();
+                setApprovalId(data.approvalId);
+                setSuccess(`Pending approval created (ID: ${data.approvalId})`);
+            } else {
+                onSuccess();
+                onClose();
+            }
 
             // Reset form
             setFormData({
@@ -80,6 +89,21 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                     {error && (
                         <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                             <p className="text-sm text-red-800">{error}</p>
+                        </div>
+                    )}
+                    {success && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <p className="text-sm text-green-800">{success}</p>
+                            {approvalId && (
+                                <div className="mt-2">
+                                    <button
+                                        onClick={() => router.push(`/dashboard/admin?approvalId=${approvalId}#approvals`)}
+                                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                                    >
+                                        Approve
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 

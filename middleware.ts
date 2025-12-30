@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { createAdminClient } from '@/lib/supabase-server';
 
 // Simple rate limiting using in-memory store (for development)
 // In production, use Redis or similar
@@ -90,7 +91,7 @@ export async function middleware(request: NextRequest) {
     const devMode = process.env.NEXT_PUBLIC_DEV_AUTH === 'true';
 
     if (!isDev && devMode) {
-        console.error('🚨 CRITICAL: DEV_AUTH enabled in production! Disabling immediately.');
+        console.error('[CRITICAL] DEV_AUTH enabled in production! Disabling immediately.');
         return NextResponse.json(
             { error: 'Configuration error. Please contact administrator.' },
             { status: 503 }
@@ -114,6 +115,12 @@ export async function middleware(request: NextRequest) {
 
     // Redirect authenticated users away from login page
     if (isLoginPage && session) {
+        // Allow testers to access /login even when authenticated when force=1 (dev or explicitly enabled)
+        const forceParam = request.nextUrl.searchParams.get('force');
+        const allowForce = (process.env.NODE_ENV === 'development') || (process.env.NEXT_PUBLIC_ALLOW_FORCE_LOGIN === 'true');
+        if (forceParam === '1' && allowForce) {
+            return response;
+        }
         const redirectUrl = new URL('/dashboard', request.url);
         // Create a new redirect response but make sure to include the updated cookies
         const redirectResponse = NextResponse.redirect(redirectUrl);
@@ -144,6 +151,24 @@ export async function middleware(request: NextRequest) {
                     { status: 403 }
                 );
             }
+        }
+
+        // Minimal page-view audit for dashboard routes
+        if (request.method === 'GET' && isDashboardPage) {
+            try {
+                const admin = createAdminClient();
+                await admin
+                    .from('audit_logs')
+                    .insert({
+                        user_id: session.user.id,
+                        action: 'view_page',
+                        entity: 'page',
+                        entity_id: request.nextUrl.pathname,
+                        severity: 'normal',
+                        ip_address: request.headers.get('x-forwarded-for') || null,
+                        user_agent: request.headers.get('user-agent') || null,
+                    } as any);
+            } catch {}
         }
     }
 

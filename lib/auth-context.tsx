@@ -97,6 +97,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             const res = await fetch('/api/profile', { method: 'GET' });
             if (!res.ok) {
+                // Graceful fallback when profile row is missing
+                if (res.status === 404) {
+                    const meta = (authUser as any).user_metadata || {};
+                    const role = (meta.role || 'outlet_staff') as UserProfile['role'];
+                    const name = (meta.full_name || meta.name || authUser.email || undefined) as string | undefined;
+                    console.warn('[Auth] Profile not found in DB, using metadata fallback:', authUser.email, role);
+                    return {
+                        role,
+                        name,
+                        outlet_id: undefined,
+                        access_start_date: undefined,
+                        access_end_date: undefined,
+                    };
+                }
                 const payload = (await res.json().catch(() => null)) as { error?: string } | null;
                 throw new Error(payload?.error || `Failed to fetch profile (${res.status})`);
             }
@@ -217,23 +231,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 console.log('[Auth] State changed:', event);
 
                 if (session?.user && isMounted) {
-                    const profile = await fetchUserProfile(session.user);
-                    if (isMounted) {
-                        setUser({
-                            id: session.user.id,
-                            email: session.user.email || '',
-                            profile,
-                        });
+                    try {
+                        const profile = await fetchUserProfile(session.user);
+                        if (isMounted) {
+                            setUser({
+                                id: session.user.id,
+                                email: session.user.email || '',
+                                profile,
+                            });
+                        }
+                    } catch (e) {
+                        // Final safety: construct metadata-based profile to avoid stale session state
+                        const meta = (session.user as any).user_metadata || {};
+                        const role = (meta.role || 'outlet_staff') as UserProfile['role'];
+                        const name = (meta.full_name || meta.name || session.user.email || undefined) as string | undefined;
+                        if (isMounted) {
+                            setUser({
+                                id: session.user.id,
+                                email: session.user.email || '',
+                                profile: { role, name },
+                            });
+                        }
                     }
                     // Use router.refresh() on sign-in related events to update Server Components
                     if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
                         router.refresh();
+                        // Audit login
+                        try {
+                            await fetch('/api/audit/log', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: event === 'SIGNED_IN' ? 'login' : 'session_update', entity: 'auth' }),
+                            });
+                        } catch {}
                     }
                 } else if (isMounted) {
                     setUser(null);
                     // Force refresh on sign out to clear server state
                     if (event === 'SIGNED_OUT') {
                         router.refresh();
+                        // Audit logout
+                        try {
+                            await fetch('/api/audit/log', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'logout', entity: 'auth' }),
+                            });
+                        } catch {}
                     }
                 }
             }

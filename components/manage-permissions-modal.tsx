@@ -191,13 +191,14 @@ export function ManagePermissionsModal({ isOpen, onClose, onSuccess }: ManagePer
                                 </div>
                             )}
 
-                            {/* SQL Command Preview */}
+                            {/* Action Preview */}
                             {(newRole || newOutletId) && (
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <p className="text-xs font-medium text-blue-800 mb-2">SQL Command to Run:</p>
-                                    <code className="text-xs text-blue-900 block whitespace-pre-wrap">
-                                        {`UPDATE users SET\n${newRole ? `  role = '${newRole}'` : ''}${newRole && newOutletId ? ',\n' : ''}${newOutletId ? `  outlet_id = '${newOutletId}'` : ''}\nWHERE id = '${selectedUser}';`}
-                                    </code>
+                                    <p className="text-xs font-medium text-blue-800 mb-1">Pending changes:</p>
+                                    <ul className="text-xs text-blue-900 list-disc ml-4">
+                                        {newRole && (<li>Role → {newRole}</li>)}
+                                        {newOutletId && (<li>Outlet → {newOutletId || 'None'}</li>)}
+                                    </ul>
                                 </div>
                             )}
                         </>

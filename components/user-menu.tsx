@@ -20,8 +20,6 @@ export function UserMenu({ user }: UserMenuProps) {
         setIsLoggingOut(true);
         try {
             await signOut();
-            // Redirect is handled in auth-context, but we can also force it here
-            router.push('/login');
         } catch (error) {
             console.error('Logout error:', error);
             setIsLoggingOut(false);

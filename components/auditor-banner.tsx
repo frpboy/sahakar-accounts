@@ -23,7 +23,7 @@ export function AuditorBanner({ accessEndDate, userName }: AuditorBannerProps) {
                         </p>
                         <p className="text-xs text-red-600 mt-2 flex items-center gap-1">
                             <AlertCircle className="w-4 h-4" />
-                            ⚠️ No modifications allowed. All actions are logged for audit compliance.
+                            No modifications allowed. All actions are logged for audit compliance.
                         </p>
                     </div>
                 </div>
@@ -81,7 +81,7 @@ export function AuditorBanner({ accessEndDate, userName }: AuditorBannerProps) {
                     </p>
                     <p className={`text-xs mt-2 flex items-center gap-1 ${isExpired ? 'text-gray-600' : subTextColor}`}>
                         <AlertCircle className="w-4 h-4" />
-                        ⚠️ No modifications allowed. All actions are logged for audit compliance.
+                        No modifications allowed. All actions are logged for audit compliance.
                     </p>
                 </div>
             </div>

@@ -235,7 +235,7 @@ export function SubmitReviewModal({ isOpen, onClose, recordId, date }: SubmitRev
                         {/* Warnings */}
                         {warnings.length > 0 && (
                             <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                                <p className="text-sm font-medium text-yellow-900 mb-2">⚠️ Warnings:</p>
+                                <p className="text-sm font-medium text-yellow-900 mb-2">Warnings:</p>
                                 <ul className="text-sm text-yellow-700 space-y-1">
                                     {warnings.map((w, i) => (
                                         <li key={i}>• {w}</li>

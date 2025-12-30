@@ -31,7 +31,21 @@ export async function GET() {
         }
 
         if (!data) {
-            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+            // Graceful fallback from session metadata when profile row missing
+            const meta = (session.user as any).user_metadata || {};
+            const role = (meta.role || 'outlet_staff') as string;
+            const name = (meta.full_name || meta.name || session.user.email || null) as string | null;
+            return NextResponse.json({
+                id: session.user.id,
+                email: session.user.email,
+                role,
+                name,
+                outlet_id: null,
+                access_start_date: null,
+                access_end_date: null,
+                auditor_access_granted_at: null,
+                auditor_access_expires_at: null,
+            });
         }
 
         return NextResponse.json(data);
