@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import type { Database } from '@/lib/database.types';
 
 function getErrorMessage(error: unknown): string {
@@ -10,7 +9,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function GET() {
     try {
-        const supabase = createRouteHandlerClient<Database>({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {

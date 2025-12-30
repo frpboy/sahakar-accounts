@@ -9,6 +9,8 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
 
@@ -16,6 +18,7 @@ interface Anomaly {
   id: string;
   outlet_id: string;
   transaction_id: string | null;
+  business_day_id: string | null;
   type: string;
   severity: 'critical' | 'warning' | 'info';
   title: string;
@@ -24,6 +27,10 @@ interface Anomaly {
   resolved_at: string | null;
   resolved_by: string | null;
   resolution_notes: string | null;
+  resolution_attachment_url?: string | null;
+  assigned_to?: string | null;
+  status?: 'open' | 'acknowledged' | 'resolved' | 'waived';
+  occurrences_count?: number;
   metadata: Record<string, any>;
 }
 
@@ -40,6 +47,7 @@ interface AnomalyStats {
 }
 
 export function AnomalyDashboard() {
+  const { user } = useAuth();
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('7d');
@@ -66,6 +74,24 @@ export function AnomalyDashboard() {
       return res.json();
     },
   });
+
+  const assignToMe = async (anomalyId: string) => {
+    if (!user?.id) return;
+    await fetch('/api/anomalies', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: anomalyId, assigned_to: user.id, status: 'acknowledged' }),
+    });
+  };
+
+  const resolveAnomaly = async (anomalyId: string) => {
+    const notes = window.prompt('Resolution notes (optional)') || '';
+    await fetch('/api/anomalies', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: anomalyId, status: 'resolved', resolution_notes: notes }),
+    });
+  };
 
   const severityColors = {
     critical: 'bg-red-500',
@@ -281,7 +307,22 @@ export function AnomalyDashboard() {
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(anomaly.detected_at), 'MMM dd, HH:mm')}
                         </span>
+                        {anomaly.business_day_id && (
+                          <Link className="text-xs underline" href={`/dashboard/accountant?dayId=${anomaly.business_day_id}`}>
+                            View Day
+                          </Link>
+                        )}
+                        {anomaly.transaction_id && (
+                          <Link className="text-xs underline" href={`/dashboard/staff?highlightTransactionId=${anomaly.transaction_id}`}>
+                            View Txn
+                          </Link>
+                        )}
                       </div>
+                      {anomaly.assigned_to && (
+                        <div className="mt-1">
+                          <Badge variant="secondary" className="text-xs">Assigned</Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -289,14 +330,61 @@ export function AnomalyDashboard() {
                       {anomaly.severity.toUpperCase()}
                     </Badge>
                     {!anomaly.resolved_at && (
-                      <Button variant="outline" size="sm" className="mt-2">
-                        Resolve
-                      </Button>
+                      <div className="flex gap-2 mt-2 justify-end">
+                        <Button variant="outline" size="sm" onClick={() => assignToMe(anomaly.id)}>
+                          Assign to me
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => resolveAnomaly(anomaly.id)}>
+                          Resolve
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
               );
             })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Decision Cues */}
+      <Card>
+        <CardHeader>
+          <CardTitle>What Needs Attention</CardTitle>
+          <CardDescription>Prioritized cues for action</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <h4 className="font-semibold mb-2">Top 5 Unresolved</h4>
+              <ul className="space-y-2">
+                {(stats.decision_cues?.top_unresolved || []).map((a: any) => (
+                  <li key={a.id} className="text-sm">
+                    <span className="font-medium">{a.title}</span>
+                    <span className="ml-2 text-muted-foreground">{format(new Date(a.detected_at), 'MMM dd')}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Critical > 48h</h4>
+              <ul className="space-y-2">
+                {(stats.decision_cues?.critical_older_than_48h || []).map((a: any) => (
+                  <li key={a.id} className="text-sm">
+                    <span className="font-medium">{a.title}</span>
+                    <span className="ml-2 text-red-600">Detected {format(new Date(a.detected_at), 'MMM dd HH:mm')}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 text-sm">
+                <span className="font-semibold">Oldest Unresolved:</span>{' '}
+                {stats.decision_cues?.oldest_unresolved ? (
+                  <span>{format(new Date(stats.decision_cues.oldest_unresolved.detected_at), 'MMM dd')}</span>
+                ) : (
+                  <span className="text-muted-foreground">None</span>
+                )}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

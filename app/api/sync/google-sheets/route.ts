@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import { google } from 'googleapis';
 
 // This endpoint will sync locked daily records to Google Sheets
 export async function POST() {
     try {
-        const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {

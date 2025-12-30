@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-server';
 import { format, subDays, startOfDay } from 'date-fns';
 
@@ -11,7 +10,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -136,6 +135,31 @@ export async function GET(request: NextRequest) {
             }
         });
 
+        // Decision cues
+        const { data: topUnresolved } = await admin
+            .from('anomalies')
+            .select('*')
+            .is('resolved_at', null)
+            .order('severity', { ascending: true })
+            .order('detected_at', { ascending: false })
+            .limit(5);
+
+        const { data: oldestUnresolved } = await admin
+            .from('anomalies')
+            .select('*')
+            .is('resolved_at', null)
+            .order('detected_at', { ascending: true })
+            .limit(1);
+
+        const cutoffIso = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+        const { data: criticalOlderThan48h } = await admin
+            .from('anomalies')
+            .select('*')
+            .eq('severity', 'critical')
+            .is('resolved_at', null)
+            .lt('detected_at', cutoffIso)
+            .order('detected_at', { ascending: true });
+
         return NextResponse.json({
             total: totalCount || 0,
             ...severityCounts,
@@ -146,7 +170,12 @@ export async function GET(request: NextRequest) {
             trend,
             recent_critical: recentCritical || [],
             resolution_rates: resolutionRates,
-            generated_at: new Date().toISOString()
+            generated_at: new Date().toISOString(),
+            decision_cues: {
+                top_unresolved: topUnresolved || [],
+                oldest_unresolved: (oldestUnresolved && oldestUnresolved[0]) || null,
+                critical_older_than_48h: criticalOlderThan48h || []
+            }
         });
 
     } catch (error: unknown) {

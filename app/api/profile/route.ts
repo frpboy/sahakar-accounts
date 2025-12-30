@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-server';
 import type { Database } from '@/lib/database.types';
 
@@ -12,7 +11,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function GET() {
     try {
-        const sessionClient = createRouteHandlerClient<Database>({ cookies });
+        const sessionClient = createRouteClient();
         const { data: { session } } = await sessionClient.auth.getSession();
 
         if (!session?.user?.id) {

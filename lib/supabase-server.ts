@@ -1,17 +1,42 @@
 import { createClient } from '@supabase/supabase-js';
-import { createRouteHandlerClient, createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from './database.types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
-// Server-side client with session capability (Server Components)
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
 export function createServerClient() {
-    return createServerComponentClient<Database, 'public'>({ cookies });
+    return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+            get(name) {
+                return cookies().get(name)?.value;
+            },
+            set(name, value, options) {
+                cookies().set({ name, value, ...options });
+            },
+            remove(name, options) {
+                cookies().delete({ name, ...options });
+            },
+        },
+    });
 }
 
 export function createRouteClient() {
-    return createRouteHandlerClient<Database, 'public'>({ cookies });
+    return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+            get(name) {
+                return cookies().get(name)?.value;
+            },
+            set(name, value, options) {
+                cookies().set({ name, value, ...options });
+            },
+            remove(name, options) {
+                cookies().delete({ name, ...options });
+            },
+        },
+    });
 }
 
 // Admin client with service role (Bypass RLS)

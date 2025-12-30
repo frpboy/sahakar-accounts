@@ -1,6 +1,6 @@
 # User Account Creation Guide
 
-Due to browser rate limits, please create the user accounts manually in Supabase. Here's how:
+
 
 ## Step 1: Create Auth Users in Supabase
 

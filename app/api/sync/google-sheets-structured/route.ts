@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import { google } from 'googleapis';
 
 function getErrorMessage(error: unknown): string {
@@ -60,7 +59,7 @@ async function ensureDailyTab(sheets: any, spreadsheetId: string, tabTitle: stri
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

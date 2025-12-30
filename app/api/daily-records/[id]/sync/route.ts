@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import { sheetsService } from '@/lib/google-sheets';
 import type { Database } from '@/lib/database.types';
 
@@ -18,7 +17,7 @@ export async function POST(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = createRouteHandlerClient<Database>({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {

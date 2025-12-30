@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createRouteClient } from '@/lib/supabase-server';
 import { z } from 'zod';
 
 const LogSchema = z.object({
@@ -14,7 +13,7 @@ const LogSchema = z.object({
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
