@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "sahakar-accounts-production",
+  "private_key_id": "216e1547b436c14d7b1a7ea83052ea3c5242414c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDvfxQjug0iwLr/\ntHAMsAlCgx4DQ8RUQZZ+oCdBZ/EsV/G0vATxLevdGqc/C+4D7E6U3JYalNkxTqx0\nMhN3iKWBi1ajJ8CDoyMcSnkihCeX63B8L+iDIvmqpOGVCQ0ST6ohndFE2SmOc2Gv\nhzZNMqR7Fh70CsDmY1BFaP2OdMhPoz4/gMKP39F2+lY6SQ2JtcYWvK1VL0myWbBJ\ntddGLrpzMy0v20H2kP61/WjeKrWuJBw1yvW8J16dcsx6DmFmwV0rfaCnq+9ALHE8\naYpRmvJwymuPaVyxBQ4IULWXUqE7dmI5vAjcPv56cGTBCtbjleyk3eh56N+cOydn\nScHBwFK3AgMBAAECggEAYtfnz/bxhO5WP0KRHCtrJvBGasKFPOD0473ldbEYcFy7\nfQQ8Ze218sMVU4fw692TcQy5Rq84FImL00j3j9XtuNFxKFU3txyVWQ/DfuNcE+8v\ntZFwPO8qa6sxDvl1U6FdbhJcVDXsWMZ2AqOjXakRCVvP2pi1lGBYuMzkGO9J3NOO\ncSAmNyHHB4cAtzGhPhL8M8cwoJBrcl4HGnngjvLFF2Xz9MTEtwYzsZIRiYiRhpxy\nuk8Q3XUc2AFxDM5MLKBMueAHdX2IminoEEqaDRWZ2OdlsaaxLJbPJ6DVao6XSR7K\nohvqQ4QTcfGvsvHOuznTKO4ujrC2YfUMCFRfaZIkwQKBgQD5H3uN9MdvvX4vXEYb\n3HxBHeD/G7lqnBh4jB/ljhnPwr3XXsNW9PysHjNv60SabvTN1XXYjnWoQ1aXKbX6\niVEeHRiLs4vtHHIWETWtaPNCH/eOk7igsZzedzn5HsXO9FEeNshrozldd9FqbbBv\n7T5GcvOwbKYiQKFV8GbEuF3b3QKBgQD2G5D8Ws+16OcP8SVQx8Lst2gExYcFcv6S\nmLO/gr7Ju1UzCWuSTi15Dzdavc0XPddPX1TH9CsQtb6JOaLl93FeiLV7HqGAvd1R\nAHkL20GhysrZt6efHky9oIkFgYXDIx9S/rmmKarHMMKMpKjA8UOZcsq5tZZIk5li\nCJAUmqvZowKBgQCuNTLMeSDB5ewIqGkqcIu/aWp+Wt/VSmTeX3aqqy0nmRHyOoU1\nGMpcfh4QJKBrsi2khqILFsv2J2i0+mkUUtQTz9rrTloKLHsnLU+w/RQm6H3QCULx\ntGJzO0KiD7/Z0gWrsDmE87ZYw0IBP8VC7889qoL4m3GtwC5SD3N+G0MfTQKBgEuh\ndRDYJ3TTug5gIQOOIAz23/R3b2LxT+JlIvf7if4cn7Yrcu9nLvpA/tXX9irqSjyO\nI1O/aWydLYymNbVOMXzHrl3DsAYMUvMNniVSn/zEgUoe8lgny5WKvBEBGMY7COlM\ndmjl7SGBjogCIgoJGqkRadNgRmrPURebYguy7JTZAoGAWJHHXAdm61mDlEJUYO2G\nrJtjOmUAvQj/8wm5ThxzTUTuKT4Z8sCJT0TCtxARbwG0LawpEGwICZqMxv52N94K\ndaY2DX7Fe4G+2JC2bl9vleIz1EWsYg8qvMVUO9/pu7cwrTq1HClXhatuOXnHvLR1\n9eFIX+UUASi2ZXEmCV08hW0=\n-----END PRIVATE KEY-----\n",
+  "client_email": "sahakar-sheets-sync@sahakar-accounts-production.iam.gserviceaccount.com",
+  "client_id": "113629729962423468662",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/sahakar-sheets-sync%40sahakar-accounts-production.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
