@@ -104,7 +104,7 @@ export async function POST(
                     // Update outlet with sheet ID
                     await adminSupabase
                         .from('outlets')
-                        .update({ google_sheet_id: sheetId })
+                        .update({ google_sheet_id: sheetId } as unknown as never)
                         .eq('id', typedRecord.outlet_id);
                 }
 
@@ -123,7 +123,7 @@ export async function POST(
                     .update({
                         synced_to_sheets: true,
                         last_synced_at: new Date().toISOString(),
-                    })
+                    } as unknown as never)
                     .eq('id', id);
 
                 console.log(`[AutoSync] ✅ Successfully synced record ${id} to sheet ${sheetId}`);

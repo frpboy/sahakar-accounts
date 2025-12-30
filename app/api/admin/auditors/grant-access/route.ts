@@ -47,7 +47,7 @@ export async function POST(request: Request) {
                 auditor_access_granted_at: grantedAt.toISOString(),
                 auditor_access_expires_at: expiresAt.toISOString(),
                 auditor_access_granted_by: session.user.id
-            })
+            } as unknown as never)
             .eq('id', auditor_id)
             .eq('role', 'auditor');
 

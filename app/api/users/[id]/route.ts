@@ -74,7 +74,7 @@ export async function PATCH(
         const adminClient = createAdminClient();
         const { data: updated, error: updateError } = await adminClient
             .from('users')
-            .update(updateData)
+            .update(updateData as unknown as never)
             .eq('id', params.id)
             .select('id,email,name,role,outlet_id,created_at')
             .single();

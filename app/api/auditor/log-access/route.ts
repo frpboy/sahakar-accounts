@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
                 outlet_id,
                 ip_address,
                 user_agent
-            });
+            } as unknown as never);
 
         if (error) {
             console.error('Failed to log auditor access:', error);

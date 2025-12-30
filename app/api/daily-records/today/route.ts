@@ -94,6 +94,9 @@ export async function GET(request: NextRequest) {
         const insertPayload: Database['public']['Tables']['daily_records']['Insert'] = {
             outlet_id: outletId,
             date: today,
+            particulars: 'Day Open',
+            amount: 0,
+            category: 'system',
             opening_cash: prevClosingCash ?? 0,
             opening_upi: prevClosingUpi ?? 0,
             closing_cash: prevClosingCash ?? 0,
@@ -104,7 +107,7 @@ export async function GET(request: NextRequest) {
         };
         const { data: newRecord, error: insertError } = await supabase
             .from('daily_records')
-            .insert(insertPayload)
+            .insert(insertPayload as unknown as never)
             .select()
             .single();
 

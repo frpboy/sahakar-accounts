@@ -40,7 +40,7 @@ export async function logAuditorAction(
             ip_address: metadata?.ip_address,
             user_agent: metadata?.user_agent
         };
-        await supabase.from('auditor_access_log').insert(payload);
+        await supabase.from('auditor_access_log').insert(payload as unknown as never);
     } catch (error) {
         console.error('[AuditorLogger] Error logging action:', error);
         // Don't throw - logging failure shouldn't break the app

@@ -18,15 +18,16 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Verify user is superadmin
+        // Verify user is superadmin or ho_accountant
         const { data: user } = await supabase
             .from('users')
             .select('role')
             .eq('id', session.user.id)
             .single();
 
-        if (user?.role !== 'master_admin') {
-            return NextResponse.json({ error: 'Forbidden - Master Admin only' }, { status: 403 });
+        const allowedRoles = ['master_admin', 'superadmin', 'ho_accountant', 'auditor'];
+        if (!user?.role || !allowedRoles.includes(user.role)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         // Get query parameters
@@ -35,14 +36,16 @@ export async function GET(request: NextRequest) {
         const action = url.searchParams.get('action');
         const startDate = url.searchParams.get('start_date');
         const endDate = url.searchParams.get('end_date');
-        const limit = parseInt(url.searchParams.get('limit') || '100');
+        const page = parseInt(url.searchParams.get('page') || '1');
+        const pageSize = parseInt(url.searchParams.get('limit') || '50');
+        const offset = (page - 1) * pageSize;
 
+        // Base query
         let query = supabase
             .from('audit_logs')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(limit);
+            .select('*', { count: 'exact' });
 
+        // Apply filters
         if (severity && severity !== 'all') {
             query = query.eq('severity', severity);
         }
@@ -59,13 +62,26 @@ export async function GET(request: NextRequest) {
             query = query.lte('created_at', endDate);
         }
 
-        const { data, error } = await query;
+        // Apply pagination
+        query = query
+            .order('created_at', { ascending: false })
+            .range(offset, offset + pageSize - 1);
+
+        const { data, error, count } = await query;
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json(data);
+        return NextResponse.json({
+            data,
+            meta: {
+                total: count,
+                page,
+                pageSize,
+                totalPages: count ? Math.ceil(count / pageSize) : 0
+            }
+        });
     } catch (error: unknown) {
         return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }

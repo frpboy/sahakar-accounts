@@ -244,7 +244,36 @@ export type Database = {
                     last_synced_at?: string | null
                     sheet_sync_error?: string | null
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "daily_entries_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "daily_entries_created_by_fkey"
+                        columns: ["created_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "daily_records_submitted_by_fkey"
+                        columns: ["submitted_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "daily_records_locked_by_fkey"
+                        columns: ["locked_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
             transactions: {
                 Row: {
@@ -284,7 +313,22 @@ export type Database = {
                     updated_at?: string
                     idempotency_key?: string | null
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "transactions_daily_record_id_fkey"
+                        columns: ["daily_record_id"]
+                        isOneToOne: false
+                        referencedRelation: "daily_records"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "transactions_created_by_fkey"
+                        columns: ["created_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
             categories: {
                 Row: {
@@ -534,7 +578,15 @@ export type Database = {
                     auditor_access_expires_at?: string | null
                     auditor_access_granted_by?: string | null
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "users_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
             daily_totals: {
                 Row: {
@@ -561,9 +613,9 @@ export type Database = {
                 Relationships: []
             }
         }
-        Views: Record<string, never>
-        Functions: Record<string, never>
-        Enums: Record<string, never>
-        CompositeTypes: Record<string, never>
+        Views: { [_ in never]: never }
+        Functions: { [_ in never]: never }
+        Enums: { [_ in never]: never }
+        CompositeTypes: { [_ in never]: never }
     }
 };

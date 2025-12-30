@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         };
         const { data, error } = await supabase
             .from('outlets')
-            .insert(insertPayload)
+            .insert(insertPayload as unknown as never)
             .select()
             .single();
 

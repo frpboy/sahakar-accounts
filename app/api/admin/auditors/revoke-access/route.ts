@@ -40,7 +40,7 @@ export async function POST(request: Request) {
             .from('users')
             .update({
                 auditor_access_expires_at: new Date().toISOString()
-            })
+            } as unknown as never)
             .eq('id', auditor_id)
             .eq('role', 'auditor');
 

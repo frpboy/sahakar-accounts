@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
         };
         const { data, error } = await supabase
             .from('transactions')
-            .insert(insertPayload)
+            .insert(insertPayload as unknown as never)
             .select()
             .single();
 

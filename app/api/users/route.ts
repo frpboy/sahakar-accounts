@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
                 name: fullName,
                 role,
                 outlet_id: outletId || null,
-            })
+            } as unknown as never)
             .select()
             .single();
 
