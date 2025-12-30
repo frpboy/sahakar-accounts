@@ -31,10 +31,16 @@ export default function AuditLogsViewer() {
     const { data: logs, isLoading } = useQuery<AuditLog[]>({
         queryKey: ['audit-logs', filters],
         queryFn: async () => {
-            // TODO: Create API endpoint for audit logs
-            const res = await fetch('/api/audit-logs');
+            const params = new URLSearchParams();
+            if (filters.severity !== 'all') params.append('severity', filters.severity);
+            if (filters.action !== 'all') params.append('action', filters.action);
+            if (filters.startDate) params.append('start_date', filters.startDate);
+            if (filters.endDate) params.append('end_date', filters.endDate);
+
+            const res = await fetch(`/api/audit-logs?${params.toString()}`);
             if (!res.ok) throw new Error('Failed to fetch audit logs');
-            return res.json();
+            const result = await res.json();
+            return result.data;
         }
     });
 

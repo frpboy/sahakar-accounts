@@ -38,9 +38,9 @@ export function MonthClosureActions({ outletId, month, status, onStatusChange }:
 
             queryClient.invalidateQueries({ queryKey: ['monthly-report'] });
             if (onStatusChange) onStatusChange();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Close month error:', err);
-            setError(err.message || 'Failed to close month');
+            setError(err instanceof Error ? err.message : 'Failed to close month');
         } finally {
             setIsLoading(false);
         }
@@ -68,9 +68,9 @@ export function MonthClosureActions({ outletId, month, status, onStatusChange }:
 
             queryClient.invalidateQueries({ queryKey: ['monthly-report'] });
             if (onStatusChange) onStatusChange();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Reopen month error:', err);
-            setError(err.message || 'Failed to reopen month');
+            setError(err instanceof Error ? err.message : 'Failed to reopen month');
         } finally {
             setIsLoading(false);
         }

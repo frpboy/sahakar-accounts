@@ -49,6 +49,39 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        // Calculate transaction stats for records
+        const recordIds = records.map(r => r.id);
+        const { data: transactions, error: txError } = await supabase
+            .from('transactions')
+            .select('*')
+            .in('daily_record_id', recordIds);
+
+        if (txError) {
+            console.error('Error fetching transactions:', txError);
+            return NextResponse.json({
+                error: 'Failed to fetch transactions',
+                details: txError.message
+            }, { status: 500 });
+        }
+
+        const txMap: Record<string, { cash_in: number; cash_out: number; upi_in: number; upi_out: number }> = {};
+        
+        transactions?.forEach((tx) => {
+            if (!txMap[tx.daily_record_id]) {
+                txMap[tx.daily_record_id] = { cash_in: 0, cash_out: 0, upi_in: 0, upi_out: 0 };
+            }
+            const stats = txMap[tx.daily_record_id];
+            const amount = Number(tx.amount) || 0;
+            
+            if (tx.type === 'income') {
+                if (tx.payment_mode === 'cash') stats.cash_in += amount;
+                else if (tx.payment_mode === 'upi') stats.upi_in += amount;
+            } else if (tx.type === 'expense') {
+                if (tx.payment_mode === 'cash') stats.cash_out += amount;
+                else if (tx.payment_mode === 'upi') stats.upi_out += amount;
+            }
+        });
+
         // Check if Google Sheets is configured
         const sheetsConfigured = !!(
             process.env.GOOGLE_SHEETS_CLIENT_EMAIL &&
@@ -152,14 +185,16 @@ export async function POST(request: NextRequest) {
 
                 // Append record data
                 if (spreadsheetId) {
+                    const stats = txMap[record.id] || { cash_in: 0, cash_out: 0, upi_in: 0, upi_out: 0 };
+
                     const rowData = [
                         date.toLocaleDateString('en-IN'),
                         record.opening_cash || 0,
                         record.opening_upi || 0,
-                        record.income_cash || 0,
-                        record.income_upi || 0,
-                        record.expense_cash || 0,
-                        record.expense_upi || 0,
+                        stats.cash_in,
+                        stats.upi_in,
+                        stats.cash_out,
+                        stats.upi_out,
                         record.closing_cash || 0,
                         record.closing_upi || 0,
                         record.status,

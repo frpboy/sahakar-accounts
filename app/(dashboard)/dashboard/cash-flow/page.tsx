@@ -21,8 +21,9 @@ export default function CashFlowReportPage() {
     const { data: cashFlowData, isLoading } = useQuery<CashFlowData[]>({
         queryKey: ['cash-flow', selectedMonth],
         queryFn: async () => {
-            // TODO: Replace with actual API endpoint
-            return [];
+            const res = await fetch(`/api/reports/cash-flow?month=${selectedMonth}`);
+            if (!res.ok) throw new Error('Failed to fetch cash flow data');
+            return res.json();
         },
     });
 

@@ -134,7 +134,7 @@ export function ManagePermissionsModal({ isOpen, onClose, onSuccess }: ManagePer
                             <option value="">Choose a user...</option>
                             {users?.map((user) => (
                                 <option key={user.id} value={user.id}>
-                                    {user.full_name || user.name || user.email} ({user.role})
+                                    {user.name || user.email} ({user.role})
                                 </option>
                             ))}
                         </select>

@@ -46,7 +46,7 @@ CREATE TABLE users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   email VARCHAR(255) UNIQUE NOT NULL,
-  full_name VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL,
   role VARCHAR(50) NOT NULL CHECK (role IN ('master_admin', 'ho_accountant', 'outlet_manager', 'outlet_staff')),
   phone VARCHAR(20),
   is_active BOOLEAN DEFAULT true,

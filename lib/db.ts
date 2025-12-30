@@ -42,7 +42,6 @@ export interface CachedUser {
     id: string;
     email: string;
     name?: string;
-    full_name?: string;
     role: string;
     outlet_id?: string;
     access_start_date?: string;

@@ -4,12 +4,7 @@ import { createRouteClient } from '@/lib/supabase-server';
 import type { Database } from '@/lib/database.types';
 
 type DailyRecordRow = Database['public']['Tables']['daily_records']['Row'];
-
-type MonthlyClosureRow = {
-    status: string;
-    closed_at?: string | null;
-    closed_by?: string | null;
-};
+type TransactionRow = Database['public']['Tables']['transactions']['Row'];
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -64,16 +59,6 @@ export async function GET(request: NextRequest) {
         endDate.setMonth(endDate.getMonth() + 1);
         const endDateStr = endDate.toISOString().split('T')[0];
 
-        // Fetch closure status
-        const { data: closureDataRaw } = await supabase
-            .from('monthly_closures')
-            .select('status, closed_at, closed_by')
-            .eq('outlet_id', outletId)
-            .eq('month_date', startDate)
-            .maybeSingle();
-        
-        const closureData = closureDataRaw as unknown as MonthlyClosureRow | null;
-
         const { data: records, error } = await supabase
             .from('daily_records')
             .select('*')
@@ -83,45 +68,70 @@ export async function GET(request: NextRequest) {
             .order('date', { ascending: true });
 
         if (error) {
-            console.error('Error fetching monthly summary:', error);
+            console.error('Error fetching daily records:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        // Calculate summary
-        const firstRecord = (records as DailyRecordRow[] | null | undefined)?.[0];
-        const lastRecord = (records as DailyRecordRow[] | null | undefined)?.[
-            records ? records.length - 1 : 0
-        ];
-
-        const summary = {
-            month,
-            outlet_id: outletId,
-            closure_status: closureData?.status || 'open',
-            closed_at: closureData?.closed_at,
-            closed_by: closureData?.closed_by,
-            days_count: records?.length || 0,
-            total_income: 0,
-            total_expense: 0,
-            total_cash_in: 0,
-            total_cash_out: 0,
-            total_upi_in: 0,
-            total_upi_out: 0,
-            net_profit: 0,
-            opening_balance: (Number(firstRecord?.opening_cash || 0) + Number(firstRecord?.opening_upi || 0)),
-            closing_balance: (Number(lastRecord?.closing_cash || 0) + Number(lastRecord?.closing_upi || 0)),
-        };
-
-        if (records) {
-            (records as DailyRecordRow[]).forEach((record) => {
-                summary.total_income += Number(record.total_income || 0);
-                summary.total_expense += Number(record.total_expense || 0);
-            });
-            summary.net_profit = summary.total_income - summary.total_expense;
+        if (!records || records.length === 0) {
+            return NextResponse.json([]);
         }
 
-        return NextResponse.json(summary);
+        const typedRecords = records as DailyRecordRow[];
+
+        // Get all transactions for these records
+        const recordIds = typedRecords.map(r => r.id);
+        const { data: transactions, error: txError } = await supabase
+            .from('transactions')
+            .select('*')
+            .in('daily_record_id', recordIds);
+
+        if (txError) {
+             console.error('Error fetching transactions:', txError);
+             return NextResponse.json({ error: txError.message }, { status: 500 });
+        }
+
+        // Map transactions to daily records
+        const txMap = (transactions as TransactionRow[] || []).reduce((acc, tx) => {
+            if (!tx.daily_record_id) return acc;
+            if (!acc[tx.daily_record_id]) {
+                acc[tx.daily_record_id] = {
+                    cash_in: 0,
+                    cash_out: 0,
+                    upi_in: 0,
+                    upi_out: 0
+                };
+            }
+            const group = acc[tx.daily_record_id];
+            const amount = Number(tx.amount);
+            
+            if (tx.type === 'income') {
+                if (tx.payment_mode === 'cash') group.cash_in += amount;
+                if (tx.payment_mode === 'upi') group.upi_in += amount;
+            } else if (tx.type === 'expense') {
+                if (tx.payment_mode === 'cash') group.cash_out += amount;
+                if (tx.payment_mode === 'upi') group.upi_out += amount;
+            }
+            return acc;
+        }, {} as Record<string, { cash_in: number, cash_out: number, upi_in: number, upi_out: number }>);
+
+        // Build result
+        const result = (records as DailyRecordRow[]).map(record => {
+            const stats = txMap[record.id] || { cash_in: 0, cash_out: 0, upi_in: 0, upi_out: 0 };
+            return {
+                date: record.date,
+                cash_in: stats.cash_in,
+                cash_out: stats.cash_out,
+                upi_in: stats.upi_in,
+                upi_out: stats.upi_out,
+                net_cash: stats.cash_in - stats.cash_out,
+                net_upi: stats.upi_in - stats.upi_out
+            };
+        });
+
+        return NextResponse.json(result);
+
     } catch (error: unknown) {
-        console.error('Error in GET /api/reports/monthly:', { message: getErrorMessage(error) });
+        console.error('Error in GET /api/reports/cash-flow:', { message: getErrorMessage(error) });
         return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

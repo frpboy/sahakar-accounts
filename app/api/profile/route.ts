@@ -22,7 +22,7 @@ export async function GET() {
         const adminClient = createAdminClient();
         const { data, error } = await adminClient
             .from('users')
-            .select('id,email,role,name,full_name,outlet_id,access_start_date,access_end_date,auditor_access_granted_at,auditor_access_expires_at')
+            .select('id,email,role,name,outlet_id,access_start_date,access_end_date,auditor_access_granted_at,auditor_access_expires_at')
             .eq('id', session.user.id)
             .single();
 

@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (cached) {
                 return {
                     role: cached.role as UserProfile['role'],
-                    name: cached.name || cached.full_name || undefined,
+                    name: cached.name || undefined,
                     outlet_id: cached.outlet_id || undefined,
                     access_start_date: cached.access_start_date || undefined,
                     access_end_date: cached.access_end_date || undefined,
@@ -106,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 email: string;
                 role: UserProfile['role'];
                 name?: string | null;
-                full_name?: string | null;
                 outlet_id?: string | null;
                 access_start_date?: string | null;
                 access_end_date?: string | null;
@@ -122,7 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 id: data.id,
                 email: data.email,
                 name: data.name || undefined,
-                full_name: data.full_name || undefined,
                 role: data.role,
                 outlet_id: data.outlet_id || undefined,
                 access_start_date: data.access_start_date || undefined,
@@ -135,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             return {
                 role: data.role,
-                name: data.name || data.full_name || undefined,
+                name: data.name || undefined,
                 outlet_id: data.outlet_id || undefined,
                 access_start_date: data.access_start_date || undefined,
                 access_end_date: data.access_end_date || undefined,

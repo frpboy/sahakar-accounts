@@ -5,7 +5,6 @@ type DashboardUserProfile = {
     id: string;
     role: string;
     outlet_id: string | null;
-    full_name?: string | null;
     name?: string | null;
 };
 
@@ -29,7 +28,7 @@ export default async function DashboardPage() {
     // Fetch user profile with outlet_id
     const { data: userProfile } = await supabase
         .from('users')
-        .select('id,role,outlet_id,full_name,name')
+        .select('id,role,outlet_id,name')
         .eq('id', user.id)
         .single();
 
@@ -58,7 +57,7 @@ export default async function DashboardPage() {
         <div className="space-y-6">
             <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                    Welcome back, {typedUserProfile?.full_name || typedUserProfile?.name}
+                    Welcome back, {typedUserProfile?.name}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
                     Role: {typedUserProfile?.role?.replace('_', ' ').toUpperCase()}

@@ -6,7 +6,6 @@ import { useState } from 'react';
 
 interface UserMenuProps {
     user: {
-        full_name?: string;
         name?: string;
         role: string;
     };
@@ -29,7 +28,7 @@ export function UserMenu({ user }: UserMenuProps) {
         }
     };
 
-    const displayName = user.full_name || user.name || 'User';
+    const displayName = user.name || 'User';
 
     return (
         <div className="flex items-center space-x-4">
