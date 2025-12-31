@@ -12,9 +12,9 @@ function getErrorMessage(error: unknown): string {
 export async function GET() {
     try {
         const sessionClient = createRouteClient();
-        const { data: { session } } = await sessionClient.auth.getSession();
+        const { data: { user } } = await sessionClient.auth.getUser();
 
-        if (!session?.user?.id) {
+        if (!user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -22,7 +22,7 @@ export async function GET() {
         const { data, error } = await adminClient
             .from('users')
             .select('id,email,role,name,outlet_id,access_start_date,access_end_date,auditor_access_granted_at,auditor_access_expires_at')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
         if (error) {
@@ -31,12 +31,12 @@ export async function GET() {
 
         if (!data) {
             // Graceful fallback from session metadata when profile row missing
-            const meta = (session.user as any).user_metadata || {};
+            const meta = (user as any).user_metadata || {};
             const role = (meta.role || 'outlet_staff') as string;
-            const name = (meta.full_name || meta.name || session.user.email || null) as string | null;
+            const name = (meta.full_name || meta.name || user.email || null) as string | null;
             return NextResponse.json({
-                id: session.user.id,
-                email: session.user.email,
+                id: user.id,
+                email: user.email,
                 role,
                 name,
                 outlet_id: null,

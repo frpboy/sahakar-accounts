@@ -66,12 +66,12 @@ export async function proxy(request: NextRequest) {
 
   const response = NextResponse.next({ request: { headers: request.headers } });
   const supabase = createMiddlewareClient(request, response);
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
   const isLoginPage = request.nextUrl.pathname === '/login';
   const isDashboardPage = request.nextUrl.pathname.startsWith('/dashboard');
 
-  if (isLoginPage && session) {
+  if (isLoginPage && user) {
     const forceParam = request.nextUrl.searchParams.get('force');
     const allowForce = (process.env.NODE_ENV === 'development') || (process.env.NEXT_PUBLIC_ALLOW_FORCE_LOGIN === 'true');
     if (forceParam === '1' && allowForce) return response;
@@ -81,12 +81,12 @@ export async function proxy(request: NextRequest) {
     return redirectResponse;
   }
 
-  if (isDashboardPage && !session) {
+  if (isDashboardPage && !user) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (session) {
-    const userRole = (session.user as any).user_metadata?.role;
+  if (user) {
+    const userRole = (user as any).user_metadata?.role;
     if (userRole === 'auditor' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
       return NextResponse.json({ error: 'Auditors have read-only access.' }, { status: 403 });
     }
@@ -96,7 +96,7 @@ export async function proxy(request: NextRequest) {
         await admin
           .from('audit_logs')
           .insert({
-            user_id: session.user.id,
+            user_id: user.id,
             action: 'view_page',
             entity: 'page',
             entity_id: request.nextUrl.pathname,
