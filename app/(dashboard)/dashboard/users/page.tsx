@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Building2, Link as LinkIcon, Save, PlusCircle } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 
 //
 import { useQuery } from '@tanstack/react-query';
@@ -29,9 +29,6 @@ export default function UsersPage() {
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showManagePermissions, setShowManagePermissions] = useState(false);
     const [outlets, setOutlets] = useState<Array<{ id: string; name: string; code: string; drive_folder_url?: string | null }>>([]);
-    const [selectedOutletId, setSelectedOutletId] = useState<string>('');
-    const [driveFolderUrl, setDriveFolderUrl] = useState<string>('');
-    const [assignMessage, setAssignMessage] = useState<string>('');
     const [assignUser, setAssignUser] = useState<{ id: string; name?: string | null; email: string } | null>(null);
 
     const { status: usersRt } = useRealtimeUsers(() => refetch());
@@ -135,69 +132,6 @@ export default function UsersPage() {
                 onClose={() => setAssignUser(null)}
                 onSuccess={() => refetch()}
             />
-
-            {/* Assign Google Drive Folder to Outlet */}
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Building2 className="w-5 h-5" /> Assign Google Drive Folder
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Outlet</label>
-                        <select
-                            value={selectedOutletId}
-                            onChange={(e) => setSelectedOutletId(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        >
-                            <option value="">Select outlet</option>
-                            {outlets.map((o) => (
-                                <option key={o.id} value={o.id}>{o.code} — {o.name}</option>
-                            ))}
-                        </select>
-                        {selectedOutletId && (
-                            <p className="text-xs text-gray-500 mt-1">Current: {outlets.find(o => o.id === selectedOutletId)?.drive_folder_url || 'Not set'}</p>
-                        )}
-                    </div>
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Google Drive Folder URL</label>
-                        <div className="flex gap-2">
-                            <input
-                                value={driveFolderUrl}
-                                onChange={(e) => setDriveFolderUrl(e.target.value)}
-                                placeholder="https://drive.google.com/drive/folders/..."
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-                            />
-                            <button
-                                onClick={async () => {
-                                    setAssignMessage('');
-                                    try {
-                                        const res = await fetch('/api/outlets/drive-folder', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ outletId: selectedOutletId, driveFolderUrl }),
-                                        });
-                                        const data = await res.json();
-                                        if (!res.ok) throw new Error(data?.error || `Failed (${res.status})`);
-                                        setAssignMessage('Folder assigned successfully');
-                                        // Refresh outlets list to reflect the change
-                                        const r = await fetch('/api/outlets');
-                                        if (r.ok) setOutlets(await r.json());
-                                    } catch (e) {
-                                        setAssignMessage((e as Error).message);
-                                    }
-                                }}
-                                disabled={!selectedOutletId || !driveFolderUrl}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                            >
-                                <Save className="w-4 h-4" /> Assign
-                            </button>
-                        </div>
-                        {assignMessage && (
-                            <p className="text-xs mt-2 text-gray-700 flex items-center gap-1"><LinkIcon className="w-4 h-4" /> {assignMessage}</p>
-                        )}
-                    </div>
-                </div>
-            </div>
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">

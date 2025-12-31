@@ -21,12 +21,16 @@ export default function StaffDashboard() {
     const [showOpeningModal, setShowOpeningModal] = useState(false);
 
     // Get today's daily record
-    const { data: dailyRecord, isLoading: recordLoading, isError: recordError, error } = useQuery({
+    const { data: dailyRecord, isLoading: recordLoading, isError: recordError, error, refetch: refetchRecord } = useQuery({
         queryKey: ['daily-record-today'],
         queryFn: async () => {
             const res = await fetch('/api/daily-records/today');
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
+                // If profile missing, retry once after a short delay (self-healing)
+                if (errorData.code === 'PROFILE_MISSING') {
+                     throw new Error('User profile incomplete. Please contact admin.');
+                }
                 throw new Error(errorData.error || 'Failed to fetch daily record');
             }
             return res.json();
@@ -34,6 +38,7 @@ export default function StaffDashboard() {
         staleTime: 0,
         refetchOnMount: true,
         refetchOnWindowFocus: false,
+        retry: 1
     });
 
     // Fetch outlet information
@@ -124,7 +129,10 @@ export default function StaffDashboard() {
                                 <p className="text-red-700 font-medium">Failed to load daily record</p>
                                 <p className="text-red-600 text-sm mt-1">{error instanceof Error ? error.message : 'Please ensure your user is assigned to an outlet.'}</p>
                                 <button 
-                                    onClick={() => window.location.reload()} 
+                                    onClick={() => {
+                                        window.location.reload(); 
+                                        refetchRecord();
+                                    }} 
                                     className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm"
                                 >
                                     Retry Loading

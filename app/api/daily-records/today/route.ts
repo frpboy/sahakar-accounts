@@ -139,6 +139,21 @@ export async function GET(request: NextRequest) {
                 return NextResponse.json(raceRecord);
             }
 
+            // Check if it's a missing profile error (foreign key constraint)
+            if (getErrorCode(insertError) === '23503') { // foreign_key_violation
+                 console.error('[DailyRecords] Failed to create record: Profile constraint violation', insertError);
+                 
+                 // If the error is on daily_records_outlet_id_fkey, it means the outlet_id is invalid.
+                 // But wait, we verified the outlet_id in step 1?
+                 // Ah, maybe the RLS policy is blocking the INSERT for this user?
+                 // Let's try to verify if the user has permission to insert into daily_records.
+
+                 return NextResponse.json(
+                     { error: 'System configuration error: Outlet ID invalid or profile missing', code: 'PROFILE_MISSING' },
+                     { status: 400 }
+                 );
+            }
+
             console.error('Error creating daily record:', insertError);
             return NextResponse.json(
                 { error: 'Failed to create daily record', details: insertError.message },
