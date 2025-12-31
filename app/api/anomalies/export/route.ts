@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteClient } from '@/lib/supabase-server';
+import { createMiddlewareClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-server';
 import { format } from 'date-fns';
 
@@ -11,10 +12,11 @@ function getErrorMessage(error: unknown): string {
 // GET endpoint - fetch export history
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createRouteClient();
-        const { data: { session } } = await supabase.auth.getSession();
+        const response = NextResponse.next();
+        const supabase = createMiddlewareClient(request, response);
+        const { data: { user } } = await supabase.auth.getUser();
 
-        if (!session) {
+        if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -22,18 +24,18 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(url.searchParams.get('limit') || '10');
 
         // Get user role
-        const { data: user } = await supabase
+        const { data: userRole } = await supabase
             .from('users')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
-        if (!user) {
+        if (!userRole) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
         const allowedRoles = ['superadmin', 'master_admin', 'ho_accountant', 'auditor'];
-        if (!allowedRoles.includes(user.role)) {
+        if (!allowedRoles.includes(userRole.role)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await admin
             .from('export_logs')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .order('created_at', { ascending: false })
             .limit(limit);
 
@@ -59,10 +61,11 @@ export async function GET(request: NextRequest) {
 // POST endpoint - create new export
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createRouteClient();
-        const { data: { session } } = await supabase.auth.getSession();
+        const response = NextResponse.next();
+        const supabase = createMiddlewareClient(request, response);
+        const { data: { user } } = await supabase.auth.getUser();
 
-        if (!session) {
+        if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -76,18 +79,18 @@ export async function POST(request: NextRequest) {
         }
 
         // Get user role and outlet
-        const { data: user } = await supabase
+        const { data: userInfo } = await supabase
             .from('users')
             .select('role, outlet_id')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
-        if (!user) {
+        if (!userInfo) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
         const allowedRoles = ['superadmin', 'master_admin', 'ho_accountant', 'auditor'];
-        if (!allowedRoles.includes(user.role)) {
+        if (!allowedRoles.includes(userInfo.role)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -97,7 +100,7 @@ export async function POST(request: NextRequest) {
         const { data: exportLog, error: exportError } = await admin
             .from('export_logs')
             .insert({
-                user_id: session.user.id,
+                user_id: user.id,
                 export_type: selectedFormat,
                 report_type: 'anomalies',
                 filters,
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
         // Start async export process
         setTimeout(async () => {
             try {
-                await processExport(exportLog.id, selectedFormat, filters, user, admin);
+                await processExport(exportLog.id, selectedFormat, filters, userInfo, admin);
             } catch (error) {
                 console.error('Export processing failed:', error);
                 await admin

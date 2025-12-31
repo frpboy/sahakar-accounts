@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-import { NextResponse } from 'next/server';
-import { createRouteClient } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createMiddlewareClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-server';
 import type { Database } from '@/lib/database.types';
 
@@ -9,9 +10,10 @@ function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        const sessionClient = createRouteClient();
+        const response = NextResponse.next();
+        const sessionClient = createMiddlewareClient(request, response);
         const { data: { user } } = await sessionClient.auth.getUser();
 
         if (!user?.id) {

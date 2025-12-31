@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteClient } from '@/lib/supabase-server';
+import { createMiddlewareClient } from '@/lib/supabase-server';
 import { z } from 'zod';
 
 const LogSchema = z.object({
@@ -13,18 +14,19 @@ const LogSchema = z.object({
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createRouteClient();
-        const { data: { session } } = await supabase.auth.getSession();
+        const response = NextResponse.next();
+        const supabase = createMiddlewareClient(request, response);
+        const { data: { user } } = await supabase.auth.getUser();
 
-        if (!session) {
+        if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         // Get user role for the log
-        const { data: user } = await supabase
+        const { data: userRole } = await supabase
             .from('users')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
         const body = await request.json();
@@ -39,8 +41,8 @@ export async function POST(request: NextRequest) {
         const { data, error } = await (supabase as any)
             .from('export_logs')
             .insert({
-                user_id: session.user.id,
-                user_role: user?.role || 'unknown',
+                user_id: user.id,
+                user_role: userRole?.role || 'unknown',
                 export_type,
                 report_type,
                 file_hash,
