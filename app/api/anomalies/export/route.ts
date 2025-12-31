@@ -14,7 +14,13 @@ export async function GET(request: NextRequest) {
     try {
         const response = NextResponse.next();
         const supabase = createMiddlewareClient(request, response);
-        const { data: { user } } = await supabase.auth.getUser();
+        let user = null as any;
+        try {
+            const r = await supabase.auth.getUser();
+            user = r.data.user;
+        } catch (err: any) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -63,7 +69,13 @@ export async function POST(request: NextRequest) {
     try {
         const response = NextResponse.next();
         const supabase = createMiddlewareClient(request, response);
-        const { data: { user } } = await supabase.auth.getUser();
+        let user = null as any;
+        try {
+            const r = await supabase.auth.getUser();
+            user = r.data.user;
+        } catch (err: any) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

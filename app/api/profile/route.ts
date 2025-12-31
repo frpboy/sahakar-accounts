@@ -14,7 +14,13 @@ export async function GET(request: NextRequest) {
     try {
         const response = NextResponse.next();
         const sessionClient = createMiddlewareClient(request, response);
-        const { data: { user } } = await sessionClient.auth.getUser();
+        let user = null as any;
+        try {
+            const result = await sessionClient.auth.getUser();
+            user = result.data.user;
+        } catch (err: any) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         if (!user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
