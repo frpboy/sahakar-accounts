@@ -1,6 +1,43 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.anomalies (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid,
+  title character varying NOT NULL,
+  description text,
+  severity character varying NOT NULL CHECK (severity::text = ANY (ARRAY['critical'::character varying, 'warning'::character varying, 'info'::character varying]::text[])),
+  category character varying NOT NULL,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  detected_at timestamp with time zone DEFAULT now(),
+  resolved_at timestamp with time zone,
+  resolved_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  business_day_id uuid,
+  assigned_to uuid,
+  status character varying NOT NULL DEFAULT 'open'::character varying CHECK (status::text = ANY (ARRAY['open'::character varying, 'acknowledged'::character varying, 'resolved'::character varying, 'waived'::character varying]::text[])),
+  resolution_attachment_url text,
+  fingerprint text,
+  occurrences_count integer NOT NULL DEFAULT 1,
+  first_detected_at timestamp with time zone DEFAULT now(),
+  last_detected_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT anomalies_pkey PRIMARY KEY (id),
+  CONSTRAINT anomalies_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT anomalies_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES auth.users(id),
+  CONSTRAINT anomalies_business_day_id_fkey FOREIGN KEY (business_day_id) REFERENCES public.business_days(id),
+  CONSTRAINT anomalies_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.users(id)
+);
+CREATE TABLE public.anomaly_history (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  anomaly_id uuid,
+  status character varying NOT NULL,
+  data_snapshot jsonb DEFAULT '{}'::jsonb,
+  recorded_at timestamp with time zone DEFAULT now(),
+  attachment_url text,
+  CONSTRAINT anomaly_history_pkey PRIMARY KEY (id),
+  CONSTRAINT anomaly_history_anomaly_id_fkey FOREIGN KEY (anomaly_id) REFERENCES public.anomalies(id)
+);
 CREATE TABLE public.audit_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid,
@@ -60,6 +97,24 @@ CREATE TABLE public.categories (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT categories_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.customers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid NOT NULL,
+  name text NOT NULL,
+  phone character varying,
+  email character varying,
+  address text,
+  notes text,
+  credit_limit numeric DEFAULT 0,
+  outstanding_balance numeric DEFAULT 0,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT customers_pkey PRIMARY KEY (id),
+  CONSTRAINT customers_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT customers_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
 CREATE TABLE public.daily_records (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   outlet_id uuid NOT NULL,
@@ -100,6 +155,69 @@ CREATE TABLE public.daily_totals (
   CONSTRAINT daily_totals_pkey PRIMARY KEY (business_day_id),
   CONSTRAINT daily_totals_business_day_id_fkey FOREIGN KEY (business_day_id) REFERENCES public.business_days(id)
 );
+CREATE TABLE public.dashboard_annotations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  page_key text NOT NULL,
+  text text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT dashboard_annotations_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.export_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  user_role character varying,
+  export_type character varying CHECK (export_type::text = ANY (ARRAY['csv'::character varying, 'json'::character varying, 'pdf'::character varying]::text[])),
+  report_type character varying,
+  file_hash character varying,
+  record_count integer,
+  filters jsonb DEFAULT '{}'::jsonb,
+  status character varying CHECK (status::text = ANY (ARRAY['processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])),
+  file_path text,
+  created_at timestamp with time zone DEFAULT now(),
+  completed_at timestamp with time zone,
+  error_message text,
+  CONSTRAINT export_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT export_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.monthly_closure_snapshots (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid NOT NULL,
+  month_date date NOT NULL,
+  version integer NOT NULL DEFAULT 1,
+  snapshot jsonb NOT NULL,
+  snapshot_hash text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid NOT NULL,
+  CONSTRAINT monthly_closure_snapshots_pkey PRIMARY KEY (id),
+  CONSTRAINT monthly_closure_snapshots_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT monthly_closure_snapshots_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.monthly_closures (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  outlet_id uuid NOT NULL,
+  month_date date NOT NULL,
+  status character varying NOT NULL CHECK (status::text = ANY (ARRAY['open'::character varying, 'closed'::character varying]::text[])),
+  closed_at timestamp with time zone,
+  closed_by uuid,
+  opening_cash numeric NOT NULL DEFAULT 0,
+  closing_cash numeric NOT NULL DEFAULT 0,
+  total_income numeric NOT NULL DEFAULT 0,
+  total_expense numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  opening_upi numeric NOT NULL DEFAULT 0,
+  closing_upi numeric NOT NULL DEFAULT 0,
+  days_count integer NOT NULL DEFAULT 0,
+  reopened_at timestamp with time zone,
+  reopened_by uuid,
+  reopen_reason text,
+  CONSTRAINT monthly_closures_pkey PRIMARY KEY (id),
+  CONSTRAINT monthly_closures_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT monthly_closures_closed_by_fkey FOREIGN KEY (closed_by) REFERENCES public.users(id),
+  CONSTRAINT monthly_closures_reopened_by_fkey FOREIGN KEY (reopened_by) REFERENCES public.users(id)
+);
 CREATE TABLE public.monthly_summaries (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   outlet_id uuid NOT NULL,
@@ -118,6 +236,15 @@ CREATE TABLE public.monthly_summaries (
   CONSTRAINT monthly_summaries_pkey PRIMARY KEY (id),
   CONSTRAINT monthly_summaries_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
 );
+CREATE TABLE public.outlet_chats (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role text,
+  content text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT outlet_chats_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.outlets (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   name text NOT NULL,
@@ -131,7 +258,24 @@ CREATE TABLE public.outlets (
   is_active boolean DEFAULT true,
   updated_at timestamp with time zone DEFAULT now(),
   type character varying NOT NULL DEFAULT 'hyper_pharmacy'::character varying CHECK (type::text = ANY (ARRAY['hyper_pharmacy'::character varying, 'smart_clinic'::character varying]::text[])),
+  drive_folder_url text,
   CONSTRAINT outlets_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.role_approvals (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  target_user_id uuid NOT NULL,
+  requested_by uuid NOT NULL,
+  requested_role text NOT NULL CHECK (requested_role = ANY (ARRAY['superadmin'::text])),
+  old_role text,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])),
+  reason text,
+  requested_at timestamp with time zone NOT NULL DEFAULT now(),
+  approved_by uuid,
+  approved_at timestamp with time zone,
+  CONSTRAINT role_approvals_pkey PRIMARY KEY (id),
+  CONSTRAINT role_approvals_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES public.users(id),
+  CONSTRAINT role_approvals_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.users(id),
+  CONSTRAINT role_approvals_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.users(id)
 );
 CREATE TABLE public.roles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -187,6 +331,7 @@ CREATE TABLE public.users (
   auditor_access_granted_at timestamp with time zone,
   auditor_access_expires_at timestamp with time zone,
   auditor_access_granted_by uuid,
+  full_name text,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
   CONSTRAINT users_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
