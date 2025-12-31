@@ -60,7 +60,7 @@ export async function PATCH(
         const { data: tx, error: txError } = await supabase
             .from('transactions')
             .select('id,created_by,daily_record_id')
-            .eq('id', params.id)
+            .eq('id', (await context.params).id)
             .single();
 
         if (txError) {
@@ -192,7 +192,7 @@ export async function DELETE(
         const { data: tx, error: txError } = await supabase
             .from('transactions')
             .select('id,created_by,daily_record_id')
-            .eq('id', params.id)
+            .eq('id', (await context.params).id)
             .single();
 
         if (txError) {

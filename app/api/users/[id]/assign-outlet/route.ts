@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         user_id: session.user.id,
         action: 'assign_outlet',
         entity: 'users',
-        entity_id: updated.id,
+        entity_id: (updated as any).id,
         old_data: before as any,
         new_data: updated as any,
         severity: 'normal',

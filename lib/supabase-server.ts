@@ -12,13 +12,13 @@ export function createServerSupabase() {
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
             get(name) {
-                return cookies().get(name)?.value;
+                return (cookies() as any).get(name)?.value;
             },
             set(name, value, options) {
-                cookies().set({ name, value, ...options });
+                (cookies() as any).set({ name, value, ...options });
             },
             remove(name, options) {
-                cookies().delete({ name, ...options });
+                (cookies() as any).delete({ name, ...options });
             },
         },
     });
@@ -28,13 +28,13 @@ export function createRouteClient() {
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
             get(name) {
-                return cookies().get(name)?.value;
+                return (cookies() as any).get(name)?.value;
             },
             set(name, value, options) {
-                cookies().set({ name, value, ...options });
+                (cookies() as any).set({ name, value, ...options });
             },
             remove(name, options) {
-                cookies().delete({ name, ...options });
+                (cookies() as any).delete({ name, ...options });
             },
         },
     });
@@ -56,9 +56,6 @@ export function createMiddlewareClient(req: NextRequest, res: NextResponse) {
     });
 }
 
-export function createClientBrowser() {
-    return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey);
-}
 
 // Admin client with service role (Bypass RLS)
 export function createAdminClient() {

@@ -3,13 +3,9 @@ import { z } from 'zod';
 // Transaction validation
 export const TransactionSchema = z.object({
     dailyRecordId: z.string().uuid('Invalid daily record ID'),
-    type: z.enum(['income', 'expense'], {
-        errorMap: () => ({ message: 'Type must be income or expense' })
-    }),
+    type: z.enum(['income', 'expense']),
     category: z.string().min(1, 'Category is required'),
-    paymentMode: z.enum(['cash', 'upi'], {
-        errorMap: () => ({ message: 'Payment mode must be cash or upi' })
-    }),
+    paymentMode: z.enum(['cash', 'upi']),
     amount: z.number()
         .positive('Amount must be positive')
         .max(10000000, 'Amount too large (max 10M)')

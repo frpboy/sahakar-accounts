@@ -26,7 +26,7 @@ export function MonthClosureActions({ outletId, month, status, onStatusChange }:
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            const { data, error } = await supabase.rpc('close_month', {
+            const { data, error } = await (supabase as any).rpc('close_month', {
                 outlet_id_param: outletId,
                 month_param: `${month}-01`,
                 closed_by_user_id: user.id,
@@ -56,7 +56,7 @@ export function MonthClosureActions({ outletId, month, status, onStatusChange }:
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            const { data, error } = await supabase.rpc('reopen_month', {
+            const { data, error } = await (supabase as any).rpc('reopen_month', {
                 outlet_id_param: outletId,
                 month_param: `${month}-01`,
                 reopened_by_user_id: user.id,

@@ -14,8 +14,8 @@ const creditReceivedSchema = z.object({
   customer_phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   customer_name: z.string().min(2, 'Customer name is required'),
   entry_number: z.string().min(1, 'Entry number is required'),
-  cash_amount: z.number().min(0, 'Cash amount cannot be negative').default(0),
-  upi_amount: z.number().min(0, 'UPI amount cannot be negative').default(0),
+  cash_amount: z.number().min(0, 'Cash amount cannot be negative'),
+  upi_amount: z.number().min(0, 'UPI amount cannot be negative'),
 })
 
 type CreditReceivedFormData = z.infer<typeof creditReceivedSchema>

@@ -14,9 +14,9 @@ const purchaseSchema = z.object({
   particulars: z.string().min(2, 'Particulars are required'),
   voucher_number: z.string().min(1, 'Voucher number is required'),
   invoice_number: z.string().optional(),
-  cash_amount: z.number().min(0, 'Cash amount cannot be negative').default(0),
-  upi_amount: z.number().min(0, 'UPI amount cannot be negative').default(0),
-  credit_amount: z.number().min(0, 'Credit amount cannot be negative').default(0),
+  cash_amount: z.number().min(0, 'Cash amount cannot be negative'),
+  upi_amount: z.number().min(0, 'UPI amount cannot be negative'),
+  credit_amount: z.number().min(0, 'Credit amount cannot be negative'),
 })
 
 type PurchaseFormData = z.infer<typeof purchaseSchema>

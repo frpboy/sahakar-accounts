@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase-server';
+import { createClientBrowser } from '@/lib/supabase-client';
 import type { Database } from '@/lib/database.types';
 
 /**
@@ -15,7 +15,7 @@ export async function logAuditorAction(
     }
 ) {
     try {
-        const supabase = createServerClient();
+        const supabase = createClientBrowser();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) return;

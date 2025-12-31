@@ -8,3 +8,7 @@ ACCOUNTS Demo Data/
 .github/
 **/*.xlsx
 **/*.log
+coverage/
+**/*.mhtml
+supabase keys.txt
+current supabase shema.txt

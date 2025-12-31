@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.next/*
+coverage/
+.trae/
+.husky/
+.github/
+ACCOUNTS Demo Data/
+*.mhtml
+supabase keys.txt
+current supabase shema.txt

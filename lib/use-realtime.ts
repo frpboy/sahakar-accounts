@@ -129,7 +129,7 @@ export function useRealtimeDailyRecords(outletId?: string) {
 // Real-time hook for transactions with caching
 export function useRealtimeTransactions(dailyRecordId?: string) {
     const queryClient = useQueryClient();
-    const supabase = createClientComponentClient();
+    const supabase = createClientBrowser();
     const [isRealtime, setIsRealtime] = useState(false);
 
     const { data, isLoading, error } = useQuery({
@@ -230,7 +230,7 @@ export function useRealtimeTransactions(dailyRecordId?: string) {
 // Real-time hook for outlets with caching
 export function useRealtimeOutlets() {
     const queryClient = useQueryClient();
-    const supabase = createClientComponentClient();
+    const supabase = createClientBrowser();
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['outlets-realtime'],

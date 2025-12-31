@@ -144,7 +144,7 @@ export async function PATCH(
         const { data: updated, error: updateError } = await adminClient
             .from('users')
             .update(updateData as unknown as never)
-            .eq('id', params.id)
+            .eq('id', (await context.params).id)
             .select('id,email,name,role,outlet_id,created_at')
             .single();
 
@@ -159,7 +159,7 @@ export async function PATCH(
                 user_id: session.user.id,
                 action: 'update_user_permissions',
                 entity: 'users',
-                entity_id: updated.id,
+                entity_id: (updated as any).id,
                 old_data: before ? before as unknown as Record<string, unknown> : null,
                 new_data: updated as unknown as Record<string, unknown>,
                 severity: (updateData.role === 'superadmin') ? 'critical' : 'normal'
@@ -212,7 +212,7 @@ export async function DELETE(
         const { error: delErr } = await admin
             .from('users')
             .delete()
-            .eq('id', params.id);
+            .eq('id', (await context.params).id);
         if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
 
         // Also remove auth user
