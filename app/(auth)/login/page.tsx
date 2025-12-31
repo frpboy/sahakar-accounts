@@ -100,25 +100,25 @@ function LoginForm() {
                 </h3>
                 <div className="space-y-2">
                     {[
-                        { email: 'frpboy12@gmail.com', role: 'Superadmin', Icon: Crown },
-                        { email: 'paymentstarlexpmna@gmail.com', role: 'HO Accountant', Icon: Briefcase },
-                        { email: 'manager.test@sahakar.com', role: 'Manager', Icon: BarChart3 },
-                        { email: 'staff.test@sahakar.com', role: 'Staff', Icon: User },
-                        { email: 'auditor.test@sahakar.com', role: 'Auditor', Icon: Shield },
+                        { email: 'frpboy12@gmail.com', role: 'Superadmin', Icon: Crown, accent: false },
+                        { email: 'paymentstarterxpmna@gmail.com', role: 'HO Accountant', Icon: Briefcase, accent: true },
+                        { email: 'manager.test@sahakar.com', role: 'Manager', Icon: BarChart3, accent: false },
+                        { email: 'staff.test@sahakar.com', role: 'Staff', Icon: User, accent: false },
+                        { email: 'auditor.test@sahakar.com', role: 'Auditor', Icon: Shield, accent: false },
                     ].map((account) => (
                         <button
                             key={account.email}
                             onClick={() => {
                                 setEmail(account.email);
-                                setPassword('Zahan@0825');
+                                setPassword('Zenix@92825');
                             }}
-                            className="w-full text-left p-3 border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                            className={`w-full text-left p-3 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors ${account.accent ? 'border-l-4 border-l-green-200 bg-green-50' : ''}`}
                         >
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <account.Icon className="w-4 h-4 text-gray-600" />
                                     <div>
-                                        <p className="text-xs font-medium text-gray-500">{account.role}</p>
+                                        <p className="text-xs font-medium text-gray-700">{account.role}</p>
                                         <p className="text-sm text-gray-800">{account.email}</p>
                                     </div>
                                 </div>
@@ -128,7 +128,7 @@ function LoginForm() {
                     ))}
                 </div>
                 <p className="text-xs text-center text-gray-500 mt-4">
-                    All accounts use password: <code className="bg-gray-100 px-2 py-1 rounded">Zahan@0825</code>
+                    All accounts uses password : <code className="bg-gray-100 px-2 py-1 rounded">Zenix@92825</code>
                 </p>
             </div>
         </div>
