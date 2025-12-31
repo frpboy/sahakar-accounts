@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
-import { createMiddlewareClient } from '@/lib/supabase-server';
+import { createRouteClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-server';
 
 function getErrorMessage(error: unknown): string {
@@ -10,8 +9,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function GET(request: NextRequest) {
     try {
-        const response = NextResponse.next();
-        const supabase = createMiddlewareClient(request, response);
+        const supabase = createRouteClient();
         let userObj: any = null;
         try {
             const r = await supabase.auth.getUser();
@@ -112,8 +110,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const response = NextResponse.next();
-        const supabase = createMiddlewareClient(request, response);
+        const supabase = createRouteClient();
         let userObj: any = null;
         try {
             const r = await supabase.auth.getUser();
@@ -254,8 +251,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
     try {
-        const response = NextResponse.next();
-        const supabase = createMiddlewareClient(request, response);
+        const supabase = createRouteClient();
         let userObj: any = null;
         try {
             const r = await supabase.auth.getUser();

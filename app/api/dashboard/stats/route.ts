@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import type { Database } from '@/lib/database.types';
-import { createMiddlewareClient } from '@/lib/supabase-server';
+import { createRouteClient } from '@/lib/supabase-server';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -14,23 +13,14 @@ type Stats =
     | { todayStatus: string; todayIncome: number; todayExpense: number; transactionCount: number }
     | { cashBalance: number; upiBalance: number; myTransactionsToday: number };
 
-type RouteClient = ReturnType<typeof createMiddlewareClient>;
+type RouteClient = ReturnType<typeof createRouteClient>;
 type UserProfile = Pick<Database['public']['Tables']['users']['Row'], 'role' | 'outlet_id'>;
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
-        const response = NextResponse.next();
-        const sessionClient = createMiddlewareClient(request, response);
-        let user: any = null;
-        try {
-            const r = await sessionClient.auth.getUser();
-            user = r.data.user;
-        } catch (e) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        const sessionClient = createRouteClient();
+        const { data: { user } } = await sessionClient.auth.getUser();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const { data: profile, error: profileError } = await sessionClient
             .from('users')
