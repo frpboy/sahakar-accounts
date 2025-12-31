@@ -77,7 +77,6 @@ export async function proxy(request: NextRequest) {
     if (forceParam === '1' && allowForce) return response;
     const redirectUrl = new URL('/dashboard', request.url);
     const redirectResponse = NextResponse.redirect(redirectUrl);
-    supabase.auth.getSession().then(() => {});
     return redirectResponse;
   }
 

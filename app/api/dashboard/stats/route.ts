@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+export const runtime = 'nodejs';
+import { NextRequest, NextResponse } from 'next/server';
 import type { Database } from '@/lib/database.types';
-import { createRouteClient } from '@/lib/supabase-server';
+import { createMiddlewareClient } from '@/lib/supabase-server';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
@@ -13,22 +14,28 @@ type Stats =
     | { todayStatus: string; todayIncome: number; todayExpense: number; transactionCount: number }
     | { cashBalance: number; upiBalance: number; myTransactionsToday: number };
 
-type RouteClient = ReturnType<typeof createRouteClient>;
+type RouteClient = ReturnType<typeof createMiddlewareClient>;
 type UserProfile = Pick<Database['public']['Tables']['users']['Row'], 'role' | 'outlet_id'>;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        const sessionClient = createRouteClient();
-        const { data: { session } } = await sessionClient.auth.getSession();
-
-        if (!session) {
+        const response = NextResponse.next();
+        const sessionClient = createMiddlewareClient(request, response);
+        let user: any = null;
+        try {
+            const r = await sessionClient.auth.getUser();
+            user = r.data.user;
+        } catch (e) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const { data: profile, error: profileError } = await sessionClient
             .from('users')
             .select('role, outlet_id')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
         if (profileError || !profile) {
@@ -50,7 +57,7 @@ export async function GET() {
                 stats = await getManagerStats(sessionClient, typedProfile.outlet_id);
                 break;
             case 'outlet_staff':
-                stats = await getStaffStats(sessionClient, typedProfile.outlet_id, session.user.id);
+                stats = await getStaffStats(sessionClient, typedProfile.outlet_id, user.id);
                 break;
             default:
                 return NextResponse.json({ error: 'Invalid role' }, { status: 400 });

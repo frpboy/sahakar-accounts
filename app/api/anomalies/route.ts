@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteClient } from '@/lib/supabase-server';
+import { createMiddlewareClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-server';
 
 function getErrorMessage(error: unknown): string {
@@ -9,10 +10,17 @@ function getErrorMessage(error: unknown): string {
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createRouteClient();
-        const { data: { session } } = await supabase.auth.getSession();
+        const response = NextResponse.next();
+        const supabase = createMiddlewareClient(request, response);
+        let userObj: any = null;
+        try {
+            const r = await supabase.auth.getUser();
+            userObj = r.data.user;
+        } catch (e) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-        if (!session) {
+        if (!userObj) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -31,7 +39,7 @@ export async function GET(request: NextRequest) {
         const { data: user } = await supabase
             .from('users')
             .select('role, outlet_id')
-            .eq('id', session.user.id)
+            .eq('id', userObj.id)
             .single();
 
         if (!user) {
@@ -104,10 +112,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createRouteClient();
-        const { data: { session } } = await supabase.auth.getSession();
+        const response = NextResponse.next();
+        const supabase = createMiddlewareClient(request, response);
+        let userObj: any = null;
+        try {
+            const r = await supabase.auth.getUser();
+            userObj = r.data.user;
+        } catch (e) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-        if (!session) {
+        if (!userObj) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -123,7 +138,7 @@ export async function POST(request: NextRequest) {
         const { data: user } = await supabase
             .from('users')
             .select('role, outlet_id')
-            .eq('id', session.user.id)
+            .eq('id', userObj.id)
             .single();
 
         if (!user) {
@@ -222,7 +237,7 @@ export async function POST(request: NextRequest) {
 
         // Log the creation
         await admin.from('audit_logs').insert({
-            user_id: session.user.id,
+            user_id: userObj.id,
             action: 'create_anomaly',
             entity: 'anomalies',
             entity_id: data.id,
@@ -239,10 +254,17 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
     try {
-        const supabase = createRouteClient();
-        const { data: { session } } = await supabase.auth.getSession();
+        const response = NextResponse.next();
+        const supabase = createMiddlewareClient(request, response);
+        let userObj: any = null;
+        try {
+            const r = await supabase.auth.getUser();
+            userObj = r.data.user;
+        } catch (e) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-        if (!session) {
+        if (!userObj) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -256,7 +278,7 @@ export async function PATCH(request: NextRequest) {
         const { data: user } = await supabase
             .from('users')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', userObj.id)
             .single();
 
         if (!user) {
@@ -274,7 +296,7 @@ export async function PATCH(request: NextRequest) {
             update.status = status;
             if (status === 'resolved') {
                 update.resolved_at = new Date().toISOString();
-                update.resolved_by = session.user.id;
+                update.resolved_by = userObj.id;
             }
         }
         if (typeof assigned_to === 'string') {
@@ -302,7 +324,7 @@ export async function PATCH(request: NextRequest) {
         await (admin as any).from('anomaly_history').insert({
             anomaly_id: id,
             action: status === 'resolved' ? 'resolved' : 'commented',
-            performed_by: session.user.id,
+            performed_by: userObj.id,
             notes: resolution_notes || null,
             attachment_url: resolution_attachment_url || null,
             old_status: null,
