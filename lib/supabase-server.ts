@@ -9,32 +9,34 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export function createServerSupabase() {
+    const store: any = cookies() as any;
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
-            get(name) {
-                return (cookies() as any).get(name)?.value;
+            get(name: string) {
+                return store.get(name)?.value as string | undefined;
             },
-            set(name, value, options) {
-                (cookies() as any).set({ name, value, ...options });
+            set(name: string, value: string, options?: any) {
+                store.set(name, value, options);
             },
-            remove(name, options) {
-                (cookies() as any).delete({ name, ...options });
+            remove(name: string, _options?: any) {
+                store.delete(name);
             },
         },
     });
 }
 
 export function createRouteClient() {
+    const store: any = cookies() as any;
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
-            get(name) {
-                return (cookies() as any).get(name)?.value;
+            get(name: string) {
+                return store.get(name)?.value as string | undefined;
             },
-            set(name, value, options) {
-                (cookies() as any).set({ name, value, ...options });
+            set(name: string, value: string, options?: any) {
+                store.set(name, value, options);
             },
-            remove(name, options) {
-                (cookies() as any).delete({ name, ...options });
+            remove(name: string, _options?: any) {
+                store.delete(name);
             },
         },
     });
@@ -43,14 +45,15 @@ export function createRouteClient() {
 export function createMiddlewareClient(req: NextRequest, res: NextResponse) {
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
-            get(name) {
-                return req.cookies.get(name)?.value;
+            get(name: string) {
+                const cookie: any = req.cookies.get(name) as any;
+                return (typeof cookie === 'string' ? cookie : cookie?.value) as string | undefined;
             },
-            set(name, value, options) {
-                res.cookies.set({ name, value, ...options });
+            set(name: string, value: string, options?: any) {
+                res.cookies.set(name, value, options);
             },
-            remove(name, options) {
-                res.cookies.delete({ name, ...options });
+            remove(name: string, _options?: any) {
+                res.cookies.delete(name);
             },
         },
     });
