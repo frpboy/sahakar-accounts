@@ -13,24 +13,24 @@ Enterprise-grade accounting system for HyperPharmacy & SmartClinic networks. Sec
 
 ```mermaid
 graph TD
-    A[Users (140+ outlets)] --> B[Next.js App (App Router)]
-    B --> C[Middleware Proxy]
-    C --> D[API Routes]
-    D --> E[Supabase (Postgres + Auth + RLS)]
-    E --> F[(Realtime / Policies)]
-    G[Sync Engine (Cron)] --> H[Google Sheets (Read-only layer)]
-    B -. optional local SPA .-> I[Vite React SPA (src/)]
-    B --> J[Vercel Hosting]
+    A["Users (140+ outlets)"] --> B["Next.js App (App Router)"]
+    B --> C["Middleware Proxy"]
+    C --> D["API Routes"]
+    D --> E["Supabase (Postgres + Auth + RLS)"]
+    E --> F["Realtime / Policies"]
+    G["Sync Engine (Cron)"] --> H["Google Sheets (Read-only layer)"]
+    B -. optional local SPA .-> I["Vite React SPA (src/)"]
+    B --> J["Vercel Hosting"]
 ```
 
 ### Request Flow
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant P as Proxy (middleware)
-    participant API as API Route
-    participant S as Supabase
+    participant U as "User"
+    participant P as "Proxy (middleware)"
+    participant API as "API Route"
+    participant S as "Supabase"
     U->>P: Request /dashboard
     P->>S: supabase.auth.getUser()
     alt authenticated
@@ -47,21 +47,21 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    DB[(Supabase DB)] -- cron --> Sheets[Google Sheets]
-    API[Next.js API] -- export logs --> DB
+    DB["Supabase DB"] -- cron --> Sheets["Google Sheets"]
+    API["Next.js API"] -- export logs --> DB
     API -- export files --> User
-    User -- download --> ExportFile[(CSV/JSON/PDF)]
+    User -- download --> ExportFile["CSV/JSON/PDF"]
 ```
 
 ### RBAC Overview
 
 ```mermaid
 graph LR
-    SA[Superadmin] -->|Full governance| All
-    HOA[HO Accountant] -->|Lock/verify| DailyRecords
-    MGR[Manager] -->|Operations| OutletData
-    STF[Staff] -->|Data entry| Transactions
-    AUD[Auditor] -->|Read-only| Reports
+    SA["Superadmin"] -->|Full governance| All
+    HOA["HO Accountant"] -->|Lock/verify| DailyRecords
+    MGR["Manager"] -->|Operations| OutletData
+    STF["Staff"] -->|Data entry| Transactions
+    AUD["Auditor"] -->|Read-only| Reports
 ```
 
 ## Tech Stack
