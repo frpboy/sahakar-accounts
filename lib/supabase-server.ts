@@ -12,13 +12,16 @@ export function createServerSupabase() {
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
             get(name) {
-                return (cookies() as any).get(name)?.value;
+                const store = cookies();
+                return store.get(name)?.value;
             },
             set(name, value, options) {
-                (cookies() as any).set({ name, value, ...options });
+                const store = cookies();
+                store.set(name, value, options);
             },
             remove(name, options) {
-                (cookies() as any).delete({ name, ...options });
+                const store = cookies();
+                store.delete(name, options);
             },
         },
     });
@@ -28,13 +31,16 @@ export function createRouteClient() {
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
             get(name) {
-                return (cookies() as any).get(name)?.value;
+                const store = cookies();
+                return store.get(name)?.value;
             },
             set(name, value, options) {
-                (cookies() as any).set({ name, value, ...options });
+                const store = cookies();
+                store.set(name, value, options);
             },
             remove(name, options) {
-                (cookies() as any).delete({ name, ...options });
+                const store = cookies();
+                store.delete(name, options);
             },
         },
     });
@@ -44,13 +50,13 @@ export function createMiddlewareClient(req: NextRequest, res: NextResponse) {
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
             get(name) {
-                return req.cookies.get(name)?.value;
+                return req.cookies.get(name);
             },
             set(name, value, options) {
-                res.cookies.set({ name, value, ...options });
+                res.cookies.set(name, value, options);
             },
             remove(name, options) {
-                res.cookies.delete({ name, ...options });
+                res.cookies.delete(name, options);
             },
         },
     });
