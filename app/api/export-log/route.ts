@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
         const { export_type, report_type, file_hash, record_count, filters } = validation.data;
 
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
             .from('export_logs')
             .insert({
                 user_id: session.user.id,
