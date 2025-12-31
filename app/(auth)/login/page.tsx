@@ -43,9 +43,9 @@ function LoginForm() {
             )}
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-                <div className="rounded-md shadow-sm -space-y-px">
+                <div className="space-y-4">
                     <div>
-                        <label htmlFor="email" className="sr-only">Email Address</label>
+                        <label htmlFor="email" className="block text-sm text-gray-600 mb-2">Email address</label>
                         <input
                             id="email"
                             type="email"
@@ -53,12 +53,12 @@ function LoginForm() {
                             autoComplete="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                            placeholder="Email address"
+                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="you@example.com"
                         />
                     </div>
                     <div>
-                        <label htmlFor="password" className="sr-only">Password</label>
+                        <label htmlFor="password" className="block text-sm text-gray-600 mb-2">Password</label>
                         <input
                             id="password"
                             type="password"
@@ -66,12 +66,12 @@ function LoginForm() {
                             autoComplete="current-password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                            placeholder="Password"
+                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="••••••••"
                         />
                     </div>
                 </div>
-
+                
                 <div>
                     <button
                         type="submit"
@@ -110,7 +110,7 @@ function LoginForm() {
                             key={account.email}
                             onClick={() => {
                                 setEmail(account.email);
-                                setPassword('Zenix@92825');
+                                setPassword('Zabnix@2025');
                             }}
                             className={`w-full text-left p-3 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors ${account.accent ? 'border-l-4 border-l-green-200 bg-green-50' : ''}`}
                         >
@@ -128,7 +128,7 @@ function LoginForm() {
                     ))}
                 </div>
                 <p className="text-xs text-center text-gray-500 mt-4">
-                    All accounts uses password : <code className="bg-gray-100 px-2 py-1 rounded">Zenix@92825</code>
+                    All accounts uses password : <code className="bg-gray-100 px-2 py-1 rounded">Zabnix@2025</code>
                 </p>
             </div>
         </div>
