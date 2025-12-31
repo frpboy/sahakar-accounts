@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (banned.some(w => lower.includes(w))) return NextResponse.json({ error: 'Inappropriate content' }, { status: 422 });
 
     const oneMinAgo = new Date(Date.now() - 60 * 1000).toISOString();
-    const { count } = await sessionClient
+    const { count } = await (sessionClient as any)
       .from('outlet_chats')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', session.user.id)

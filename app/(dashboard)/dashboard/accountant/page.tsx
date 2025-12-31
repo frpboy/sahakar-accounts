@@ -254,39 +254,8 @@ export default function AccountantDashboard() {
 
                     <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Google Sheets</h2>
-                        <div className="space-y-3">
-                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                                <h3 className="font-medium text-green-900 mb-2">✓ Auto-Sync Enabled</h3>
-                                <p className="text-sm text-green-700">
-                                    Daily records are automatically synced to Google Sheets when locked.
-                                </p>
-                            </div>
-                            <a
-                                href={process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL || '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center block"
-                            >
-                                📂 Open Google Sheets
-                            </a>
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        const res = await fetch('/api/sync/google-sheets', { method: 'POST' });
-                                        const data = await res.json();
-                                        if (data.success) {
-                                            alert(`✅ Synced ${data.recordCount} records successfully!`);
-                                        } else {
-                                            alert(`⚠️ ${data.message || 'Sync failed'}`);
-                                        }
-                                    } catch {
-                                        alert('❌ Sync error. Please check configuration.');
-                                    }
-                                }}
-                                className="w-full p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                            >
-                                🔄 Manual Sync
-                            </button>
+                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                            Google Sheets integration has been stopped. Exports and reports are available within the app.
                         </div>
                     </div>
                 </div>

@@ -8,7 +8,7 @@ const LogSchema = z.object({
     report_type: z.string(),
     file_hash: z.string().length(64),
     record_count: z.number().int().nonnegative(),
-    filters: z.record(z.unknown()).optional(),
+    filters: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         const validation = LogSchema.safeParse(body);
 
         if (!validation.success) {
-            return NextResponse.json({ error: validation.error.errors }, { status: 400 });
+            return NextResponse.json({ error: validation.error.issues }, { status: 400 });
         }
 
         const { export_type, report_type, file_hash, record_count, filters } = validation.data;

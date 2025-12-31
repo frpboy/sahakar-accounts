@@ -243,32 +243,9 @@ export default function AdminDashboard() {
                                 </h3>
                                 <p className="text-sm text-gray-600">Update outlet details</p>
                             </button>
-                            <button
-                                onClick={async () => {
-                                    setSeedMessage('');
-                                    setSeedLoading(true);
-                                    try {
-                                        const res = await fetch('/api/sync/google-sheets-structured', { method: 'POST' });
-                                        const data = await res.json();
-                                        if (!res.ok) throw new Error(data?.error || `Failed (${res.status})`);
-                                        setSeedMessage(`Synced ${data.count} records to structured sheets`);
-                                    } catch (e) {
-                                        setSeedMessage((e as Error).message);
-                                    } finally {
-                                        setSeedLoading(false);
-                                    }
-                                }}
-                                className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                                disabled={seedLoading}
-                            >
-                                <h3 className="font-medium text-gray-900 flex items-center gap-2">
-                                    <Database className="w-4 h-4" /> Sync Google Sheets (Structured)
-                                </h3>
-                                <p className="text-sm text-gray-600">Per outlet → year → month → daily tab</p>
-                                {seedMessage && (
-                                    <p className="text-xs mt-2 text-gray-700">{seedMessage}</p>
-                                )}
-                            </button>
+                            <div className="p-3 border border-gray-200 rounded-lg bg-yellow-50 text-yellow-800">
+                                Google Sheets integration has been discontinued.
+                            </div>
                         </div>
                     </div>
 

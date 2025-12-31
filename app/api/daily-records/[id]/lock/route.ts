@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { sheetsService } from '@/lib/google-sheets';
 import type { Database } from '@/lib/database.types';
 import { createRouteClient } from '@/lib/supabase-server';
 
@@ -71,69 +70,7 @@ export async function POST(
             }, { status: 400 });
         }
 
-        // --- AUTOMATED SYNC START ---
-        try {
-            console.log(`[AutoSync] Starting sync for record ${id}...`);
-            const adminSupabase = createRouteClient();
-
-            // Get daily record with outlet info
-            const { data: record, error: recordError } = await adminSupabase
-                .from('daily_records')
-                .select('*, outlets(name, google_sheet_id)')
-                .eq('id', id)
-                .single();
-
-            const typedRecord = record as DailyRecordWithOutlet | null;
-
-            if (!recordError && typedRecord) {
-                // Get transactions
-                const { data: transactions } = await adminSupabase
-                    .from('transactions')
-                    .select('*')
-                    .eq('daily_record_id', id);
-
-                // Get or create sheet
-                let sheetId = typedRecord.outlets?.google_sheet_id;
-                if (!sheetId) {
-                    const month = new Date(typedRecord.date).toISOString().slice(0, 7);
-                    sheetId = await sheetsService.createMonthlySheet(
-                        typedRecord.outlets?.name || 'Outlet',
-                        month
-                    );
-
-                    // Update outlet with sheet ID
-                    await adminSupabase
-                        .from('outlets')
-                        .update({ google_sheet_id: sheetId } as unknown as never)
-                        .eq('id', typedRecord.outlet_id);
-                }
-
-                // Sync to sheet
-                await sheetsService.syncDailyRecord(sheetId, typedRecord.date, typedRecord);
-                if (transactions && transactions.length > 0) {
-                    await sheetsService.syncTransactions(
-                        sheetId,
-                        transactions as Database['public']['Tables']['transactions']['Row'][]
-                    );
-                }
-
-                // Update sync status in daily_records
-                await adminSupabase
-                    .from('daily_records')
-                    .update({
-                        synced_to_sheets: true,
-                        last_synced_at: new Date().toISOString(),
-                    } as unknown as never)
-                    .eq('id', id);
-
-                console.log(`[AutoSync] ✅ Successfully synced record ${id} to sheet ${sheetId}`);
-            }
-        } catch (syncError: unknown) {
-            console.error('[AutoSync] ❌ Failed to auto-sync:', { message: getErrorMessage(syncError) });
-            // We don't fail the lock action if sync fails, but we should log it
-            // The record is already locked in DB
-        }
-        // --- AUTOMATED SYNC END ---
+        // Google Sheets integration discontinued
 
         return NextResponse.json({
             success: true,

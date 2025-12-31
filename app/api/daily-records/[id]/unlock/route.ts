@@ -59,7 +59,7 @@ export async function POST(
         }
 
         // Call unlock_day RPC (validates superadmin role and logs as critical)
-        const { data, error } = await supabase.rpc('unlock_day', {
+        const { data, error } = await (supabase as any).rpc('unlock_day', {
             record_id: id,
             admin_id: session.user.id,
             unlock_reason: reason

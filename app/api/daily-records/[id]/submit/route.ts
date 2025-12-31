@@ -29,7 +29,7 @@ export async function POST(
         const { id } = await context.params;
 
         // Call submit_day RPC (validates and logs automatically)
-        const { data, error } = await supabase.rpc('submit_day', {
+        const { data, error } = await (supabase as any).rpc('submit_day', {
             record_id: id,
             submitted_by_user_id: session.user.id
         });
