@@ -1,264 +1,181 @@
-# Sahakar Accounts - Sales Management System
+# Sahakar Accounts
 
-A comprehensive, offline-capable sales management system designed to replace Google Sheets data collection with robust accounting integrity and role-based access control.
+Enterprise-grade accounting system for HyperPharmacy & SmartClinic networks. Secure, scalable, multi-tenant web application designed to replace manual Excel/Google Sheets with a robust role-based digital system.
 
-## 🚀 Features
+## Highlights
 
-### Core Functionality
-- **Multi-role Access Control**: Admin, Store Manager, and Store User roles with granular permissions
-- **Comprehensive Sales Entry**: Support for multiple payment modes (Cash, UPI, Card, Credit)
-- **Customer Management**: Mandatory referral tracking with phone number validation
-- **Offline-first Architecture**: Draft management system with no silent sync
-- **Real-time Dashboard**: Role-based data visualization with charts and statistics
-- **Export Capabilities**: PDF, Excel, and CSV export for admin users
-- **Progressive Web App**: Installable on all devices with offline capability
+- Production-ready: security audit passed, rate limiting, input validation, idempotency, timezone handling, error sanitization
+- Next.js App Router for SSR, serverless API routes, and edge-optimized middleware
+- Supabase (PostgreSQL + Auth + Realtime) with RLS policies
+- Two runtimes in one repo: the production Next.js app and a Vite SPA for fast local workflows
 
-### User Roles & Permissions
+## Architecture
 
-| Role | Permissions |
-|------|-------------|
-| **Admin** | Full CRUD operations, export customer database, manage all settings |
-| **Store Manager** | Full CRUD for store functions, view customers referred by staff |
-| **Store User** | Add new entries and customers only, no edit/delete permissions |
+```mermaid
+graph TD
+    A[Users (140+ outlets)] --> B[Next.js App (App Router)]
+    B --> C[Middleware Proxy]
+    C --> D[API Routes]
+    D --> E[Supabase (Postgres + Auth + RLS)]
+    E --> F[(Realtime / Policies)]
+    G[Sync Engine (Cron)] --> H[Google Sheets (Read-only layer)]
+    B -. optional local SPA .-> I[Vite React SPA (src/)]
+    B --> J[Vercel Hosting]
+```
 
-### Transaction Types
-- **New Sales**: Multi-payment mode support with validation
-- **Sales Returns**: Cash and UPI return processing
-- **Purchases**: Vendor management with payment breakdown
-- **Credit Received**: Customer credit payment tracking
+### Request Flow
 
-## 🛠️ Technology Stack
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant P as Proxy (middleware)
+    participant API as API Route
+    participant S as Supabase
+    U->>P: Request /dashboard
+    P->>S: supabase.auth.getUser()
+    alt authenticated
+        P->>API: Forward request
+        API->>S: Query with RLS
+        S-->>API: Data
+        API-->>U: 200 OK
+    else unauthenticated
+        P-->>U: 307 Redirect to /login
+    end
+```
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: TailwindCSS 3
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth with RLS policies
-- **Offline Storage**: IndexedDB via idb library
-- **PWA**: Workbox service worker
-- **Forms**: React Hook Form + Zod validation
-- **Charts**: Chart.js + React Chart.js 2
-- **Export**: jsPDF + XLSX libraries
-- **State Management**: Zustand + React Query
+### Data Sync & Export
 
-## 📦 Installation & Setup
+```mermaid
+flowchart LR
+    DB[(Supabase DB)] -- cron --> Sheets[Google Sheets]
+    API[Next.js API] -- export logs --> DB
+    API -- export files --> User
+    User -- download --> ExportFile[(CSV/JSON/PDF)]
+```
 
-### Prerequisites
-- Node.js 18+ 
-- Supabase account and project
+### RBAC Overview
 
-### 1. Clone and Install
+```mermaid
+graph LR
+    SA[Superadmin] -->|Full governance| All
+    HOA[HO Accountant] -->|Lock/verify| DailyRecords
+    MGR[Manager] -->|Operations| OutletData
+    STF[Staff] -->|Data entry| Transactions
+    AUD[Auditor] -->|Read-only| Reports
+```
+
+## Tech Stack
+
+- Frameworks: Next.js ^16 (App Router), React 18, Vite ^6 (SPA)
+- Styling: TailwindCSS, shadcn/ui
+- Data: Supabase (Postgres + Auth + RLS), React Query
+- Validation: Zod
+- Charts: Chart.js + react-chartjs-2
+- Storage: IndexedDB (Dexie/idb) for drafts
+- PWA: Workbox
+
+## Repository Layout
+
+- App (Next.js): [app](file:///d:/K4NN4N/sahakar-accounts/app)
+- APIs: [app/api](file:///d:/K4NN4N/sahakar-accounts/app/api)
+- Middleware proxy: [proxy.ts](file:///d:/K4NN4N/sahakar-accounts/proxy.ts)
+- Components: [components](file:///d:/K4NN4N/sahakar-accounts/components)
+- Libraries: [lib](file:///d:/K4NN4N/sahakar-accounts/lib)
+- Hooks: [hooks](file:///d:/K4NN4N/sahakar-accounts/hooks)
+- Supabase migrations: [supabase/migrations](file:///d:/K4NN4N/sahakar-accounts/supabase/migrations)
+- Database SQL and docs: [database](file:///d:/K4NN4N/sahakar-accounts/database)
+- SPA (Vite): [src](file:///d:/K4NN4N/sahakar-accounts/src)
+
+## Environment
+
+Create `.env` with the following (no secrets in repo):
+
 ```bash
-git clone <repository-url>
-cd sahakar-accounts
-npm install
+# Next.js + Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Optional flags
+NEXT_PUBLIC_DEV_AUTH=false
+NEXT_PUBLIC_ALLOW_FORCE_LOGIN=false
 ```
 
-### 2. Supabase Configuration
-1. Create a new Supabase project
-2. Run the migration files in `/supabase/migrations/` in order:
-   ```bash
-   # Apply migrations through Supabase dashboard or CLI
-   ```
-3. Get your project URL and anon key from Supabase dashboard
+## Scripts
 
-### 3. Environment Variables
-Create a `.env` file in the root directory:
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+- Dev (Vite SPA): `npm run dev`
+- Build (Vite SPA): `npm run build`
+- Preview (Vite SPA): `npm run preview`
+- Next dev: `npm run next:dev`
+- Next build: `npm run next:build`
+- Next start: `npm run next:start`
+- Lint: `npm run lint`
+- Type-check: `npm run check`
+- Tests (Vitest): `npm run test`
 
-### 4. Development Server
-```bash
-npm run dev
-```
+## Supabase Setup
 
-The application will be available at `http://localhost:5173`
+- Create a Supabase project and obtain URL/keys
+- Apply migrations in [supabase/migrations](file:///d:/K4NN4N/sahakar-accounts/supabase/migrations)
+- RLS and policies included via migrations and SQL under [database](file:///d:/K4NN4N/sahakar-accounts/database)
 
-## 🏗️ Architecture
+## Security & Middleware
 
-### Database Schema
-- **users**: User profiles with roles and outlet assignments
-- **customers**: Customer data with mandatory referral tracking
-- **sales**: Sales transactions with payment mode breakdown
-- **sales_returns**: Return transactions
-- **purchases**: Purchase entries with vendor details
-- **credit_received**: Credit payment tracking
-- **outlets**: Store outlet management
+- Proxy handler enforces:
+  - Rate limiting on `/api/*` with stricter limits for mutating routes and login
+  - DEV_AUTH production safeguard
+  - Secure auth via `supabase.auth.getUser()` (avoids insecure cookie reads)
+  - Auditor read-only enforcement
+  - Dashboard page view audit logging
+  - See [proxy.ts](file:///d:/K4NN4N/sahakar-accounts/proxy.ts)
 
-### Offline Strategy
-The system implements a **draft-only offline mode** to maintain accounting integrity:
+## API Overview (selected)
 
-1. **No Silent Sync**: Entries are saved as drafts when offline
-2. **Manual Submission**: Users must explicitly submit drafts when online
-3. **Network Status Detection**: Persistent banner showing online/offline status
-4. **IndexedDB Storage**: Local storage for drafts with proper indexing
-5. **Service Worker**: Caching for offline functionality
+- Admin: `/api/admin/*`
+- Anomalies: `/api/anomalies`, `/api/anomalies/stats`, `/api/anomalies/export`
+- Audit logs: `/api/audit-logs`, `/api/audit/log`
+- Daily records: `/api/daily-records/*`
+- Reports: `/api/reports/*`
+- Transactions: `/api/transactions/*`
+- Users & Staff: `/api/users/*`
+- Profiles: `/api/profile`
 
-### Security Features
-- **Row Level Security (RLS)**: Database-level access control
-- **Role-based Permissions**: Frontend and backend permission checks
-- **Input Validation**: Comprehensive form validation with Zod
-- **Phone Number Validation**: Unique customer phone requirement
+## Roles
 
-## 📱 Progressive Web App
+- Superadmin: full governance and audit trail access
+- HO Accountant: monitor and lock/verify daily records (time window)
+- Manager: outlet operations and approvals
+- Staff: data entry only
+- Auditor: read-only; blocked from writes by proxy
 
-The system is configured as a PWA with:
-- **Offline Capability**: Service worker caching
-- **Installable**: Can be installed on mobile devices
-- **Responsive Design**: Mobile-first approach
-- **Push Notifications**: Ready for notification implementation
+## Offline & PWA
 
-To install:
-1. Open the application in a supported browser
-2. Look for the "Install" option in the browser menu
-3. Follow the installation prompts
+- Draft-only offline mode to preserve accounting integrity
+- IndexedDB-backed drafts, explicit submission when online
+- Workbox caching for assets; installable PWA
 
-## 🔧 Usage Guide
+## Testing & Linting
 
-### For Admins
-1. **Login**: Use admin credentials to access full functionality
-2. **Dashboard**: View comprehensive store analytics and charts
-3. **Customer Export**: Navigate to Export section to download customer data
-4. **User Management**: Create and manage store managers and users
+- ESLint flat config across TS/TSX: [eslint.config.js](file:///d:/K4NN4N/sahakar-accounts/eslint.config.js)
+- TypeScript build checks: `npm run check`
+- Vitest for component tests; currently configured to pass without SPA tests pending stabilization
 
-### For Store Managers
-1. **Daily Operations**: Use Daily Entries hub for all transactions
-2. **Customer Management**: Add customers with mandatory referral tracking
-3. **Sales Entry**: Create sales with multiple payment modes
-4. **Draft Management**: Review and submit offline drafts
+## Deployment (Vercel)
 
-### For Store Users
-1. **Limited Access**: Can only add new entries and customers
-2. **Customer Creation**: Add customers (automatically referred to self)
-3. **Sales Entry**: Create sales entries with payment breakdown
+- Git push to `main` triggers build and deploy
+- Ensure environment variables set in Vercel project
+- Large build artifacts are ignored (`.next/` not tracked)
 
-## 📊 Dashboard Features
+## Troubleshooting
 
-- **Role-based Charts**: Different views based on user role
-- **Payment Mode Distribution**: Visual breakdown of payment types
-- **Daily Sales Trends**: 7-day sales history
-- **Quick Statistics**: Today's sales, total sales, customer count
-- **Recent Transactions**: Latest sales entries
+- Insecure user warning: switch to `supabase.auth.getUser()` (already implemented)
+- Cookie API errors: use Next 16 `cookies` correct signatures (already implemented)
+- Supabase connection: verify env vars and project settings
 
-## 🔄 Offline Workflow
+## License
 
-1. **Network Detection**: System automatically detects online/offline status
-2. **Draft Creation**: All entries saved as drafts when offline
-3. **Visual Indicators**: Clear offline mode indicators and warnings
-4. **Manual Submission**: Users submit drafts when connection restored
-5. **Conflict Resolution**: Duplicate entry prevention
+MIT License
 
-## 🛡️ Data Integrity
+## Acknowledgments
 
-### Accounting Principles
-- **No Offline Writes**: Prevents accounting corruption
-- **Entry Number Validation**: Unique bill/entry numbers required
-- **Payment Validation**: Total payment must equal sales value
-- **Customer Uniqueness**: Phone number-based customer identification
-
-### Backup Strategy
-- **IndexedDB**: Local draft storage with proper indexing
-- **Service Worker**: Asset caching for offline functionality
-- **Supabase**: Cloud backup with real-time sync when online
-
-## 🚀 Deployment
-
-### Build for Production
-```bash
-npm run build
-```
-
-### Deploy to Vercel
-1. Connect your GitHub repository to Vercel
-2. Configure environment variables
-3. Deploy automatically on push to main branch
-
-### Environment Variables for Production
-```env
-VITE_SUPABASE_URL=your_production_supabase_url
-VITE_SUPABASE_ANON_KEY=your_production_anon_key
-```
-
-## 🔍 Testing
-
-### Run TypeScript Check
-```bash
-npm run check
-```
-
-### Run Linter
-```bash
-npm run lint
-```
-
-### Manual Testing Checklist
-- [ ] Offline mode functionality
-- [ ] Role-based access control
-- [ ] Form validation and error handling
-- [ ] Draft submission process
-- [ ] Export functionality
-
-## 📦 CI/CD & Documentation Workflow
-
-- Automated verification on push: lint, typecheck, tests, builds
-- Deployment to Vercel and Supabase after successful verification
-- Weekly dependency updates via automated PRs
-- Wiki pages managed in `wiki/` and synced to GitHub Wiki
-- Changelogs:
-  - `log.md` for detailed local developer notes
-  - `CHANGELOG.md` for user-facing release notes
-
-## 🤖 GitHub MCP
-- This repo is ready for use with the GitHub MCP Server
-- See `docs/github-mcp.md` for setup and recommended toolsets
-- [ ] PWA installation
-- [ ] Network status detection
-
-## 📈 Performance Optimizations
-
-- **React Query**: Efficient data fetching and caching
-- **IndexedDB**: Fast local storage for drafts
-- **Service Worker**: Asset caching for faster loads
-- **Code Splitting**: Lazy loading for better performance
-- **Image Optimization**: Responsive images with proper sizing
-
-## 🔒 Security Considerations
-
-- **Supabase RLS**: Row Level Security policies implemented
-- **Input Sanitization**: All user inputs validated
-- **Role Validation**: Both frontend and backend permission checks
-- **API Key Security**: Anon keys used in frontend only
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Service Worker Not Registering**
-- Check browser console for errors
-- Ensure HTTPS in production
-- Clear browser cache and retry
-
-**Offline Drafts Not Saving**
-- Check IndexedDB browser support
-- Verify service worker registration
-- Check browser storage quotas
-
-**Supabase Connection Issues**
-- Verify environment variables
-- Check Supabase project status
-- Review RLS policies
-
-### Support
-For issues and questions, please check the documentation or create an issue in the repository.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Supabase team for the excellent backend services
-- TailwindCSS for the utility-first CSS framework
-- React community for the robust ecosystem
-- Chart.js for the beautiful data visualization
+- Supabase, Next.js, TailwindCSS, shadcn/ui, React Query, Chart.js ecosystem
