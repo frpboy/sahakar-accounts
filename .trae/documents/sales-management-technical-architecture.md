@@ -37,98 +37,117 @@ graph TD
 
 ## 2. Technology Description
 
-- **Frontend**: React@18 + TypeScript + TailwindCSS@3 + Vite
-- **Initialization Tool**: vite-init
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **Offline Storage**: IndexedDB via idb library
-- **PWA**: Workbox for service worker
-- **UI Components**: HeadlessUI + Radix UI
-- **Forms**: React Hook Form + Zod validation
-- **Charts**: Chart.js + React Chart.js 2
-- **Notifications**: Sonner for toast notifications
-- **State Management**: React Query + Context API
+* **Frontend**: React\@18 + TypeScript + TailwindCSS\@3 + Vite
+
+* **Initialization Tool**: vite-init
+
+* **Database**: Supabase (PostgreSQL)
+
+* **Authentication**: Supabase Auth
+
+* **Offline Storage**: IndexedDB via idb library
+
+* **PWA**: Workbox for service worker
+
+* **UI Components**: HeadlessUI + Radix UI
+
+* **Forms**: React Hook Form + Zod validation
+
+* **Charts**: Chart.js + React Chart.js 2
+
+* **Notifications**: Sonner for toast notifications
+
+* **State Management**: React Query + Context API
 
 ## 3. Route Definitions
 
-| Route | Purpose |
-|-------|---------|
-| / | Dashboard with role-based data visualization |
-| /login | Authentication page with Supabase auth |
-| /daily-entries | Hub for all daily entry sections |
-| /sales/new | New sales entry form with payment modes |
-| /sales/return | Sales return entry form |
-| /purchase/new | Purchase entry form |
-| /credit/received | Credit amount received entry form |
-| /customers | Customer management and listing |
-| /customers/add | Add new customer form with referral tracking |
-| /drafts | Offline draft review and management |
-| /export | Export center for admin roles |
-| /profile | User profile and settings |
+| Route            | Purpose                                      |
+| ---------------- | -------------------------------------------- |
+| /                | Dashboard with role-based data visualization |
+| /login           | Authentication page with Supabase auth       |
+| /daily-entries   | Hub for all daily entry sections             |
+| /sales/new       | New sales entry form with payment modes      |
+| /sales/return    | Sales return entry form                      |
+| /purchase/new    | Purchase entry form                          |
+| /credit/received | Credit amount received entry form            |
+| /customers       | Customer management and listing              |
+| /customers/add   | Add new customer form with referral tracking |
+| /drafts          | Offline draft review and management          |
+| /export          | Export center for admin roles                |
+| /profile         | User profile and settings                    |
 
 ## 4. API Definitions
 
 ### 4.1 Authentication APIs
 
 **Login**
+
 ```
 POST /auth/v1/token?grant_type=password
 ```
 
 Request:
-| Param Name | Param Type | isRequired | Description |
-|------------|------------|-------------|-------------|
-| email | string | true | User email address |
-| password | string | true | User password |
+
+| Param Name | Param Type | isRequired | Description        |
+| ---------- | ---------- | ---------- | ------------------ |
+| email      | string     | true       | User email address |
+| password   | string     | true       | User password      |
 
 ### 4.2 Sales Entry APIs
 
 **Create New Sale**
+
 ```
 POST /rest/v1/sales
 ```
 
 Request:
-| Param Name | Param Type | isRequired | Description |
-|------------|------------|-------------|-------------|
-| customer_phone | string | true | Customer phone number |
-| customer_name | string | true | Customer name |
-| entry_number | string | true | Unique bill/entry number |
-| sales_value | number | true | Total sales amount |
-| payment_modes | array | true | Array of payment mode objects |
-| referred_by | string | true | Staff ID who referred customer |
-| outlet_id | string | true | Store outlet identifier |
+
+| Param Name      | Param Type | isRequired | Description                    |
+| --------------- | ---------- | ---------- | ------------------------------ |
+| customer\_phone | string     | true       | Customer phone number          |
+| customer\_name  | string     | true       | Customer name                  |
+| entry\_number   | string     | true       | Unique bill/entry number       |
+| sales\_value    | number     | true       | Total sales amount             |
+| payment\_modes  | array      | true       | Array of payment mode objects  |
+| referred\_by    | string     | true       | Staff ID who referred customer |
+| outlet\_id      | string     | true       | Store outlet identifier        |
 
 **Create Sales Return**
+
 ```
 POST /rest/v1/sales_returns
 ```
 
 Request:
-| Param Name | Param Type | isRequired | Description |
-|------------|------------|-------------|-------------|
-| customer_phone | string | true | Customer phone number |
-| customer_name | string | true | Customer name |
-| entry_number | string | true | Original bill/entry number |
-| cash_amount | number | false | Cash return amount |
-| upi_amount | number | false | UPI return amount |
+
+| Param Name      | Param Type | isRequired | Description                |
+| --------------- | ---------- | ---------- | -------------------------- |
+| customer\_phone | string     | true       | Customer phone number      |
+| customer\_name  | string     | true       | Customer name              |
+| entry\_number   | string     | true       | Original bill/entry number |
+| cash\_amount    | number     | false      | Cash return amount         |
+| upi\_amount     | number     | false      | UPI return amount          |
 
 ### 4.3 Customer Management APIs
 
 **Create Customer**
+
 ```
 POST /rest/v1/customers
 ```
 
 Request:
-| Param Name | Param Type | isRequired | Description |
-|------------|------------|-------------|-------------|
-| phone | string | true | Customer phone number (unique) |
-| name | string | true | Customer name |
-| referred_by | string | true | Staff ID who referred customer |
-| outlet_id | string | true | Store outlet identifier |
+
+| Param Name   | Param Type | isRequired | Description                    |
+| ------------ | ---------- | ---------- | ------------------------------ |
+| phone        | string     | true       | Customer phone number (unique) |
+| name         | string     | true       | Customer name                  |
+| referred\_by | string     | true       | Staff ID who referred customer |
+| outlet\_id   | string     | true       | Store outlet identifier        |
 
 **Get Customer by Phone**
+
 ```
 GET /rest/v1/customers?phone=eq.{phone}
 ```
@@ -136,16 +155,18 @@ GET /rest/v1/customers?phone=eq.{phone}
 ### 4.4 Export APIs
 
 **Export Customers**
+
 ```
 GET /rest/v1/customers_export
 ```
 
 Query Parameters:
-| Param Name | Param Type | isRequired | Description |
-|------------|------------|-------------|-------------|
-| format | string | true | Export format: pdf, excel, csv |
-| referred_by | string | false | Filter by referring staff |
-| outlet_id | string | false | Filter by outlet |
+
+| Param Name   | Param Type | isRequired | Description                    |
+| ------------ | ---------- | ---------- | ------------------------------ |
+| format       | string     | true       | Export format: pdf, excel, csv |
+| referred\_by | string     | false      | Filter by referring staff      |
+| outlet\_id   | string     | false      | Filter by outlet               |
 
 ## 5. Server Architecture Diagram
 
@@ -242,6 +263,7 @@ erDiagram
 ### 6.2 Data Definition Language
 
 **Users Table**
+
 ```sql
 -- Create users table (extends Supabase auth.users)
 CREATE TABLE users (
@@ -272,6 +294,7 @@ CREATE POLICY "Store manager outlet access" ON users
 ```
 
 **Customers Table**
+
 ```sql
 -- Create customers table
 CREATE TABLE customers (
@@ -304,6 +327,7 @@ CREATE POLICY "Authenticated full access" ON customers
 ```
 
 **Sales Table**
+
 ```sql
 -- Create sales table
 CREATE TABLE sales (
@@ -339,6 +363,7 @@ CREATE POLICY "Authenticated sales access" ON sales
 ```
 
 **Sales Returns Table**
+
 ```sql
 -- Create sales_returns table
 CREATE TABLE sales_returns (
@@ -371,6 +396,7 @@ CREATE POLICY "Authenticated returns access" ON sales_returns
 ```
 
 **Outlets Table**
+
 ```sql
 -- Create outlets table
 CREATE TABLE outlets (
@@ -388,6 +414,7 @@ INSERT INTO outlets (name, address) VALUES
 ## 7. IndexedDB Schema for Offline Drafts
 
 **Draft Storage Structure**
+
 ```javascript
 // Draft schema for IndexedDB
 const draftSchema = {
@@ -423,6 +450,7 @@ const draftSchema = {
 ## 8. PWA Configuration
 
 **Service Worker Strategy**
+
 ```javascript
 // Cache strategies for different asset types
 const CACHE_STRATEGIES = {
@@ -447,3 +475,4 @@ const DB_CONFIG = {
   }
 };
 ```
+

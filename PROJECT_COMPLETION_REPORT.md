@@ -41,7 +41,7 @@ All planned phases and core objectives from the `action_plan.md` have been succe
 - [x] **Logout Stability:** Implemented guaranteed logout mechanism.
 
 ### 4. Integration
-- [x] **Google Sheets Sync:** Architecture ready (API keys configured).
+- [x] **Export Logs:** Implemented with file downloads.
 - [x] **Multi-tenancy:** Database schema supports 140+ outlets (`organization_id`, `outlet_id`).
 
 ---

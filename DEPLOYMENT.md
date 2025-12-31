@@ -35,11 +35,8 @@
 - Income/expense breakdown
 - Net profit calculation
 
-### Phase 6: Google Sheets Integration ✅
-- Auto-sync to Google Sheets
-- Monthly sheet creation
-- Transaction export
-- Google Drive folder organization
+### Phase 6: External Reporting (Removed)
+- Google Sheets and Google Drive integrations have been removed. Reporting is handled via in-app exports and logs.
 
 ### Phase 7: Admin Features ✅
 - Outlet management
@@ -84,10 +81,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://pvdqotuhuwzooysrmtrd.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
-# Google Sheets
-GOOGLE_SHEETS_CLIENT_EMAIL=sahakar-sheets-sync@sahakar-accounts-production.iam.gserviceaccount.com
-GOOGLE_SHEETS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour_Key_Here\n-----END PRIVATE KEY-----\n"
-GOOGLE_DRIVE_FOLDER_ID=1rVL2Vz_BGUvD8HCcNxOs1hBFZPEK_kwn
+# (No Google integrations required)
 
 # App Config
 NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
@@ -116,7 +110,7 @@ Run these SQL files in Supabase SQL Editor:
    - Add transactions
    - Submit daily record
    - View reports
-   - Sync to Google Sheets
+   - Export from app and verify logs
 
 ---
 
@@ -150,7 +144,7 @@ sahakar-accounts/
 ├── lib/
 │   ├── auth-context.tsx
 │   ├── supabase.ts
-│   └── google-sheets.ts
+│   └── (no Google Sheets integration)
 ├── database/
 │   ├── schema.sql
 │   └── fix-rls-aggressive.sql
@@ -187,7 +181,7 @@ This will:
 | View Reports | ❌ | ✅ | ✅ | ✅ |
 | Manage Users | ❌ | ❌ | ✅ | ❌ |
 | Manage Outlets | ❌ | ❌ | ✅ | ❌ |
-| Google Sheets Sync | ❌ | ✅ | ✅ | ✅ |
+| Export & Logs | ❌ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -199,8 +193,8 @@ This will:
 ### Issue: Auth Timeout
 **Solution:** Check Supabase URL and API keys
 
-### Issue: Google Sheets Fails
-**Solution:** Verify service account and private key
+### Issue: Export/Download Fails
+**Solution:** Check network, verify API response, review export logs
 
 ###Issue: RLS Errors
 **Solution:** Run `database/fix-rls-aggressive.sql`
@@ -229,7 +223,7 @@ Before going live:
 - [ ] Test login
 - [ ] Test transactions
 - [ ] Test reports
-- [ ] Test Google Sheets sync
+- [ ] Validate export logs
 - [ ] Set `NEXT_PUBLIC_DEV_MODE=false`
 - [ ] Test production build
 

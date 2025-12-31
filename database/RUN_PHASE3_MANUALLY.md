@@ -32,7 +32,7 @@ Since the Supabase CLI has issues with the .env.local file format, here's how to
 
 ## Option 2: Fix Supabase CLI (Advanced)
 
-The issue is in `.env.local` - the GOOGLE_SHEETS_PRIVATE_KEY contains commas which confuses the parser.
+Note: Ensure `.env.local` values are compatible with your tooling; avoid special characters that break parsers.
 
 **Quick fix:**
 1. Temporarily rename `.env.local` to `.env.local.backup`

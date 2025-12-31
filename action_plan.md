@@ -3,9 +3,9 @@
 ## 📋 Executive Summary
 
 **Project**: Sahakar Accounts Web Application  
-**Purpose**: Multi-tenant accounting system for 140+ hyperpharmacies with Google Sheets integration  
+**Purpose**: Multi-tenant accounting system for 140+ hyperpharmacies with in-app export logs  
 **Current State**: Manual Excel-based accounting (10 outlets)  
-**Target State**: Scalable web application with role-based access, automated reporting, and HO monitoring  
+**Target State**: Scalable web application with role-based access, automated reporting (exports + logs), and HO monitoring  
 **Timeline**: Implementation in phases (detailed below)
 
 ---
@@ -13,7 +13,7 @@
 ## 🎯 Core Objectives
 
 1. **Replace manual Excel data entry** with a structured web application
-2. **Maintain Google Sheets** as the reporting layer for HO accountants
+2. **Provide in-app export logs** as the reporting layer for HO accountants
 3. **Support 140+ outlets** with multi-tenant architecture
 4. **Implement role-based access control** (Master Admin, HO Accountant, Outlet Manager, Outlet Staff)
 5. **Automate reconciliation** and daily closing processes
@@ -34,7 +34,7 @@
                                   │                           │
                                   ▼                           ▼
                          ┌──────────────────┐      ┌─────────────────────┐
-                         │  Sync Engine     │─────▶│  Google Sheets      │
+                         │  Export Engine   │─────▶│  Export Logs        │
                          │  (Background Job)│      │  (Per Outlet)       │
                          └──────────────────┘      └─────────────────────┘
                                                               │
@@ -109,7 +109,7 @@ CREATE TABLE outlets (
   location VARCHAR(255),
   phone VARCHAR(20),
   email VARCHAR(255),
-  google_sheet_id VARCHAR(255), -- Google Sheets file ID
+  -- removed external sheet id; reporting via export logs
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

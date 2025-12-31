@@ -458,7 +458,7 @@ Management Approval: [If required]
 **Examples**:
 - Sharing credentials
 - Unauthorized access attempts
-- Manual edits to Google Sheets
+- Export logs replace any external sheet edits
 - Bypassing locking window restrictions
 - Creating users without approval
 

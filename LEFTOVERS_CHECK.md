@@ -35,7 +35,7 @@ export function getRoleDashboard(role: string): string {
 - ✅ `lib/database.types.ts` - Supabase generated types (269 lines)
 - ✅ `lib/supabase.ts` - Supabase client + mock users
 - ✅ `lib/auth-context.tsx` - Authentication context with DEV_MODE
-- ✅ `lib/google-sheets.ts` - Google Sheets service
+- ✅ Export logs implemented
 - ✅ `lib/db.ts` - Database helper functions
 
 ### **API Routes (16 total):**
@@ -59,7 +59,7 @@ export function getRoleDashboard(role: string): string {
 - ✅ staff/page.tsx - Full transaction management
 - ✅ manager/page.tsx - Stats + Reports
 - ✅ admin/page.tsx - User/Outlet management
-- ✅ accountant/page.tsx - Reports + Google Sheets
+- ✅ accountant/page.tsx - Reports
 
 ### **Configuration:**
 - ✅ package.json - All dependencies (googleapis added)
@@ -100,7 +100,7 @@ export function getRoleDashboard(role: string): string {
 ✅ All documentation written  
 ✅ Database schema complete  
 ✅ RLS policies configured  
-✅ Google Sheets integration ready  
+✅ Export logs ready  
 ✅ DEV_MODE for testing  
 ✅ .gitignore properly configured  
 ✅ README comprehensive  

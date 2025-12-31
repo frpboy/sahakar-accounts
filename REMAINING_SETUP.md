@@ -6,19 +6,13 @@ All 7 environment variables have been successfully configured in Vercel:
 - ✅ `NEXT_PUBLIC_SUPABASE_URL`
 - ✅ `NEXT_PUBLIC_SUPABASE_ANON_KEY`  
 - ✅ `SUPABASE_SERVICE_ROLE_KEY`
-- ✅ `GOOGLE_SHEETS_CLIENT_EMAIL`
-- ✅ `GOOGLE_SHEETS_PRIVATE_KEY` (full RSA private key)
-- ✅ `GOOGLE_DRIVE_FOLDER_ID`
 - ✅ `CRON_SECRET`
 
 **NEXT STEP:** You must **REDEPLOY** the application in Vercel for these environment variables to take effect!
 
-## 2. ✅ Google Drive Folder Sharing (COMPLETED)
+## 2. External Reporting (Removed)
 
-The Google Drive folder "Sahakar Accounts (READ ONLY - Auto-Synced)" has been shared with:
-- Email: **paymentstarlexpmna@gmail.com**
-- Access: **Viewer** (read-only)
-- Status: ✅ Confirmed
+Google Drive and Google Sheets integrations are removed. Use in-app exports and logs.
 
 ## 3. Supabase Database Setup
 
@@ -72,14 +66,13 @@ CREATE TABLE daily_entries (
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  synced_to_sheets BOOLEAN DEFAULT FALSE,
   UNIQUE(outlet_id, date, particulars, amount)
 );
 
 -- Create indexes for faster queries
 CREATE INDEX idx_daily_entries_outlet ON daily_entries(outlet_id);
 CREATE INDEX idx_daily_entries_date ON daily_entries(date);
-CREATE INDEX idx_daily_entries_synced ON daily_entries(synced_to_sheets);
+-- (removed: synced_to_sheets column and index)
 ```
 
 ## 4. User Accounts Setup
@@ -187,7 +180,7 @@ CREATE POLICY "Staff can insert entries for their outlet" ON daily_entries
 - [x] **Test** authentication flow with `staff` role (Passed)
 - [x] **Test** authentication flow with `outlet_manager` role (Passed)
 - [ ] **Test** daily entry creation (Manager/Staff) - **READY FOR TEST**
-- [ ] **Test** Google Sheets sync (Submit day -> Check Drive) - **READY FOR TEST**
+-- [ ] Validate export logs for submitted days
 - [x] **Verify** role-based access control (Staff restricted correctly, Manager access fixed)
 
 ### Testing Steps (To Be Performed by User)
@@ -198,12 +191,12 @@ CREATE POLICY "Staff can insert entries for their outlet" ON daily_entries
     *   **Verify**: "Daily Entry" loads the form.
     *   **Execute**: Create transaction -> Submit Day.
     *   **Verify**: Logout button redirects to login.
-4.  **Sync Test**: Verify submitted entry appears in Drive folder `Sahakar Accounts/MAIN/2025/December.xlsx`.
+4.  **Export Test**: Verify submitted entry appears in export logs and can be downloaded.
 
 ## 7. Documentation
 
 - [ ] Update README with deployment instructions
-- [ ] Document the Google Sheets sync process
+- [ ] Document export logs and download process
 - [ ] Create user guide for EACH role
 - [ ] Document troubleshooting steps
 - [ ] Add API documentation for cron jobs
@@ -218,10 +211,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://pvdqotuhuwzooysrmtrd.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here  # ⚠️ NEEDS UPDATE
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here  # ⚠️ NEEDS UPDATE
 
-# Google (Already configured ✅)
-GOOGLE_SHEETS_CLIENT_EMAIL=sahakar-sheets-sync@sahakar-accounts-production.iam.gserviceaccount.com
-GOOGLE_SHEETS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-GOOGLE_DRIVE_FOLDER_ID=1rVL2Vz_BGUvD8HCcNxOs1hBFZPEK_kwn
+# (No Google integrations required)
 
 # App (Already configured ✅)
 NEXT_PUBLIC_APP_URL=http://localhost:3000

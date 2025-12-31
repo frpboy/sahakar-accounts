@@ -44,14 +44,14 @@
 ✅ staff/page.tsx - Transaction management (UPDATED!)
 ✅ manager/page.tsx - Stats + Reports (UPDATED!)
 ✅ admin/page.tsx - User/Outlet management (UPDATED!)
-✅ accountant/page.tsx - Reports + Sheets (UPDATED!)
+✅ accountant/page.tsx - Reports (UPDATED!)
 ```
 
 ### **Services (3 files)**
 ```
 ✅ lib/auth-context.tsx - Auth with DEV_MODE
 ✅ lib/supabase.ts - Supabase + Mock users
-✅ lib/google-sheets.ts - Google API integration
+✅ Export logs and downloads (CSV/JSON/PDF)
 ```
 
 ### **Database**
@@ -119,8 +119,8 @@ NEXT_PUBLIC_DEV_MODE=false
 - Category analysis
 - Profit calculations
 
-### **Phase 6: Google Sheets** ✅
-- Auto-sync to Sheets
+### **Phase 6: Reporting** ✅
+- Export logs and file downloads
 - Monthly sheet creation
 - Transaction export
 
@@ -138,7 +138,7 @@ NEXT_PUBLIC_DEV_MODE=false
 - ✅ Balance tracking  
 - ✅ Daily workflow
 - ✅ Reports & analytics
-- ✅ Google Sheets sync
+- ✅ Export logs
 - ✅ User management
 - ✅ Outlet management
 - ✅ Role-based dashboards

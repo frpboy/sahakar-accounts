@@ -2,9 +2,9 @@
 ## EXECUTION BLUEPRINT
 
 **System Name**: Sahakar Accounts  
-**Purpose**: Replace manual Excel/Google Sheets accounting with secure, role-based web system  
+**Purpose**: Replace manual spreadsheet accounting with secure, role-based web system  
 **Scale**: 10 → 140+ outlets  
-**Source of Truth**: Web App → Google Sheets (read-only mirror)
+**Source of Truth**: Web App with in-app export logs (no external sheet mirror)
 
 ---
 

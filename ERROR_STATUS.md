@@ -5,7 +5,7 @@
 
 ### Fixed:
 1. ✅ **middleware.ts** - Iterator type error (converted to Array.from)
-2. ✅ **googleapis** - Installing missing package
+2. ✅ Removed external Google integrations; focused on in-app export logs
 
 ### Remaining Errors:
 Most errors are in **unused files** that don't affect core functionality:
@@ -27,7 +27,7 @@ The errors are **non-blocking** for testing:
 
 ### Files with errors but NOT critical:
 - `daily-entry/page.tsx` - Unused standalone page
-- `lib/google-sheets.ts` - Only used for sync (optional feature)
+- External Google integrations removed; no impact on core functionality
 - Various sync/lock routes - Optional workflow features
 
 ---
@@ -48,7 +48,7 @@ The errors are **non-blocking** for testing:
 ## 📝 TO FIX REMAINING ERRORS (OPTIONAL):
 
 The remaining errors are mostly:
-- Missing `googleapis` types (installing now)
+- Remove Google-specific types and references in optional docs/code
 - Type mismatches from Supabase responses
 - Unused `daily-entry` page
 

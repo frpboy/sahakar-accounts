@@ -1,6 +1,7 @@
 # Sahakar Accounts
 
-Enterprise-grade accounting system for HyperPharmacy & SmartClinic networks. Secure, scalable, multi-tenant web application designed to replace manual Excel/Google Sheets with a robust role-based digital system.
+
+Enterprise-grade accounting system for HyperPharmacy & SmartClinic networks. Secure, scalable, multi-tenant web application designed to replace manual spreadsheet workflows with a robust role-based digital system.
 
 ## Highlights
 
@@ -18,7 +19,6 @@ graph TD
     C --> D["API Routes"]
     D --> E["Supabase (Postgres + Auth + RLS)"]
     E --> F["Realtime / Policies"]
-    G["Sync Engine (Cron)"] --> H["Google Sheets (Read-only layer)"]
     B -. optional local SPA .-> I["Vite React SPA (src/)"]
     B --> J["Vercel Hosting"]
 ```
@@ -43,14 +43,13 @@ sequenceDiagram
     end
 ```
 
-### Data Sync & Export
+### Export & Logs
 
 ```mermaid
 flowchart LR
-    DB["Supabase DB"] -- cron --> Sheets["Google Sheets"]
-    API["Next.js API"] -- export logs --> DB
-    API -- export files --> User
-    User -- download --> ExportFile["CSV/JSON/PDF"]
+    API["Next.js API"] -- write --> ExportLogs[(Export Logs)]
+    API -- generate --> ExportFile["CSV/JSON/PDF"]
+    User -- download --> ExportFile
 ```
 
 ### RBAC Overview
@@ -139,6 +138,23 @@ NEXT_PUBLIC_ALLOW_FORCE_LOGIN=false
 - Transactions: `/api/transactions/*`
 - Users & Staff: `/api/users/*`
 - Profiles: `/api/profile`
+
+### Export Logs API
+
+- `GET /api/anomalies/export?limit=10`
+  - Returns recent export logs for the authenticated user: `{ exports: [...] }`
+  - Role-based access: `superadmin`, `master_admin`, `ho_accountant`, `auditor`
+  - Query params: `limit` (default 10)
+
+- `POST /api/anomalies/export`
+  - Starts an export job and creates an `export_logs` entry
+  - Body: `{ format: 'csv' | 'json' | 'pdf', filters?: { date_range?: '1d'|'7d'|'30d'|'90d'|'1y', severity?: 'critical'|'warning'|'info'|'all', outlet_id?: string } }`
+  - Response: `{ export_id, status: 'processing' }`
+
+- `POST /api/export-log`
+  - Records an explicit export log entry (for custom reports)
+  - Body: `{ export_type: 'pdf'|'excel', report_type: string, file_hash: string(64), record_count: number, filters?: object }`
+  - Response: `{ success: true, id }`
 
 ## Roles
 
