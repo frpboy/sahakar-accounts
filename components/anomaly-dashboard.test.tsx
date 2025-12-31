@@ -3,14 +3,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AnomalyDashboard } from './anomaly-dashboard';
 
 // Mock Chart.js components
-jest.mock('react-chartjs-2', () => ({
+vi.mock('react-chartjs-2', () => ({
   Doughnut: () => <div data-testid="doughnut-chart">Doughnut Chart</div>,
   Bar: () => <div data-testid="bar-chart">Bar Chart</div>,
   Line: () => <div data-testid="line-chart">Line Chart</div>,
 }));
 
+// Mock auth context to avoid Supabase client creation
+vi.mock('@/lib/auth-context', () => ({
+  useAuth: () => ({ user: { id: 'test-user' } })
+}));
+
 // Mock fetch
-global.fetch = jest.fn();
+global.fetch = vi.fn() as any;
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -24,11 +29,11 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 describe('AnomalyDashboard', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     it('renders dashboard header', () => {
-        (global.fetch as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
+        (global.fetch as any).mockImplementationOnce(() => new Promise(() => {}));
         
         render(<AnomalyDashboard />, { wrapper });
         
@@ -37,7 +42,7 @@ describe('AnomalyDashboard', () => {
     });
 
     it('renders empty state when no anomalies', async () => {
-        (global.fetch as jest.Mock).mockResolvedValueOnce({
+        (global.fetch as any).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ anomalies: [], total_count: 0 }),
         });
@@ -70,7 +75,7 @@ describe('AnomalyDashboard', () => {
             },
         ];
 
-        (global.fetch as jest.Mock).mockResolvedValueOnce({
+        (global.fetch as any).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ anomalies: mockAnomalies, total_count: 2 }),
         });
@@ -84,7 +89,7 @@ describe('AnomalyDashboard', () => {
     });
 
     it('opens export modal when export button is clicked', async () => {
-        (global.fetch as jest.Mock).mockResolvedValueOnce({
+        (global.fetch as any).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ anomalies: [], total_count: 0 }),
         });
@@ -127,7 +132,7 @@ describe('AnomalyDashboard', () => {
             generated_at: new Date().toISOString()
         };
 
-        (global.fetch as jest.Mock)
+        (global.fetch as any)
             .mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({ anomalies: [], total_count: 0 }),
@@ -148,10 +153,10 @@ describe('AnomalyDashboard', () => {
     });
 
     it('handles API errors gracefully', async () => {
-        (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+        (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
         // Mock console.error to avoid test output pollution
-        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         render(<AnomalyDashboard />, { wrapper });
 
