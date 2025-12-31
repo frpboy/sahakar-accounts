@@ -29,6 +29,28 @@ function LoginForm() {
         }
     };
 
+    // List of test users for dropdown
+    const testUsers = [
+        { label: 'Superadmin (Global)', email: 'frpboy12@gmail.com', role: 'Superadmin' },
+        { label: 'HO Accountant', email: 'paymentstarterxpmna@gmail.com', role: 'HO Accountant' },
+        { label: 'Auditor', email: 'auditor.test@sahakar.com', role: 'Auditor' },
+        { label: '--- Hyper Pharmacy ---', email: '', role: '', disabled: true },
+        { label: 'Tirur - Manager', email: 'manager.hp.tirur@sahakar.com', role: 'Manager' },
+        { label: 'Tirur - Staff', email: 'staff.hp.tirur@sahakar.com', role: 'Staff' },
+        { label: 'Makkaraparamba - Manager', email: 'manager.hp.makkara@sahakar.com', role: 'Manager' },
+        { label: 'Makkaraparamba - Staff', email: 'staff.hp.makkara@sahakar.com', role: 'Staff' },
+        { label: 'Melattur - Manager', email: 'manager.hp.melattur@sahakar.com', role: 'Manager' },
+        { label: 'Melattur - Staff', email: 'staff.hp.melattur@sahakar.com', role: 'Staff' },
+        { label: 'Karinkallathani - Manager', email: 'manager.hp.karinkall@sahakar.com', role: 'Manager' },
+        { label: 'Karinkallathani - Staff', email: 'staff.hp.karinkall@sahakar.com', role: 'Staff' },
+        { label: '--- Smart Clinic ---', email: '', role: '', disabled: true },
+        { label: 'Tirur - Manager', email: 'manager.sc.tirur@sahakar.com', role: 'Manager' },
+        { label: 'Tirur - Staff', email: 'staff.sc.tirur@sahakar.com', role: 'Staff' },
+        { label: '--- Test Accounts ---', email: '', role: '', disabled: true },
+        { label: 'Demo Manager', email: 'manager.test@sahakar.com', role: 'Manager' },
+        { label: 'Demo Staff', email: 'staff.test@sahakar.com', role: 'Staff' },
+    ];
+
     return (
         <div className="max-w-md w-full space-y-8">
             <div>
@@ -44,6 +66,34 @@ function LoginForm() {
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-6">
                 <div className="space-y-4">
+                    {/* Quick Fill Dropdown */}
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
+                         <label className="block text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+                            <Beaker className="w-4 h-4" /> Quick Fill Credentials
+                        </label>
+                        <select 
+                            className="block w-full rounded-md border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            onChange={(e) => {
+                                const user = testUsers.find(u => u.email === e.target.value);
+                                if (user) {
+                                    setEmail(user.email);
+                                    setPassword('Zabnix@2025');
+                                }
+                            }}
+                            defaultValue=""
+                        >
+                            <option value="" disabled>Select a user to prefill...</option>
+                            {testUsers.map((u, i) => (
+                                <option key={i} value={u.email} disabled={u.disabled} className={u.disabled ? 'font-bold bg-gray-100 text-gray-500' : ''}>
+                                    {u.label}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-blue-600 mt-2">
+                            Selecting a user will auto-fill email & password.
+                        </p>
+                    </div>
+
                     <div>
                         <label htmlFor="email" className="block text-sm text-gray-600 mb-2">Email address</label>
                         <input
@@ -92,45 +142,6 @@ function LoginForm() {
                     </p>
                 )}
             </form>
-
-            {/* Demo Accounts */}
-            <div className="mt-8 border-t border-gray-200 pt-6">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4 text-center flex items-center justify-center gap-2">
-                    <Beaker className="w-4 h-4" /> Demo Accounts
-                </h3>
-                <div className="space-y-2">
-                    {[
-                        { email: 'frpboy12@gmail.com', role: 'Superadmin', Icon: Crown, accent: false },
-                        { email: 'paymentstarterxpmna@gmail.com', role: 'HO Accountant', Icon: Briefcase, accent: true },
-                        { email: 'manager.test@sahakar.com', role: 'Manager', Icon: BarChart3, accent: false },
-                        { email: 'staff.test@sahakar.com', role: 'Staff', Icon: User, accent: false },
-                        { email: 'auditor.test@sahakar.com', role: 'Auditor', Icon: Shield, accent: false },
-                    ].map((account) => (
-                        <button
-                            key={account.email}
-                            onClick={() => {
-                                setEmail(account.email);
-                                setPassword('Zabnix@2025');
-                            }}
-                            className={`w-full text-left p-3 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors ${account.accent ? 'border-l-4 border-l-green-200 bg-green-50' : ''}`}
-                        >
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <account.Icon className="w-4 h-4 text-gray-600" />
-                                    <div>
-                                        <p className="text-xs font-medium text-gray-700">{account.role}</p>
-                                        <p className="text-sm text-gray-800">{account.email}</p>
-                                    </div>
-                                </div>
-                                <span className="text-xs text-gray-500">Click to fill</span>
-                            </div>
-                        </button>
-                    ))}
-                </div>
-                <p className="text-xs text-center text-gray-500 mt-4">
-                    All accounts uses password : <code className="bg-gray-100 px-2 py-1 rounded">Zabnix@2025</code>
-                </p>
-            </div>
         </div>
     );
 }
