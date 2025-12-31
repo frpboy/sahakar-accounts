@@ -64,7 +64,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.json({ error: 'Configuration error. Please contact administrator.' }, { status: 503 });
   }
 
-  let response = NextResponse.next({ request: { headers: request.headers } });
+  const response = NextResponse.next({ request: { headers: request.headers } });
   const supabase = createMiddlewareClient(request, response);
   const { data: { session } } = await supabase.auth.getSession();
 
