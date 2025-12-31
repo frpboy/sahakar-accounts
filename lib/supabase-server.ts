@@ -9,16 +9,18 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export function createServerSupabase() {
-    const store: any = cookies() as any;
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
-            get(name: string) {
-                return store.get(name)?.value as string | undefined;
+            async get(name: string) {
+                const store = await cookies();
+                return store.get(name)?.value;
             },
-            set(name: string, value: string, options?: any) {
+            async set(name: string, value: string, options?: any) {
+                const store = await cookies();
                 store.set(name, value, options);
             },
-            remove(name: string, _options?: any) {
+            async remove(name: string, _options?: any) {
+                const store = await cookies();
                 store.delete(name);
             },
         },
@@ -26,16 +28,18 @@ export function createServerSupabase() {
 }
 
 export function createRouteClient() {
-    const store: any = cookies() as any;
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
-            get(name: string) {
-                return store.get(name)?.value as string | undefined;
+            async get(name: string) {
+                const store = await cookies();
+                return store.get(name)?.value;
             },
-            set(name: string, value: string, options?: any) {
+            async set(name: string, value: string, options?: any) {
+                const store = await cookies();
                 store.set(name, value, options);
             },
-            remove(name: string, _options?: any) {
+            async remove(name: string, _options?: any) {
+                const store = await cookies();
                 store.delete(name);
             },
         },
