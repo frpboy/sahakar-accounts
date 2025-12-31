@@ -30,12 +30,10 @@ function LoginForm() {
     };
 
     return (
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
-            <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    Sahakar Accounts
-                </h1>
-                <p className="text-gray-600">Sign in to your account</p>
+        <div className="max-w-md w-full space-y-8">
+            <div>
+                <h1 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Sahakar Accounts</h1>
+                <p className="mt-2 text-center text-sm text-gray-600">Sign in to your account</p>
             </div>
 
             {error && (
@@ -44,46 +42,45 @@ function LoginForm() {
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                        Email Address
-                    </label>
-                    <input
-                        id="email"
-                        type="email"
-                        required
-                        autoComplete="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="you@example.com"
-                    />
+            <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+                <div className="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <label htmlFor="email" className="sr-only">Email Address</label>
+                        <input
+                            id="email"
+                            type="email"
+                            required
+                            autoComplete="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                            placeholder="Email address"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="password" className="sr-only">Password</label>
+                        <input
+                            id="password"
+                            type="password"
+                            required
+                            autoComplete="current-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                            placeholder="Password"
+                        />
+                    </div>
                 </div>
 
                 <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                        Password
-                    </label>
-                    <input
-                        id="password"
-                        type="password"
-                        required
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="••••••••"
-                    />
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {loading ? 'Signing in...' : 'Sign In'}
+                    </button>
                 </div>
-
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                >
-                    {loading ? 'Signing in...' : 'Sign In'}
-                </button>
 
                 {/* Fallback link for resilience */}
                 {loading && (
@@ -103,35 +100,35 @@ function LoginForm() {
                 </h3>
                 <div className="space-y-2">
                     {[
-                        { email: 'frpboy12@gmail.com', role: 'Superadmin', Icon: Crown, color: 'bg-purple-50 border-purple-200 text-purple-900' },
-                        { email: 'paymentstarlexpmna@gmail.com', role: 'HO Accountant', Icon: Briefcase, color: 'bg-green-50 border-green-200 text-green-900' },
-                        { email: 'manager.test@sahakar.com', role: 'Manager', Icon: BarChart3, color: 'bg-blue-50 border-blue-200 text-blue-900' },
-                        { email: 'staff.test@sahakar.com', role: 'Staff', Icon: User, color: 'bg-orange-50 border-orange-200 text-orange-900' },
-                        { email: 'auditor.test@sahakar.com', role: 'Auditor', Icon: Shield, color: 'bg-gray-50 border-gray-200 text-gray-900' },
+                        { email: 'frpboy12@gmail.com', role: 'Superadmin', Icon: Crown },
+                        { email: 'paymentstarlexpmna@gmail.com', role: 'HO Accountant', Icon: Briefcase },
+                        { email: 'manager.test@sahakar.com', role: 'Manager', Icon: BarChart3 },
+                        { email: 'staff.test@sahakar.com', role: 'Staff', Icon: User },
+                        { email: 'auditor.test@sahakar.com', role: 'Auditor', Icon: Shield },
                     ].map((account) => (
                         <button
                             key={account.email}
                             onClick={() => {
                                 setEmail(account.email);
-                                setPassword('Zabnix@2025');
+                                setPassword('Zahan@0825');
                             }}
-                            className={`w-full text-left p-3 border rounded-lg hover:shadow-md transition-all ${account.color}`}
+                            className="w-full text-left p-3 border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                         >
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <account.Icon className="w-4 h-4" />
+                                    <account.Icon className="w-4 h-4 text-gray-600" />
                                     <div>
-                                        <p className="text-xs font-medium opacity-75">{account.role}</p>
-                                        <p className="text-sm font-mono">{account.email}</p>
+                                        <p className="text-xs font-medium text-gray-500">{account.role}</p>
+                                        <p className="text-sm text-gray-800">{account.email}</p>
                                     </div>
                                 </div>
-                                <span className="text-xs opacity-50">Click to fill</span>
+                                <span className="text-xs text-gray-500">Click to fill</span>
                             </div>
                         </button>
                     ))}
                 </div>
                 <p className="text-xs text-center text-gray-500 mt-4">
-                    All accounts use password: <code className="bg-gray-100 px-2 py-1 rounded">Zabnix@2025</code>
+                    All accounts use password: <code className="bg-gray-100 px-2 py-1 rounded">Zahan@0825</code>
                 </p>
             </div>
         </div>
@@ -177,7 +174,7 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center bg-white py-12 px-4 sm:px-6 lg:px-8">
             <LoginForm />
         </div>
     );
