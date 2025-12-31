@@ -29,7 +29,7 @@ function getErrorCode(error: unknown): string | undefined {
 
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createRouteClient();
@@ -113,7 +113,7 @@ export async function PATCH(
         if (isLockWindow && ['outlet_staff', 'outlet_manager'].includes(profileRole || '')) {
             return NextResponse.json({ error: 'Entries are locked between 2:00–6:59 AM' }, { status: 423 });
         }
-        const { id } = params;
+        const { id } = await context.params;
 
         const { type, category, paymentMode, amount, description } = body;
 
@@ -161,7 +161,7 @@ export async function PATCH(
 
 export async function DELETE(
     _request: NextRequest,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createRouteClient();
@@ -237,7 +237,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const { id } = params;
+        const { id } = await context.params;
         // Enforce submission window lock (2:00–6:59 AM local) for staff/manager
         const now = new Date();
         const hour = now.getHours();

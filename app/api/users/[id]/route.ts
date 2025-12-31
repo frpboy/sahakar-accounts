@@ -24,7 +24,7 @@ const ALLOWED_ROLES = new Set([
 
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
         const sessionClient = createRouteClient();
@@ -70,13 +70,13 @@ export async function PATCH(
                 const { data: target } = await adminClient
                     .from('users')
                     .select('role')
-                    .eq('id', params.id)
+                    .eq('id', (await context.params).id)
                     .single();
 
                 const { data: approval, error: apprErr } = await (adminClient as any)
                     .from('role_approvals')
                     .insert({
-                        target_user_id: params.id,
+                        target_user_id: (await context.params).id,
                         requested_by: session.user.id,
                         requested_role: 'superadmin',
                         old_role: (target as any)?.role || null,
@@ -94,7 +94,7 @@ export async function PATCH(
                         user_id: session.user.id,
                         action: 'request_role_superadmin',
                         entity: 'users',
-                        entity_id: params.id,
+                        entity_id: (await context.params).id,
                         old_data: target as any,
                         new_data: { role: 'superadmin' },
                         severity: 'critical',
@@ -111,7 +111,7 @@ export async function PATCH(
                 const { data: targetScope } = await adminClient
                     .from('users')
                     .select('outlet_id')
-                    .eq('id', params.id)
+                    .eq('id', (await context.params).id)
                     .single();
                 const targetOutlet = (targetScope as any)?.outlet_id ?? null;
                 if (!callerOutlet || !targetOutlet || callerOutlet !== targetOutlet) {
@@ -138,7 +138,7 @@ export async function PATCH(
         const { data: before } = await adminClient
             .from('users')
             .select('id,email,name,role,outlet_id,created_at')
-            .eq('id', params.id)
+            .eq('id', (await context.params).id)
             .single();
 
         const { data: updated, error: updateError } = await adminClient
@@ -173,7 +173,7 @@ export async function PATCH(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
         const sessionClient = createRouteClient();
@@ -194,7 +194,7 @@ export async function DELETE(
             const { data: target } = await admin
                 .from('users')
                 .select('id,role,outlet_id,email,name')
-                .eq('id', params.id)
+                .eq('id', (await context.params).id)
                 .single();
             if (!target || (target as any).role !== 'outlet_staff' || (target as any).outlet_id !== callerOutlet) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -206,7 +206,7 @@ export async function DELETE(
         const { data: before } = await admin
             .from('users')
             .select('id,email,name,role,outlet_id')
-            .eq('id', params.id)
+            .eq('id', (await context.params).id)
             .single();
 
         const { error: delErr } = await admin
@@ -216,7 +216,7 @@ export async function DELETE(
         if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
 
         // Also remove auth user
-        await admin.auth.admin.deleteUser(params.id).catch(() => {});
+        await admin.auth.admin.deleteUser((await context.params).id).catch(() => {});
 
         await admin
             .from('audit_logs')
@@ -224,7 +224,7 @@ export async function DELETE(
                 user_id: session.user.id,
                 action: 'delete_user',
                 entity: 'users',
-                entity_id: params.id,
+                entity_id: (await context.params).id,
                 old_data: before as any,
                 new_data: null,
                 severity: 'warning',

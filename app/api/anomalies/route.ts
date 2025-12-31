@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (severity && severity !== 'all') {
-            query = query.eq('severity', severity);
+            query = query.eq('severity', severity as any);
         }
 
         if (category && category !== 'all') {
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
         // If a matching fingerprint exists within throttle window (non-critical), update counters without creating a new record
         if (windowMinutes > 0) {
             const sinceIso = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
-            const { data: existing } = await admin
+            const { data: existing } = await (admin as any)
                 .from('anomalies')
                 .select('*')
                 .eq('fingerprint', fingerprint)
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
                 .single();
 
             if (existing) {
-                await admin
+                await (admin as any)
                     .from('anomalies')
                     .update({
                         occurrences_count: (existing.occurrences_count || 1) + 1,
@@ -197,13 +197,13 @@ export async function POST(request: NextRequest) {
         }
 
         // Upsert by fingerprint to group repeated anomalies
-        const { data, error } = await admin
+        const { data, error } = await (admin as any)
             .from('anomalies')
-            .insert({
+            .upsert({
                 title,
                 description,
                 severity,
-                type: anomalyType,
+                category: anomalyType,
                 outlet_id: outlet_id || user.outlet_id,
                 transaction_id: transaction_id || null,
                 business_day_id: business_day_id || null,
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -299,7 +299,7 @@ export async function PATCH(request: NextRequest) {
         }
 
         // Write history entry
-        await admin.from('anomaly_history').insert({
+        await (admin as any).from('anomaly_history').insert({
             anomaly_id: id,
             action: status === 'resolved' ? 'resolved' : 'commented',
             performed_by: session.user.id,
@@ -307,7 +307,7 @@ export async function PATCH(request: NextRequest) {
             attachment_url: resolution_attachment_url || null,
             old_status: null,
             new_status: status || null
-        });
+        } as any);
 
         return NextResponse.json(data, { status: 200 });
     } catch (error: unknown) {

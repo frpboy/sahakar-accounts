@@ -63,10 +63,10 @@ export async function GET(request: NextRequest) {
         const resolvedCount = allAnomalies?.filter(a => a.resolved_at !== null).length || 0;
         const unresolvedCount = (totalCount || 0) - resolvedCount;
 
-        // Get type breakdown
+        // Get category breakdown
         const typeCounts: Record<string, number> = {};
         allAnomalies?.forEach(anomaly => {
-            typeCounts[anomaly.type] = (typeCounts[anomaly.type] || 0) + 1;
+            typeCounts[(anomaly as any).category] = (typeCounts[(anomaly as any).category] || 0) + 1;
         });
 
         // Get outlet breakdown (for superadmins)

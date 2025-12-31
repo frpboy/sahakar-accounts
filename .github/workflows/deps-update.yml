@@ -1,0 +1,24 @@
+name: Weekly Dependency Update
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm install npm-check-updates@latest --no-save
+      - run: ncu -u
+      - run: npm install
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: 'chore: update dependencies to latest stable'
+          title: 'chore: weekly dependency update'
+          branch: chore/weekly-deps-update
+          labels: dependencies

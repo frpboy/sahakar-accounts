@@ -1,0 +1,14 @@
+name: Docs QA
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**/*.md'
+jobs:
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DavidAnson/markdownlint-cli2-action@v17
+        with:
+          globs: '**/*.md'

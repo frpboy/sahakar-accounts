@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClientBrowser } from '@/lib/supabase-client';
 import { cacheHelpers } from './db';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -44,7 +44,7 @@ type OutletRealtimeRow = {
 // Real-time hook for daily records with caching
 export function useRealtimeDailyRecords(outletId?: string) {
     const queryClient = useQueryClient();
-    const supabase = createClientComponentClient();
+  const supabase = createClientBrowser();
     const [isRealtime, setIsRealtime] = useState(false);
 
     const { data, isLoading, error } = useQuery({

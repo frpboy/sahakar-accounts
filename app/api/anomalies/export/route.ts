@@ -42,7 +42,6 @@ export async function GET(request: NextRequest) {
             .from('export_logs')
             .select('*')
             .eq('user_id', session.user.id)
-            .eq('export_type', 'anomalies')
             .order('created_at', { ascending: false })
             .limit(limit);
 
@@ -60,7 +59,7 @@ export async function GET(request: NextRequest) {
 // POST endpoint - create new export
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient({ cookies });
+        const supabase = createRouteClient();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
@@ -68,11 +67,11 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { format, filters = {} } = body;
+        const { format: selectedFormat, filters = {} } = body;
 
         // Validate format
         const validFormats = ['csv', 'json', 'pdf'];
-        if (!validFormats.includes(format)) {
+        if (!validFormats.includes(selectedFormat)) {
             return NextResponse.json({ error: 'Invalid format' }, { status: 400 });
         }
 
@@ -99,10 +98,10 @@ export async function POST(request: NextRequest) {
             .from('export_logs')
             .insert({
                 user_id: session.user.id,
-                export_type: 'anomalies',
-                format,
+                export_type: selectedFormat,
+                report_type: 'anomalies',
                 filters,
-                status: 'pending'
+                status: 'processing'
             })
             .select()
             .single();
@@ -114,7 +113,7 @@ export async function POST(request: NextRequest) {
         // Start async export process
         setTimeout(async () => {
             try {
-                await processExport(exportLog.id, format, filters, user, admin);
+                await processExport(exportLog.id, selectedFormat, filters, user, admin);
             } catch (error) {
                 console.error('Export processing failed:', error);
                 await admin
@@ -128,14 +127,14 @@ export async function POST(request: NextRequest) {
             }
         }, 100);
 
-        return NextResponse.json({ export_id: exportLog.id, status: 'pending' });
+        return NextResponse.json({ export_id: exportLog.id, status: 'processing' });
 
     } catch (error: unknown) {
         return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
-async function processExport(exportId: string, format: string, filters: any, user: any, admin: any) {
+async function processExport(exportId: string, selectedFormat: string, filters: any, user: any, admin: any) {
     // Update status to processing
     await admin
         .from('export_logs')
@@ -208,7 +207,7 @@ async function processExport(exportId: string, format: string, filters: any, use
     let fileName: string;
     let contentType: string;
 
-    switch (format) {
+    switch (selectedFormat) {
         case 'csv':
             exportData = generateCSV(anomalies);
             fileName = `anomalies_${format(new Date(), 'yyyy-MM-dd')}.csv`;
@@ -254,7 +253,7 @@ async function processExport(exportId: string, format: string, filters: any, use
         entity: 'export_logs',
         entity_id: exportId,
         severity: 'normal',
-        reason: `Exported ${anomalies.length} anomalies in ${format.toUpperCase()} format`
+        reason: `Exported ${anomalies.length} anomalies in ${selectedFormat.toUpperCase()} format`
     });
 }
 

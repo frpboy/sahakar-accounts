@@ -11,8 +11,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
       - run: npm ci
+      - run: npm run deps:check
+      - run: npm run lint
+      - run: npm run check
+      - run: npm run test:ci
+      - run: npm run next:build
       - run: npm run build
-      - run: echo "CI build passed"
 

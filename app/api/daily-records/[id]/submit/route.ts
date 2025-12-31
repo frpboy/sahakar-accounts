@@ -13,8 +13,8 @@ function getErrorMessage(error: unknown): string {
 }
 
 export async function POST(
-    _request: NextRequest,
-    { params }: { params: { id: string } }
+    request: NextRequest,
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createRouteClient();
@@ -26,7 +26,7 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id } = params;
+        const { id } = await context.params;
 
         // Call submit_day RPC (validates and logs automatically)
         const { data, error } = await supabase.rpc('submit_day', {

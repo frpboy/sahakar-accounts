@@ -1,0 +1,15 @@
+name: Wiki Sync
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'wiki/**'
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Andrew-Chen-Wang/github-wiki-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          wiki_dir: wiki

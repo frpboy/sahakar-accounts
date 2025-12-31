@@ -14,7 +14,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function POST(
     _request: NextRequest,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createRouteClient();
@@ -36,7 +36,7 @@ export async function POST(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const { id } = params;
+        const { id } = await context.params;
 
         // Get daily record
         const { data: record, error: recordError } = await supabase

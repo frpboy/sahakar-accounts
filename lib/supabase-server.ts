@@ -1,13 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import type { NextRequest, NextResponse } from 'next/server';
 import type { Database } from './database.types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export function createServerClient() {
+export function createServerSupabase() {
     return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
         cookies: {
             get(name) {
@@ -37,6 +38,26 @@ export function createRouteClient() {
             },
         },
     });
+}
+
+export function createMiddlewareClient(req: NextRequest, res: NextResponse) {
+    return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+            get(name) {
+                return req.cookies.get(name)?.value;
+            },
+            set(name, value, options) {
+                res.cookies.set({ name, value, ...options });
+            },
+            remove(name, options) {
+                res.cookies.delete({ name, ...options });
+            },
+        },
+    });
+}
+
+export function createClientBrowser() {
+    return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey);
 }
 
 // Admin client with service role (Bypass RLS)

@@ -367,7 +367,7 @@ export function AnomalyDashboard() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-2">Critical > 48h</h4>
+              <h4 className="font-semibold mb-2">Critical {'>'} 48h</h4>
               <ul className="space-y-2">
                 {(stats.decision_cues?.critical_older_than_48h || []).map((a: any) => (
                   <li key={a.id} className="text-sm">

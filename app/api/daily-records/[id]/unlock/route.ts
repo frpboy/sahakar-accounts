@@ -20,7 +20,7 @@ function getErrorMessage(error: unknown): string {
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = createRouteClient();
@@ -46,7 +46,7 @@ export async function POST(
             return NextResponse.json({ error: 'Forbidden - Master Admin only' }, { status: 403 });
         }
 
-        const { id } = params;
+        const { id } = await context.params;
 
         // Get mandatory reason from request body
         const body = (await request.json()) as UnlockBody;

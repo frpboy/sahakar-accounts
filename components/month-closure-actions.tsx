@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Lock, Unlock } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClientBrowser } from '@/lib/supabase-client';
 
 interface MonthClosureActionsProps {
     outletId: string;
@@ -15,7 +15,7 @@ interface MonthClosureActionsProps {
 export function MonthClosureActions({ outletId, month, status, onStatusChange }: MonthClosureActionsProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const supabase = createClientComponentClient();
+    const supabase = createClientBrowser();
     const queryClient = useQueryClient();
 
     const handleCloseMonth = async () => {

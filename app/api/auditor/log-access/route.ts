@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 // GET endpoint to retrieve audit logs (Superadmin only)
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient({ cookies });
+        const supabase = createRouteClient();
 
         const { data: { session } } = await supabase.auth.getSession();
 

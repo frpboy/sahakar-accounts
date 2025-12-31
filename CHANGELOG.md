@@ -198,6 +198,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [1.0.1] - 2025-12-24
 - User management fixes
+ 
+### [1.2.0] - 2025-12-31
+- CI/CD pipelines for verification and deployment
+- Automated wiki sync and maintenance reviews
+- Dependency update automation with weekly PRs
+- Husky hooks for tests and auto-push after commits
+- GitHub MCP integration docs and reference toolsets
 - Schema alignment
 - Production testing
 

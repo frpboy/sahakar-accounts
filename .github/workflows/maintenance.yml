@@ -1,0 +1,26 @@
+name: Maintenance Review
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify documentation formatting
+        run: |
+          test -f README.md && test -f CHANGELOG.md && test -f log.md
+      - name: Dependency stability check
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run deps:check
+      - name: Open issue if checks fail
+        if: failure()
+        uses: dacbd/create-issue-action@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: 'Maintenance review failed'
+          body: 'Automated maintenance checks detected issues. Please review logs.'

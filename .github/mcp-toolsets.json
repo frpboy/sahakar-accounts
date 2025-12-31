@@ -1,0 +1,11 @@
+{
+  "toolsets": ["repos", "pull_requests", "issues", "actions"],
+  "tools": [
+    "actions_get",
+    "get_file_contents",
+    "create_pull_request",
+    "issue_read",
+    "issue_create"
+  ],
+  "notes": "Reference configuration for MCP-capable clients"
+}

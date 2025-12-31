@@ -171,7 +171,7 @@ export async function POST() {
 // GET endpoint to check sync status
 export async function GET() {
     try {
-        const supabase = createRouteHandlerClient({ cookies });
+        const supabase = createRouteClient();
 
         // Get count of locked records
         const { count, error } = await supabase

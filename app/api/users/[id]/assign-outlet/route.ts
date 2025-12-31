@@ -7,7 +7,7 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const sessionClient = createRouteClient();
     const { data: { session } } = await sessionClient.auth.getSession();
@@ -42,13 +42,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const { data: before } = await admin
       .from('users')
       .select('id,email,name,role,outlet_id')
-      .eq('id', params.id)
+      .eq('id', (await context.params).id)
       .single();
 
     const { data: updated, error } = await admin
       .from('users')
       .update({ outlet_id: outletId } as any)
-      .eq('id', params.id)
+      .eq('id', (await context.params).id)
       .select('id,email,name,role,outlet_id')
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

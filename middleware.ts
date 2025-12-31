@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { createMiddlewareClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-server';
 
 // Simple rate limiting using in-memory store (for development)
@@ -105,7 +105,7 @@ export async function middleware(request: NextRequest) {
         },
     });
 
-    const supabase = createMiddlewareClient({ req: request, res: response });
+    const supabase = createMiddlewareClient(request, response);
 
     // This will refresh the session if needed
     const { data: { session } } = await supabase.auth.getSession();

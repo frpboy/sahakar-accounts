@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerSupabase } from '@/lib/supabase-server';
 import { AuthErrorState } from '@/components/auth-error-state';
 
 type DashboardUserProfile = {
@@ -16,7 +16,7 @@ type DashboardOutlet = {
 };
 
 export default async function DashboardPage() {
-    const supabase = createServerClient();
+    const supabase = createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
 
     // Middleware guarantees user exists - if not, show error
@@ -32,7 +32,7 @@ export default async function DashboardPage() {
         .eq('id', user.id)
         .single();
 
-    const typedUserProfile = (userProfile as DashboardUserProfile | null);
+    const typedUserProfile = (userProfile as unknown as DashboardUserProfile | null);
 
     let outlets: DashboardOutlet[] = [];
 

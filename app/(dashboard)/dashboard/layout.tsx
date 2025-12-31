@@ -1,4 +1,4 @@
-import { createAdminClient, createServerClient } from '@/lib/supabase-server';
+import { createAdminClient, createServerSupabase } from '@/lib/supabase-server';
 import { DashboardNav } from '@/components/dashboard-nav';
 import { UserMenu } from '@/components/user-menu';
 import { AuthErrorState } from '@/components/auth-error-state';
@@ -12,7 +12,7 @@ export default async function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const supabase = createServerClient();
+    const supabase = createServerSupabase();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 

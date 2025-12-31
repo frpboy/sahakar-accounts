@@ -9,7 +9,7 @@ import React, {
     useCallback,
 } from 'react';
 import { User } from '@supabase/supabase-js';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClientBrowser } from '@/lib/supabase-client';
 import { useRouter } from 'next/navigation';
 import { cacheHelpers } from '@/lib/db';
 
@@ -61,7 +61,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 ====================================================== */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const supabase = createClientComponentClient();
+    const supabase = createClientBrowser();
     const router = useRouter();
 
     const devUser: AuthUser = {

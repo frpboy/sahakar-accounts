@@ -5,7 +5,7 @@ import { Building2, Link as LinkIcon, Save, PlusCircle } from 'lucide-react';
 
 //
 import { useQuery } from '@tanstack/react-query';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClientBrowser } from '@/lib/supabase-client';
 import { CreateUserModal } from '@/components/create-user-modal';
 import { ManagePermissionsModal } from '@/components/manage-permissions-modal';
 import { AssignOutletModal } from '@/components/assign-outlet-modal';
@@ -25,7 +25,7 @@ type UsersListRow = {
 };
 
 export default function UsersPage() {
-    const supabase = createClientComponentClient();
+    const supabase = createClientBrowser();
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showManagePermissions, setShowManagePermissions] = useState(false);
     const [outlets, setOutlets] = useState<Array<{ id: string; name: string; code: string; drive_folder_url?: string | null }>>([]);

@@ -198,6 +198,20 @@ npm run lint
 - [ ] Form validation and error handling
 - [ ] Draft submission process
 - [ ] Export functionality
+
+## 📦 CI/CD & Documentation Workflow
+
+- Automated verification on push: lint, typecheck, tests, builds
+- Deployment to Vercel and Supabase after successful verification
+- Weekly dependency updates via automated PRs
+- Wiki pages managed in `wiki/` and synced to GitHub Wiki
+- Changelogs:
+  - `log.md` for detailed local developer notes
+  - `CHANGELOG.md` for user-facing release notes
+
+## 🤖 GitHub MCP
+- This repo is ready for use with the GitHub MCP Server
+- See `docs/github-mcp.md` for setup and recommended toolsets
 - [ ] PWA installation
 - [ ] Network status detection
 
