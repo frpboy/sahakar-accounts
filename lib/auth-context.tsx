@@ -84,18 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             console.log(`[Auth] Fetching profile for user ${authUser.id} (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
-            const cached = await cacheHelpers.getUser(authUser.id);
-            if (cached) {
-                return {
-                    role: cached.role as UserProfile['role'],
-                    name: cached.name || undefined,
-                    outlet_id: cached.outlet_id || undefined,
-                    access_start_date: cached.access_start_date || undefined,
-                    access_end_date: cached.access_end_date || undefined,
-                };
-            }
+            // Always bypass cache for critical auth data to prevent stale outlet assignments
+            // const cached = await cacheHelpers.getUser(authUser.id);
+            // if (cached) { ... }
 
-            const res = await fetch('/api/profile', { method: 'GET' });
+            const res = await fetch('/api/profile', { 
+                method: 'GET',
+                cache: 'no-store', // Force fresh fetch
+                headers: { 'Cache-Control': 'no-cache' }
+            });
             if (!res.ok) {
                 // Graceful fallback when profile row is missing
                 if (res.status === 404) {

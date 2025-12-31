@@ -30,9 +30,21 @@ export async function GET(request: NextRequest) {
             .eq('id', session.user.id)
             .single();
 
+        // If no user found in public.users, but we have a session, this is a sync issue.
+        if (profileError && profileError.code === 'PGRST116') {
+             // Fetch from auth metadata as fallback to allow self-healing or better error
+             console.error('[API] User sync mismatch. ID:', session.user.id);
+             return NextResponse.json({ 
+                 error: 'User profile not synchronized', 
+                 code: 'SYNC_ERROR',
+                 details: 'Please contact support or try re-logging in.'
+             }, { status: 404 });
+        }
+
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
+
         const typedProfile = profile as Pick<Database['public']['Tables']['users']['Row'], 'role' | 'outlet_id'>;
         const profileRole = typedProfile.role;
         const profileOutletId = typedProfile.outlet_id;

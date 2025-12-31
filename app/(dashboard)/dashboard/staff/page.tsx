@@ -21,11 +21,14 @@ export default function StaffDashboard() {
     const [showOpeningModal, setShowOpeningModal] = useState(false);
 
     // Get today's daily record
-    const { data: dailyRecord, isLoading: recordLoading, isError: recordError } = useQuery({
+    const { data: dailyRecord, isLoading: recordLoading, isError: recordError, error } = useQuery({
         queryKey: ['daily-record-today'],
         queryFn: async () => {
             const res = await fetch('/api/daily-records/today');
-            if (!res.ok) throw new Error('Failed to fetch daily record');
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to fetch daily record');
+            }
             return res.json();
         },
         staleTime: 0,
@@ -118,7 +121,14 @@ export default function StaffDashboard() {
                     <div className="lg:col-span-2">
                         {recordError ? (
                             <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
-                                <p className="text-red-700">Failed to load daily record. Please ensure your user is assigned to an outlet.</p>
+                                <p className="text-red-700 font-medium">Failed to load daily record</p>
+                                <p className="text-red-600 text-sm mt-1">{error instanceof Error ? error.message : 'Please ensure your user is assigned to an outlet.'}</p>
+                                <button 
+                                    onClick={() => window.location.reload()} 
+                                    className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm"
+                                >
+                                    Retry Loading
+                                </button>
                             </div>
                         ) : dailyRecord ? (
                             <TransactionForm dailyRecordId={dailyRecord.id} />
