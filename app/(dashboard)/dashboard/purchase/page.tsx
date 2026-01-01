@@ -270,18 +270,26 @@ export default function PurchasePage() {
                                         onChange={(e) => setCreditAmount(e.target.value)}
                                         step="0.01"
                                         min="0"
-                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled={isLocked}
+                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                     />
                                 </div>
                             </div>
 
-                            <button
-                                onClick={handleSubmit}
-                                disabled={submitting}
-                                className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {submitting ? 'Submitting...' : 'Submit Purchase'}
-                            </button>
+                            {!isLocked && (
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={submitting}
+                                    className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {submitting ? 'Submitting...' : 'Submit Purchase'}
+                                </button>
+                            )}
+                            {isLocked && (
+                                <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-lg font-bold text-center border border-dashed mt-4 text-sm">
+                                    Day Locked - Submissions Disabled
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

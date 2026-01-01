@@ -21,6 +21,36 @@ export default function CreditReceivedPage() {
     const [cashAmount, setCashAmount] = useState('');
     const [upiAmount, setUpiAmount] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [isLocked, setIsLocked] = useState(false);
+    const [checkingLock, setCheckingLock] = useState(true);
+
+    // Check for Locked Day status
+    React.useEffect(() => {
+        async function checkLock() {
+            if (!user?.profile?.outlet_id) return;
+            setCheckingLock(true);
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const { data } = await supabase
+                    .from('daily_records')
+                    .select('status')
+                    .eq('outlet_id', user.profile.outlet_id)
+                    .eq('date', today)
+                    .single();
+
+                if (data && data.status === 'locked') {
+                    setIsLocked(true);
+                } else {
+                    setIsLocked(false);
+                }
+            } catch (e) {
+                console.error('Lock check error:', e);
+            } finally {
+                setCheckingLock(false);
+            }
+        }
+        checkLock();
+    }, [user, supabase]);
 
     const searchCustomers = async (phone: string) => {
         setFetchingCustomer(true);
@@ -52,6 +82,10 @@ export default function CreditReceivedPage() {
     };
 
     const handleSubmit = async () => {
+        if (isLocked) {
+            alert('❌ This business day is locked. New entries are not allowed.');
+            return;
+        }
         // Validation
         if (!customerPhone.trim()) {
             alert('Please enter customer phone number');
@@ -162,6 +196,25 @@ export default function CreditReceivedPage() {
         <div className="flex flex-col h-full">
             <TopBar title="Credit Received" />
             <div className="p-6">
+                {isLocked && (
+                    <div className="max-w-3xl mx-auto mb-6 bg-red-600 text-white px-6 py-4 rounded-xl flex items-center justify-between shadow-lg">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white/20 p-2 rounded-lg">
+                                <span className="text-2xl">🔒</span>
+                            </div>
+                            <div>
+                                <p className="font-bold text-lg">Business Day Locked</p>
+                                <p className="text-sm text-red-100">This day has been locked by HO. New entries are disabled.</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="bg-white text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50 transition-colors shadow-sm"
+                        >
+                            Refresh
+                        </button>
+                    </div>
+                )}
                 <div className="max-w-3xl mx-auto">
                     <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">Credit Amount Received</h2>
 
@@ -184,8 +237,8 @@ export default function CreditReceivedPage() {
                                             if (val.length >= 3) searchCustomers(val);
                                             else { setShowSuggestions(false); setCustomerExists(false); }
                                         }}
-                                        maxLength={10}
-                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled={isLocked}
+                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                     />
                                     {fetchingCustomer && (
                                         <div className="absolute right-3 top-2.5">
@@ -222,10 +275,10 @@ export default function CreditReceivedPage() {
                                     placeholder={customerExists ? "Auto-filled" : "Enter name"}
                                     value={customerName}
                                     onChange={(e) => !customerExists && setCustomerName(e.target.value)}
-                                    disabled={customerExists}
+                                    disabled={customerExists || isLocked}
                                     className={cn(
                                         "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
-                                        customerExists ? "bg-gray-100 cursor-not-allowed" : "bg-gray-50"
+                                        (customerExists || isLocked) ? "bg-gray-100 cursor-not-allowed" : "bg-gray-50"
                                     )}
                                 />
                             </div>
@@ -239,7 +292,8 @@ export default function CreditReceivedPage() {
                                     placeholder="e.g., CR-001"
                                     value={entryNumber}
                                     onChange={(e) => setEntryNumber(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    disabled={isLocked}
+                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 />
                             </div>
 
@@ -254,7 +308,8 @@ export default function CreditReceivedPage() {
                                     onChange={(e) => setCashAmount(e.target.value)}
                                     step="0.01"
                                     min="0"
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    disabled={isLocked}
+                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 />
                             </div>
                             <div>
@@ -268,18 +323,26 @@ export default function CreditReceivedPage() {
                                     onChange={(e) => setUpiAmount(e.target.value)}
                                     step="0.01"
                                     min="0"
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    disabled={isLocked}
+                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 />
                             </div>
                         </div>
 
-                        <button
-                            onClick={handleSubmit}
-                            disabled={submitting}
-                            className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium mt-8 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {submitting ? 'Submitting...' : 'Submit Receipt'}
-                        </button>
+                        {!isLocked && (
+                            <button
+                                onClick={handleSubmit}
+                                disabled={submitting}
+                                className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium mt-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {submitting ? 'Submitting...' : 'Submit Receipt'}
+                            </button>
+                        )}
+                        {isLocked && (
+                            <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-lg font-bold text-center border border-dashed mt-8 text-sm">
+                                Day Locked - Submissions Disabled
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

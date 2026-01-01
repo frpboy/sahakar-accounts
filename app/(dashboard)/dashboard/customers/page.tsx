@@ -456,7 +456,8 @@ export default function CustomersPage() {
                             </button>
                         </div>
                     </div>
-            )}
                 </div>
-            );
+            )}
+        </div>
+    );
 }

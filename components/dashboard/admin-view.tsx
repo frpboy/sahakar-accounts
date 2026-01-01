@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Store, TrendingUp, Users, Award, Download } from 'lucide-react';
+import { Store, TrendingUp, Users, Award, Download, Lock } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     LineChart, Line
 } from 'recharts';
 import { useAuth } from '@/lib/auth-context';
+import { cn } from '@/lib/utils';
 
 type OutletPerf = { name: string; sales: number };
 type GrowthPoint = { month: string; total: number };
@@ -21,6 +22,7 @@ export function AdminDashboard() {
     const [outletPerformance, setOutletPerformance] = useState<OutletPerf[]>([]);
     const [customerGrowth, setCustomerGrowth] = useState<GrowthPoint[]>([]);
     const [topReferrers, setTopReferrers] = useState<Referrer[]>([]);
+    const [unlockedDaysCount, setUnlockedDaysCount] = useState(0);
 
     useEffect(() => {
         let mounted = true;
@@ -82,12 +84,19 @@ export function AdminDashboard() {
                 }
 
                 // Fetch Today's Total Sales across all outlets
-                const { count: txToday } = await supabase
+                const { count: txToday } = await (supabase as any)
                     .from('transactions')
                     .select('*', { count: 'exact', head: true })
                     .eq('category', 'sales')
                     .gte('created_at', now.toISOString().split('T')[0]);
                 setTodayTotalSales(txToday || 0);
+
+                // Fetch Unlocked Days Count across all outlets
+                const { count: unlockedCount } = await (supabase as any)
+                    .from('daily_records')
+                    .select('*', { count: 'exact', head: true })
+                    .neq('status', 'locked');
+                setUnlockedDaysCount(unlockedCount || 0);
 
             } catch {
                 if (!mounted) return;
@@ -132,11 +141,13 @@ export function AdminDashboard() {
                 </div>
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Top Performer</span>
-                        <Award className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-500">Unlocked Days</span>
+                        <Lock className="w-4 h-4 text-orange-400" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{outletPerformance.length > 0 ? outletPerformance.sort((a, b) => b.sales - a.sales)[0].name.split(' ').pop() : '—'}</div>
-                    <div className="text-xs text-gray-500 mt-1">This month</div>
+                    <div className={cn("text-2xl font-bold", unlockedDaysCount > 0 ? "text-orange-600" : "text-gray-900")}>
+                        {unlockedDaysCount}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">Pending audit closure</div>
                 </div>
             </div>
 

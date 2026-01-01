@@ -107,11 +107,13 @@ export default function DailyEntryPage() {
     };
 
     const unlockDay = async (recordId: string) => {
-        if (!confirm('Unlock this day for editing?')) return;
+        const reason = prompt('Please provide a reason for unlocking this day for audit purposes:', 'Correction required');
+        if (!reason) return;
 
         setProcessing(true);
         try {
-            const { error } = await (supabase as any)
+            // 1. Update the record status
+            const { error: updateError } = await (supabase as any)
                 .from('daily_records')
                 .update({
                     status: 'open',
@@ -120,9 +122,22 @@ export default function DailyEntryPage() {
                 })
                 .eq('id', recordId);
 
-            if (error) throw error;
+            if (updateError) throw updateError;
 
-            alert('✅ Day unlocked successfully!');
+            // 2. Log the action to audit_logs
+            await (supabase as any)
+                .from('audit_logs')
+                .insert({
+                    user_id: user?.id,
+                    user_email: user?.email,
+                    action: 'DAY_UNLOCK',
+                    entity_type: 'daily_records',
+                    entity_id: recordId,
+                    reason: reason,
+                    details: { date: records.find(r => r.id === recordId)?.date }
+                });
+
+            alert('✅ Day unlocked successfully and action logged.');
             loadRecords();
         } catch (e: any) {
             console.error('Unlock error:', e);
@@ -208,10 +223,10 @@ export default function DailyEntryPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${record.status === 'locked'
-                                                    ? 'bg-red-100 text-red-800'
-                                                    : record.status === 'submitted'
-                                                        ? 'bg-yellow-100 text-yellow-800'
-                                                        : 'bg-green-100 text-green-800'
+                                                ? 'bg-red-100 text-red-800'
+                                                : record.status === 'submitted'
+                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                    : 'bg-green-100 text-green-800'
                                                 }`}>
                                                 {record.status}
                                             </span>

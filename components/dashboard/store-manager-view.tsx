@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ShoppingCart, Users, CreditCard, TrendingUp } from 'lucide-react';
+import { ShoppingCart, Users, CreditCard, TrendingUp, FileText, Lock, Clock } from 'lucide-react';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell
@@ -9,7 +9,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { db } from '@/lib/offline-db';
-import { FileText, Lock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type TrendPoint = { day: string; value: number };
 type PaymentSlice = { name: string; value: number; color: string };
@@ -23,6 +23,10 @@ export function StoreManagerDashboard() {
     const [todaySalesCount, setTodaySalesCount] = useState(0);
     const [lastLockedDay, setLastLockedDay] = useState<string | null>(null);
     const [draftsCount, setDraftsCount] = useState(0);
+    const [unlockedDays, setUnlockedDays] = useState<any[]>([]);
+    const [staffPerformance, setStaffPerformance] = useState<any[]>([]);
+    const [weekTotal, setWeekTotal] = useState(0);
+    const [avgTx, setAvgTx] = useState(0);
     const [salesTrendData, setSalesTrendData] = useState<TrendPoint[]>([]);
     const [paymentData, setPaymentData] = useState<PaymentSlice[]>([
         { name: 'UPI', value: 0, color: '#3B82F6' },
@@ -134,6 +138,35 @@ export function StoreManagerDashboard() {
                 const dCount = await db.drafts.where('outlet_id').equals(user.profile.outlet_id).count();
                 setDraftsCount(dCount);
 
+                // Fetch Pending Action Days (Submitted but not locked, or completely open)
+                const { data: pendingDays } = await supabase
+                    .from('daily_records')
+                    .select('*')
+                    .eq('outlet_id', user.profile.outlet_id)
+                    .neq('status', 'locked')
+                    .order('date', { ascending: false });
+                setUnlockedDays(pendingDays || []);
+
+                // Fetch Staff Performance (Last 30 days transactions)
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                const { data: staffTx } = await supabase
+                    .from('transactions')
+                    .select('profiles(full_name)')
+                    .eq('outlet_id', user.profile.outlet_id)
+                    .gte('created_at', thirtyDaysAgo.toISOString());
+
+                const stats: Record<string, number> = {};
+                (staffTx || []).forEach((t: any) => {
+                    const name = t.profiles?.full_name || 'System';
+                    stats[name] = (stats[name] || 0) + 1;
+                });
+                const sortedStaff = Object.entries(stats)
+                    .map(([name, count]) => ({ name, count }))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 5);
+                setStaffPerformance(sortedStaff);
+
             } catch {
                 if (!mounted) return;
                 setSalesTrendData([]);
@@ -180,31 +213,34 @@ export function StoreManagerDashboard() {
                     <div className="text-2xl font-bold text-gray-900">{todaySalesCount}</div>
                     <div className="text-xs text-gray-500 mt-1">Pending sync: {draftsCount} drafting</div>
                 </div>
-                <div className="bg-white p-6 rounded-lg border shadow-sm border-l-4 border-l-orange-400">
+                <div className="bg-white p-6 rounded-lg border shadow-sm border-l-4 border-l-red-500">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Last Locked Day</span>
-                        <Lock className="w-4 h-4 text-orange-400" />
+                        <span className="text-sm font-medium text-gray-500">Pending Locks</span>
+                        <Clock className="w-4 h-4 text-red-500" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{lastLockedDay || "None"}</div>
-                    <div className="text-xs text-gray-500 mt-1">Audit status: Clean</div>
-                </div>
-                <div className="bg-white p-6 rounded-lg border shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Local Drafts</span>
-                        <FileText className="w-4 h-4 text-blue-400" />
+                    <div className={cn("text-2xl font-bold", unlockedDays.length > 0 ? "text-red-600" : "text-gray-900")}>
+                        {unlockedDays.length}
                     </div>
-                    <div className="text-2xl font-bold text-blue-600">{draftsCount}</div>
-                    <div className="text-xs text-gray-500 mt-1">Require syncing</div>
-                </div>
-                <div className="bg-white p-6 rounded-lg border shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Credit Outstanding</span>
-                        <CreditCard className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900">₹{Math.round(creditOutstanding).toLocaleString('en-IN')}</div>
-                    <div className="text-xs text-gray-500 mt-1">{creditCount} customers</div>
+                    <div className="text-xs text-gray-500 mt-1">Days requiring closure</div>
                 </div>
             </div>
+
+            {unlockedDays.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-100 rounded-full text-amber-600">
+                            <Lock className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-amber-900">Pending Business Closures</p>
+                            <p className="text-xs text-amber-700">You have {unlockedDays.length} days that need to be locked for audit.</p>
+                        </div>
+                    </div>
+                    <a href="/dashboard/daily-entry" className="px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700">
+                        Go to Daily Entries
+                    </a>
+                </div>
+            )}
 
             <div className="bg-white p-6 rounded-lg border shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">Daily Sales Trend</h3>
@@ -263,11 +299,24 @@ export function StoreManagerDashboard() {
                 </div>
 
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Staff-wise Customer Referrals</h3>
-                    <p className="text-sm text-gray-500 mb-4">This month</p>
-                    <div className="space-y-4">
-                        {[].map(() => null)}
-                        <div className="text-sm text-gray-500">Coming soon</div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Staff Performance</h3>
+                    <p className="text-sm text-gray-500 mb-4">Transactions managed (Last 30 days)</p>
+                    <div className="space-y-3">
+                        {staffPerformance.length === 0 ? (
+                            <div className="text-sm text-gray-500 text-center py-8 italic">No transaction data recorded</div>
+                        ) : (
+                            staffPerformance.map((staff, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-bold">
+                                            {idx + 1}
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-700">{staff.name}</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-gray-500">{staff.count} tx</span>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
