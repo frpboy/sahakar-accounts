@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     try {
         const sessionClient = createRouteClient();
         const { data: { session } } = await sessionClient.auth.getSession();
-        
+
         const isDev = process.env.NODE_ENV === 'development';
         const devBypass = isDev && request.headers.get('x-users-dev') === '1';
 
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         const adminClient = createAdminClient();
         const { data, error } = await adminClient
             .from('users')
-            .select('id,email,name,role,outlet_id,created_at')
+            .select('*, outlet:outlets(name)')
             .order('created_at', { ascending: false })
             .limit(100); // Limit to 100 users
 
@@ -88,16 +88,16 @@ export async function POST(request: NextRequest) {
 
         const typedRequester = requester as Pick<Database['public']['Tables']['users']['Row'], 'role'> | null;
         let requesterRole = typedRequester?.role;
-        
+
         if (!requesterRole) {
-             // Check for hardcoded superadmin email as ultimate fallback for bootstrapping
-             if (session.user.email === 'frpboy12@gmail.com') {
-                 requesterRole = 'superadmin';
-             } else {
-                 // Fallback to session metadata when profile row missing
-                 const metaRole = (session.user as any).user_metadata?.role as string | undefined;
-                 requesterRole = metaRole || undefined;
-             }
+            // Check for hardcoded superadmin email as ultimate fallback for bootstrapping
+            if (session.user.email === 'frpboy12@gmail.com') {
+                requesterRole = 'superadmin';
+            } else {
+                // Fallback to session metadata when profile row missing
+                const metaRole = (session.user as any).user_metadata?.role as string | undefined;
+                requesterRole = metaRole || undefined;
+            }
         }
 
         if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {

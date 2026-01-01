@@ -198,11 +198,11 @@ export default function CustomersPage() {
             <div className="p-6">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div className="relative w-full md:w-96">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
                         <input
                             type="text"
                             placeholder="Search by name, phone or ID..."
-                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full pl-10 pr-4 py-2 border dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-950 dark:text-white transition-colors"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -210,30 +210,30 @@ export default function CustomersPage() {
                     {canEdit && (
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+                            className="bg-gray-900 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-gray-800 dark:hover:bg-blue-500 transition-colors flex items-center gap-2"
                         >
                             <Plus className="w-4 h-4" /> Add Customer
                         </button>
                     )}
                 </div>
 
-                <div className="bg-white rounded-lg shadow overflow-hidden border">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                <div className="bg-white dark:bg-slate-900 rounded-lg shadow overflow-hidden border dark:border-slate-800 transition-colors">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
+                        <thead className="bg-gray-50 dark:bg-slate-950">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                     ID
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                     Name
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                     Phone
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                     Status
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                     Created Date
                                 </th>
                                 {canEdit && <th scope="col" className="relative px-6 py-3">
@@ -241,47 +241,47 @@ export default function CustomersPage() {
                                 </th>}
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
                             {loading && (
                                 <tr>
-                                    <td colSpan={3} className="px-6 py-8 text-center text-sm text-gray-500">
+                                    <td colSpan={3} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-slate-500">
                                         Loading customers...
                                     </td>
                                 </tr>
                             )}
                             {!loading && filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-slate-500">
                                         {error || 'No customers found'}
                                     </td>
                                 </tr>
                             )}
                             {!loading && filtered.map((customer) => (
-                                <tr key={customer.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 font-mono">
+                                <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 dark:text-blue-400 font-mono">
                                         {customer.internal_customer_id || customer.customer_code || customer.id.substring(0, 8)}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                         {customer.name}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
                                         {customer.phone || '-'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={customer.is_active
-                                            ? "px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
-                                            : "px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800"}>
+                                            ? "px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border border-transparent dark:border-green-900/50"
+                                            : "px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 border border-transparent dark:border-red-900/50"}>
                                             {customer.is_active ? 'Active' : 'Inactive'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                                         {customer.created_at ? new Date(customer.created_at).toLocaleDateString('en-IN') : '-'}
                                     </td>
                                     {canEdit && (
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button
                                                 onClick={() => handleEditClick(customer)}
-                                                className="text-blue-600 hover:text-blue-900"
+                                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                                             >
                                                 Edit
                                             </button>
@@ -295,13 +295,13 @@ export default function CustomersPage() {
             </div>
 
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
-                        <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                            <h3 className="text-lg font-bold text-gray-900">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/80 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-2xl overflow-hidden border dark:border-slate-800">
+                        <div className="px-6 py-4 border-b dark:border-slate-800 flex justify-between items-center bg-gray-50 dark:bg-slate-950">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                                 {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
                             </h3>
-                            <button onClick={() => { setIsModalOpen(false); setEditingCustomer(null); }} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={() => { setIsModalOpen(false); setEditingCustomer(null); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>

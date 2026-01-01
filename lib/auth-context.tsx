@@ -287,7 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [supabase, router, fetchUserProfile]);
 
     // Sign in function
-    const signIn = async (email: string, password: string) => {
+    const signIn = useCallback(async (email: string, password: string) => {
         if (DEV_MODE) {
             router.push('/dashboard');
             return;
@@ -314,14 +314,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .single();
 
             if (profileData?.role === 'outlet_staff') {
-                // Check login time window (7 AM - 2 AM only)
+                // Check login time window (7 AM - 12 AM only)
+                // Strict lockout: 02:00 to 06:59
                 const now = new Date();
                 const hour = now.getHours(); // 0-23
 
-                // Block login between 2 AM (2) and 7 AM (7)
                 if (hour >= 2 && hour < 7) {
                     await supabase.auth.signOut();
-                    throw new Error('Staff can only login between 7:00 AM and 2:00 AM. Please try again after 7:00 AM.');
+                    router.push('/rest');
+                    return; // Stop execution
                 }
 
                 const today = new Date().toISOString().split('T')[0];
@@ -344,10 +345,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[Auth] Sign in successful');
         // Login page will handle redirect explicitly
         // No need for router.refresh() here
-    };
+    }, [supabase, router]);
 
     // Sign out function
-    const signOut = async () => {
+    const signOut = useCallback(async () => {
         if (DEV_MODE) {
             setUser(null);
             router.push('/login');
@@ -376,7 +377,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             router.push('/login');
             router.refresh();
         }
-    };
+    }, [supabase, router]);
+
+    // Auto-logout staff during prohibited hours (Midnight - 7 AM)
+    useEffect(() => {
+        if (!user || user.profile.role !== 'outlet_staff') return;
+
+        const checkTime = async () => {
+            const now = new Date();
+            const hour = now.getHours();
+
+            // Strict lockout: 02:00 to 06:59 blocked
+            if (hour >= 2 && hour < 7) {
+                console.warn('[Auth] Prohibited hours (02:00-07:00). Auto-signing out staff.');
+
+                // Custom logout flow for Rest Mode
+                setUser(null);
+                await supabase.auth.signOut();
+                router.push('/rest');
+            }
+        };
+
+        // Check immediately on mount/user change
+        checkTime();
+
+        // Check every minute
+        const interval = setInterval(checkTime, 60000);
+        return () => clearInterval(interval);
+    }, [user, supabase, router]);
 
     const value: AuthContextType = { user, loading, signIn, signOut };
 

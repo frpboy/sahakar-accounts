@@ -606,8 +606,8 @@ export default function NewSalesPage() {
                     </div>
 
                     {/* Step 2: Sale Details */}
-                    <div className="bg-white rounded-lg shadow-sm border p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                             <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs mr-2">2</span>
                             Sale Details
                         </h2>
@@ -656,7 +656,7 @@ export default function NewSalesPage() {
                     </div>
 
                     {/* Step 3: Payment Modes */}
-                    <div className="bg-white rounded-lg shadow-sm border p-6">
+                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                             <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs mr-2">3</span>
                             Payment Modes

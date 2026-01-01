@@ -5,6 +5,7 @@ import { TopBar } from '@/components/layout/topbar';
 import { UserCog, Plus, Edit, Trash2, Search } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
+import { CreateUserModal } from '@/components/create-user-modal';
 
 export default function UserManagementPage() {
     const supabase = createClientBrowser();
@@ -178,6 +179,15 @@ export default function UserManagementPage() {
                     </div>
                 </div>
             </div>
+
+            <CreateUserModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSuccess={() => {
+                    loadUsers();
+                    setShowAddModal(false);
+                }}
+            />
         </div>
     );
 }

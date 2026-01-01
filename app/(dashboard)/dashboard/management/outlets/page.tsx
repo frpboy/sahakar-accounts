@@ -5,6 +5,7 @@ import { TopBar } from '@/components/layout/topbar';
 import { Building2, Plus, Edit, Trash2, Search, MapPin } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
+import { CreateOutletModal } from '@/components/create-outlet-modal';
 
 export default function OutletManagementPage() {
     const supabase = createClientBrowser();
@@ -164,6 +165,15 @@ export default function OutletManagementPage() {
                     </div>
                 </div>
             </div>
-        </div>
+
+            <CreateOutletModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSuccess={() => {
+                    loadOutlets();
+                    setShowAddModal(false);
+                }}
+            />
+        </div >
     );
 }

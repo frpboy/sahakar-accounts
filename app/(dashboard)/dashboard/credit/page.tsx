@@ -216,14 +216,14 @@ export default function CreditReceivedPage() {
                     </div>
                 )}
                 <div className="max-w-3xl mx-auto">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">Credit Amount Received</h2>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">Credit Amount Received</h2>
 
-                    <div className="bg-white rounded-lg shadow-sm border p-6">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wide">Payment Details</h3>
+                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 uppercase tracking-wide">Payment Details</h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="relative">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
                                     Customer Phone <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
@@ -238,16 +238,16 @@ export default function CreditReceivedPage() {
                                             else { setShowSuggestions(false); setCustomerExists(false); }
                                         }}
                                         disabled={isLocked}
-                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
                                     />
                                     {fetchingCustomer && (
                                         <div className="absolute right-3 top-2.5">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
                                         </div>
                                     )}
                                 </div>
                                 {showSuggestions && customerSuggestions.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-auto text-sm">
+                                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-md shadow-lg max-h-40 overflow-auto text-sm">
                                         {customerSuggestions.map((c, idx) => (
                                             <div
                                                 key={idx}
@@ -257,17 +257,17 @@ export default function CreditReceivedPage() {
                                                     setCustomerExists(true);
                                                     setShowSuggestions(false);
                                                 }}
-                                                className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0"
+                                                className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b dark:border-slate-800 last:border-b-0"
                                             >
-                                                <div className="font-medium">{c.name}</div>
-                                                <div className="text-xs text-gray-500">{c.phone}</div>
+                                                <div className="font-medium text-gray-900 dark:text-white">{c.name}</div>
+                                                <div className="text-xs text-gray-500 dark:text-slate-400">{c.phone}</div>
                                             </div>
                                         ))}
                                     </div>
                                 )}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
                                     Customer Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -277,13 +277,13 @@ export default function CreditReceivedPage() {
                                     onChange={(e) => !customerExists && setCustomerName(e.target.value)}
                                     disabled={customerExists || isLocked}
                                     className={(customerExists || isLocked)
-                                        ? "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
-                                        : "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"}
+                                        ? "w-full px-3 py-2 border dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 cursor-not-allowed transition-colors"
+                                        : "w-full px-3 py-2 border dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white transition-colors"}
                                 />
                             </div>
 
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
                                     Entry Number <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -292,12 +292,12 @@ export default function CreditReceivedPage() {
                                     value={entryNumber}
                                     onChange={(e) => setEntryNumber(e.target.value)}
                                     disabled={isLocked}
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
                                     Cash Amount (₹)
                                 </label>
                                 <input
@@ -308,11 +308,11 @@ export default function CreditReceivedPage() {
                                     step="0.01"
                                     min="0"
                                     disabled={isLocked}
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
                                     UPI Amount (₹)
                                 </label>
                                 <input
@@ -323,7 +323,7 @@ export default function CreditReceivedPage() {
                                     step="0.01"
                                     min="0"
                                     disabled={isLocked}
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
                                 />
                             </div>
                         </div>
@@ -332,13 +332,13 @@ export default function CreditReceivedPage() {
                             <button
                                 onClick={handleSubmit}
                                 disabled={submitting}
-                                className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium mt-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full bg-gray-900 dark:bg-blue-600 text-white py-3 rounded-lg hover:bg-gray-800 dark:hover:bg-blue-500 transition-colors font-medium mt-8 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                             >
                                 {submitting ? 'Submitting...' : 'Submit Receipt'}
                             </button>
                         )}
                         {isLocked && (
-                            <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-lg font-bold text-center border border-dashed mt-8 text-sm">
+                            <div className="w-full bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 py-3 rounded-lg font-bold text-center border border-dashed dark:border-slate-700 mt-8 text-sm">
                                 Day Locked - Submissions Disabled
                             </div>
                         )}
