@@ -8,6 +8,8 @@ import {
 } from 'recharts';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
+import { db } from '@/lib/offline-db';
+import { FileText, Lock } from 'lucide-react';
 
 type TrendPoint = { day: string; value: number };
 type PaymentSlice = { name: string; value: number; color: string };
@@ -15,11 +17,12 @@ type PaymentSlice = { name: string; value: number; color: string };
 export function StoreManagerDashboard() {
     const supabase = useMemo(() => createClientBrowser(), []);
     const { user } = useAuth();
-    const [weekTotal, setWeekTotal] = useState(0);
-    const [avgTx, setAvgTx] = useState(0);
     const [newCustomers, setNewCustomers] = useState(0);
     const [creditOutstanding, setCreditOutstanding] = useState(0);
     const [creditCount, setCreditCount] = useState(0);
+    const [todaySalesCount, setTodaySalesCount] = useState(0);
+    const [lastLockedDay, setLastLockedDay] = useState<string | null>(null);
+    const [draftsCount, setDraftsCount] = useState(0);
     const [salesTrendData, setSalesTrendData] = useState<TrendPoint[]>([]);
     const [paymentData, setPaymentData] = useState<PaymentSlice[]>([
         { name: 'UPI', value: 0, color: '#3B82F6' },
@@ -105,6 +108,32 @@ export function StoreManagerDashboard() {
                     { name: 'Credit', value: groups.credit, color: '#F59E0B' },
                 ]);
                 setNewCustomers((cust || []).length);
+
+                // Fetch Today's Sales Count
+                const { count: txCount } = await supabase
+                    .from('transactions')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('outlet_id', user.profile.outlet_id)
+                    .eq('category', 'sales')
+                    .gte('created_at', now.toISOString().split('T')[0]);
+                setTodaySalesCount(txCount || 0);
+
+                // Fetch Last Locked Day
+                const { data: lastLocked } = await supabase
+                    .from('daily_records')
+                    .select('date')
+                    .eq('outlet_id', user.profile.outlet_id)
+                    .eq('status', 'locked')
+                    .order('date', { ascending: false })
+                    .limit(1);
+                if (lastLocked?.[0]) {
+                    setLastLockedDay(new Date(lastLocked[0].date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }));
+                }
+
+                // Fetch Drafts Count (Local)
+                const dCount = await db.drafts.where('outlet_id').equals(user.profile.outlet_id).count();
+                setDraftsCount(dCount);
+
             } catch {
                 if (!mounted) return;
                 setSalesTrendData([]);
@@ -125,24 +154,47 @@ export function StoreManagerDashboard() {
         return () => { mounted = false; };
     }, [supabase, user]);
 
+    if (!user?.profile.outlet_id) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border shadow-sm">
+                <ShoppingCart className="w-16 h-16 text-gray-200 mb-4" />
+                <h2 className="text-xl font-bold text-gray-900">No Outlet Assigned</h2>
+                <p className="text-gray-500 mt-2 max-w-sm text-center">
+                    Your account hasn't been mapped to a specific outlet yet. Please contact your administrator to assign you to a store.
+                </p>
+                <div className="mt-6 flex flex-col gap-2">
+                    <div className="text-xs text-center text-gray-400 font-mono">User ID: {user?.id}</div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Week's Sales</span>
-                        <TrendingUp className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-500">Today's Sales</span>
+                        <ShoppingCart className="w-4 h-4 text-gray-400" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">₹{Math.round(weekTotal).toLocaleString('en-IN')}</div>
-                    <div className="text-xs text-green-600 mt-1">Updated live</div>
+                    <div className="text-2xl font-bold text-gray-900">{todaySalesCount}</div>
+                    <div className="text-xs text-gray-500 mt-1">Pending sync: {draftsCount} drafting</div>
+                </div>
+                <div className="bg-white p-6 rounded-lg border shadow-sm border-l-4 border-l-orange-400">
+                    <div className="flex justify-between items-start mb-2">
+                        <span className="text-sm font-medium text-gray-500">Last Locked Day</span>
+                        <Lock className="w-4 h-4 text-orange-400" />
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">{lastLockedDay || "None"}</div>
+                    <div className="text-xs text-gray-500 mt-1">Audit status: Clean</div>
                 </div>
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">New Customers</span>
-                        <Users className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-500">Local Drafts</span>
+                        <FileText className="w-4 h-4 text-blue-400" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{newCustomers}</div>
-                    <div className="text-xs text-gray-500 mt-1">This week</div>
+                    <div className="text-2xl font-bold text-blue-600">{draftsCount}</div>
+                    <div className="text-xs text-gray-500 mt-1">Require syncing</div>
                 </div>
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
@@ -151,14 +203,6 @@ export function StoreManagerDashboard() {
                     </div>
                     <div className="text-2xl font-bold text-gray-900">₹{Math.round(creditOutstanding).toLocaleString('en-IN')}</div>
                     <div className="text-xs text-gray-500 mt-1">{creditCount} customers</div>
-                </div>
-                <div className="bg-white p-6 rounded-lg border shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Avg. Transaction</span>
-                        <ShoppingCart className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900">₹{Math.round(avgTx).toLocaleString('en-IN')}</div>
-                    <div className="text-xs text-gray-500 mt-1">This week</div>
                 </div>
             </div>
 

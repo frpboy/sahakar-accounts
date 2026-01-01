@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
+import { User, Search } from 'lucide-react';
 
 export default function CreditReceivedPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
@@ -12,10 +13,43 @@ export default function CreditReceivedPage() {
     // Form state
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerName, setCustomerName] = useState('');
+    const [customerExists, setCustomerExists] = useState(false);
+    const [customerSuggestions, setCustomerSuggestions] = useState<Array<{ phone: string; name: string; id: string }>>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [fetchingCustomer, setFetchingCustomer] = useState(false);
     const [entryNumber, setEntryNumber] = useState('');
     const [cashAmount, setCashAmount] = useState('');
     const [upiAmount, setUpiAmount] = useState('');
     const [submitting, setSubmitting] = useState(false);
+
+    const searchCustomers = async (phone: string) => {
+        setFetchingCustomer(true);
+        try {
+            const { data, error } = await (supabase as any)
+                .from('customers')
+                .select('phone, name, id')
+                .or(`phone.ilike.${phone}%,name.ilike.%${phone}%`)
+                .eq('is_active', true)
+                .limit(10);
+
+            if (data && !error) {
+                setCustomerSuggestions(data);
+                setShowSuggestions(data.length > 0);
+                if (phone.length === 10) {
+                    const exactMatch = data.find((c: any) => c.phone === phone);
+                    if (exactMatch) {
+                        setCustomerName(exactMatch.name);
+                        setCustomerExists(true);
+                        setShowSuggestions(false);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Search error:', e);
+        } finally {
+            setFetchingCustomer(false);
+        }
+    };
 
     const handleSubmit = async () => {
         // Validation
@@ -135,18 +169,49 @@ export default function CreditReceivedPage() {
                         <h3 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wide">Payment Details</h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
+                            <div className="relative">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Customer Phone <span className="text-red-500">*</span>
                                 </label>
-                                <input
-                                    type="text"
-                                    placeholder="10-digit phone"
-                                    value={customerPhone}
-                                    onChange={(e) => setCustomerPhone(e.target.value)}
-                                    maxLength={10}
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="10-digit phone"
+                                        value={customerPhone}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setCustomerPhone(val);
+                                            if (val.length >= 3) searchCustomers(val);
+                                            else { setShowSuggestions(false); setCustomerExists(false); }
+                                        }}
+                                        maxLength={10}
+                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    {fetchingCustomer && (
+                                        <div className="absolute right-3 top-2.5">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                        </div>
+                                    )}
+                                </div>
+                                {showSuggestions && customerSuggestions.length > 0 && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-auto text-sm">
+                                        {customerSuggestions.map((c, idx) => (
+                                            <div
+                                                key={idx}
+                                                onClick={() => {
+                                                    setCustomerPhone(c.phone);
+                                                    setCustomerName(c.name);
+                                                    setCustomerExists(true);
+                                                    setShowSuggestions(false);
+                                                }}
+                                                className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0"
+                                            >
+                                                <div className="font-medium">{c.name}</div>
+                                                <div className="text-xs text-gray-500">{c.phone}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -154,10 +219,14 @@ export default function CreditReceivedPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    placeholder="Enter name"
+                                    placeholder={customerExists ? "Auto-filled" : "Enter name"}
                                     value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    onChange={(e) => !customerExists && setCustomerName(e.target.value)}
+                                    disabled={customerExists}
+                                    className={cn(
+                                        "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                                        customerExists ? "bg-gray-100 cursor-not-allowed" : "bg-gray-50"
+                                    )}
                                 />
                             </div>
 

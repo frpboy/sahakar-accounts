@@ -24,7 +24,7 @@ export default async function DashboardLayout({
         <AppProvider>
             <div className="flex h-screen bg-gray-50 overflow-hidden">
                 {/* Sidebar */}
-                <Sidebar className="w-64 flex-shrink-0 hidden lg:flex" />
+                <Sidebar className="flex-shrink-0 hidden lg:flex" />
 
                 {/* Main Content Area */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

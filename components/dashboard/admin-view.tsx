@@ -17,6 +17,7 @@ export function AdminDashboard() {
     const [outletCount, setOutletCount] = useState(0);
     const [totalRevenue, setTotalRevenue] = useState(0);
     const [totalCustomers, setTotalCustomers] = useState(0);
+    const [todayTotalSales, setTodayTotalSales] = useState(0);
     const [outletPerformance, setOutletPerformance] = useState<OutletPerf[]>([]);
     const [customerGrowth, setCustomerGrowth] = useState<GrowthPoint[]>([]);
     const [topReferrers, setTopReferrers] = useState<Referrer[]>([]);
@@ -80,6 +81,14 @@ export function AdminDashboard() {
                     setTopReferrers([]);
                 }
 
+                // Fetch Today's Total Sales across all outlets
+                const { count: txToday } = await supabase
+                    .from('transactions')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('category', 'sales')
+                    .gte('created_at', now.toISOString().split('T')[0]);
+                setTodayTotalSales(txToday || 0);
+
             } catch {
                 if (!mounted) return;
                 setOutletCount(0);
@@ -107,11 +116,11 @@ export function AdminDashboard() {
                 </div>
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Total Revenue</span>
-                        <TrendingUp className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-500">Today's Total Sales</span>
+                        <TrendingUp className="w-4 h-4 text-blue-400" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">₹{Math.round(totalRevenue).toLocaleString('en-IN')}</div>
-                    <div className="text-xs text-green-600 mt-1">This month</div>
+                    <div className="text-2xl font-bold text-gray-900">{todayTotalSales}</div>
+                    <div className="text-xs text-blue-600 mt-1">Real-time count</div>
                 </div>
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
@@ -126,10 +135,23 @@ export function AdminDashboard() {
                         <span className="text-sm font-medium text-gray-500">Top Performer</span>
                         <Award className="w-4 h-4 text-gray-400" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">—</div>
+                    <div className="text-2xl font-bold text-gray-900">{outletPerformance.length > 0 ? outletPerformance.sort((a, b) => b.sales - a.sales)[0].name.split(' ').pop() : '—'}</div>
                     <div className="text-xs text-gray-500 mt-1">This month</div>
                 </div>
             </div>
+
+            {outletCount === 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+                    <Store className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-bold text-blue-900">No Outlets Configured</h3>
+                    <p className="text-blue-700 max-w-md mx-auto mt-2">
+                        It looks like there are no outlets in the system yet. Start by creating an outlet to begin tracking sales and inventory.
+                    </p>
+                    <a href="/dashboard/outlets" className="inline-block mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                        Configure Outlets
+                    </a>
+                </div>
+            )}
 
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border shadow-sm">
                 <div>
@@ -201,9 +223,9 @@ export function AdminDashboard() {
                                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                                idx === 1 ? 'bg-gray-200 text-gray-700' :
-                                                    idx === 2 ? 'bg-orange-100 text-orange-700' :
-                                                        'bg-blue-50 text-blue-700'
+                                            idx === 1 ? 'bg-gray-200 text-gray-700' :
+                                                idx === 2 ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-blue-50 text-blue-700'
                                             }`}>
                                             {idx + 1}
                                         </div>

@@ -7,8 +7,7 @@ import { createClientBrowser } from '@/lib/supabase-client';
 import { OnlineBanner } from '@/components/online-banner';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { db } from '@/lib/offline-db';
-import { generateCustomerId } from '@/lib/customer-id-generator';
-import { User } from 'lucide-react';
+import { User, Hash } from 'lucide-react';
 
 export default function NewSalesPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
@@ -27,6 +26,9 @@ export default function NewSalesPage() {
     const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
     const [fetchingCustomer, setFetchingCustomer] = useState(false);
+    const [idPrefix, setIdPrefix] = useState('HP-TVL');
+    const [isLocked, setIsLocked] = useState(false);
+    const [checkingLock, setCheckingLock] = useState(true);
 
     // Auto-search customers when typing (after 3 digits)
     useEffect(() => {
@@ -51,6 +53,44 @@ export default function NewSalesPage() {
         }
     }, [paymentModes, salesValue]);
 
+    // Check for Locked Day status
+    useEffect(() => {
+        async function checkLock() {
+            if (!user?.profile?.outlet_id) return;
+            setCheckingLock(true);
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const { data, error } = await supabase
+                    .from('daily_records')
+                    .select('status')
+                    .eq('outlet_id', user.profile.outlet_id)
+                    .eq('date', today)
+                    .single();
+
+                if (data && data.status === 'locked') {
+                    setIsLocked(true);
+                } else {
+                    setIsLocked(false);
+                }
+            } catch (e) {
+                console.error('Lock check error:', e);
+            } finally {
+                setCheckingLock(false);
+            }
+        }
+        checkLock();
+    }, [user, supabase]);
+
+    // Construct ID prefix from outlet details
+    useEffect(() => {
+        if (user?.profile) {
+            const profile = user.profile as any;
+            const type = profile.outlet?.outlet_type || (profile.outlet?.type === 'smart_clinic' ? 'SC' : 'HP');
+            const code = profile.outlet?.location_code || (profile.outlet?.name ? profile.outlet.name.split(' ').pop()?.substring(0, 3).toUpperCase() : 'TVL');
+            setIdPrefix(`${type}-${code}`);
+        }
+    }, [user]);
+
     const searchCustomers = async (phone: string) => {
         const profile = (user as any).profile;
         if (!profile?.outlet_id) return;
@@ -59,9 +99,8 @@ export default function NewSalesPage() {
         try {
             const { data, error } = await (supabase as any)
                 .from('customers')
-                .select('phone, name, id')
-                .ilike('phone', `${phone}%`)
-                .eq('outlet_id', profile.outlet_id)
+                .select('phone, name, id, customer_code, internal_customer_id')
+                .or(`phone.ilike.${phone}%,name.ilike.%${phone}%,customer_code.ilike.${phone}%`)
                 .eq('is_active', true)
                 .limit(10);
 
@@ -161,6 +200,10 @@ export default function NewSalesPage() {
     };
 
     const handleSubmit = async () => {
+        if (isLocked) {
+            alert('❌ This business day is locked. New entries are not allowed.');
+            return;
+        }
         // Validation
         if (!customerPhone.trim()) {
             alert('Please enter customer phone number');
@@ -232,16 +275,12 @@ export default function NewSalesPage() {
                     .select('*', { count: 'exact', head: true })
                     .eq('outlet_id', profile.outlet_id);
 
-                const outletName = profile.outlet?.name || 'Sahakar Outlet';
-                const customId = generateCustomerId(outletName, count || 0);
-
                 const { data: newCust, error: customerError } = await (supabase as any)
                     .from('customers')
                     .insert({
                         outlet_id: profile.outlet_id,
                         phone: customerPhone.trim(),
                         name: customerName.trim(),
-                        customer_code: customId,
                         is_active: true,
                         created_by: user.id
                     })
@@ -331,7 +370,8 @@ export default function NewSalesPage() {
 
             // Success
             const customerLabel = customerExists ? 'Existing customer' : 'New customer added';
-            alert(`✅ Sales entry submitted successfully!\n${customerLabel}: ${customerName}\nBill: ${billNumber}\nAmount: ₹${amount}`);
+            const internalIdMsg = transData.internal_entry_id ? `\nSahakar ID: ${transData.internal_entry_id}` : '';
+            alert(`✅ Sales entry submitted successfully!\n${customerLabel}: ${customerName}\nBill: ${billNumber}${internalIdMsg}\nAmount: ₹${amount}`);
 
             // Reset form
             setCustomerPhone('');
@@ -354,6 +394,25 @@ export default function NewSalesPage() {
             <TopBar title="New Sales Entry" />
             <OnlineBanner isOnline={isOnline} />
             <div className="p-6">
+                {isLocked && (
+                    <div className="max-w-3xl mx-auto mb-6 bg-red-600 text-white px-6 py-4 rounded-xl flex items-center justify-between shadow-lg">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white/20 p-2 rounded-lg">
+                                <span className="text-2xl">🔒</span>
+                            </div>
+                            <div>
+                                <p className="font-bold text-lg">Business Day Locked</p>
+                                <p className="text-sm text-red-100">This day has been locked by HO. New entries are disabled.</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="bg-white text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50 transition-colors shadow-sm"
+                        >
+                            Refresh
+                        </button>
+                    </div>
+                )}
                 <div className="max-w-3xl mx-auto space-y-6">
                     {/* Step 1: Customer Details */}
                     <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -372,7 +431,8 @@ export default function NewSalesPage() {
                                     value={customerPhone}
                                     onChange={(e) => setCustomerPhone(e.target.value)}
                                     maxLength={10}
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    disabled={isLocked}
+                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 />
                                 {fetchingCustomer && (
                                     <div className="absolute right-3 top-2.5">
@@ -426,10 +486,10 @@ export default function NewSalesPage() {
                                     placeholder={customerExists ? "Auto-filled from database" : "Enter customer name"}
                                     value={customerName}
                                     onChange={(e) => !customerExists && setCustomerName(e.target.value)}
-                                    disabled={customerExists}
+                                    disabled={customerExists || isLocked}
                                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${customerExists
                                         ? 'bg-gray-100 text-gray-700 cursor-not-allowed'
-                                        : 'bg-gray-50 focus:ring-blue-500'
+                                        : isLocked ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-50 focus:ring-blue-500'
                                         }`}
                                 />
                                 {!customerExists && customerName.trim() && (
@@ -448,15 +508,28 @@ export default function NewSalesPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Entry / Bill Number <span className="text-red-500">*</span>
+                                    ERP Bill Number <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
-                                    placeholder="e.g., INV-001"
+                                    placeholder="e.g., 458723"
                                     value={billNumber}
                                     onChange={(e) => setBillNumber(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    disabled={isLocked}
+                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Sahakar Entry ID
+                                </label>
+                                <div
+                                    className="w-full px-3 py-2 border rounded-md bg-gray-100 text-gray-500 flex items-center justify-between cursor-help"
+                                    title="System-generated internal reference"
+                                >
+                                    <span className="font-mono">{idPrefix}-XXXXXX</span>
+                                    <span className="text-[10px] uppercase font-bold text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">Auto</span>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -469,7 +542,8 @@ export default function NewSalesPage() {
                                     onChange={(e) => setSalesValue(e.target.value)}
                                     step="0.01"
                                     min="0"
-                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    disabled={isLocked}
+                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 />
                             </div>
                         </div>
@@ -490,8 +564,8 @@ export default function NewSalesPage() {
                                     <input
                                         type="checkbox"
                                         checked={paymentModes.includes(mode)}
-                                        onChange={() => handlePaymentModeToggle(mode)}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                        disabled={isLocked}
+                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
                                     />
                                     <span className="text-gray-700">{mode}</span>
                                 </label>
