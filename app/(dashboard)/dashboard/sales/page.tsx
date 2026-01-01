@@ -136,6 +136,13 @@ export default function NewSalesPage() {
             alert('Please enter a valid 10-digit phone number');
             return;
         }
+
+        // Validate customer name for new customers
+        if (!customerExists && !customerName.trim()) {
+            alert('Please enter customer name');
+            return;
+        }
+
         if (!billNumber.trim()) {
             alert('Please enter bill/entry number');
             return;
@@ -172,7 +179,27 @@ export default function NewSalesPage() {
 
         setSubmitting(true);
         try {
-            // Get or create today's daily_record
+            // Step 1: Create customer if new
+            if (!customerExists) {
+                const { error: customerError } = await (supabase as any)
+                    .from('customers')
+                    .insert({
+                        outlet_id: user.profile.outlet_id,
+                        phone: customerPhone.trim(),
+                        name: customerName.trim(),
+                        is_active: true,
+                        created_by: user.id
+                    });
+
+                if (customerError) {
+                    // Check if it's a duplicate (customer was just created by someone else)
+                    if (!customerError.message.includes('duplicate')) {
+                        throw customerError;
+                    }
+                }
+            }
+
+            // Step 2: Get or create today's daily_record
             const today = new Date().toISOString().split('T')[0];
 
             let dailyRecordId: string;
@@ -211,7 +238,7 @@ export default function NewSalesPage() {
                     entry_number: billNumber.trim(),
                     transaction_type: 'income',
                     category: 'sales',
-                    description: `Sale to ${customerPhone}`,
+                    description: `Sale to ${customerName.trim()} (${customerPhone})`,
                     amount: amount,
                     payment_modes: paymentModes.join(','),
                     customer_phone: customerPhone.trim(),
@@ -221,10 +248,13 @@ export default function NewSalesPage() {
             if (error) throw error;
 
             // Success
-            alert(`✅ Sales entry submitted successfully!\nBill: ${billNumber}\nAmount: ₹${amount}`);
+            const customerLabel = customerExists ? 'Existing customer' : 'New customer added';
+            alert(`✅ Sales entry submitted successfully!\n${customerLabel}: ${customerName}\nBill: ${billNumber}\nAmount: ₹${amount}`);
 
             // Reset form
             setCustomerPhone('');
+            setCustomerName('');
+            setCustomerExists(false);
             setBillNumber('');
             setSalesValue('');
             setPaymentModes([]);
@@ -275,9 +305,34 @@ export default function NewSalesPage() {
                                 </div>
                             )}
                             {customerPhone.length === 10 && !customerExists && !fetchingCustomer && (
-                                <p className="mt-2 text-sm text-gray-600">New customer - will be added automatically</p>
+                                <div className="mt-2 text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded">
+                                    ⚠️ New customer - please enter name below
+                                </div>
                             )}
                         </div>
+
+                        {/* Customer Name Field */}
+                        {customerPhone.length === 10 && (
+                            <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Customer Name <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder={customerExists ? "Auto-filled from database" : "Enter customer name"}
+                                    value={customerName}
+                                    onChange={(e) => !customerExists && setCustomerName(e.target.value)}
+                                    disabled={customerExists}
+                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${customerExists
+                                            ? 'bg-gray-100 text-gray-700 cursor-not-allowed'
+                                            : 'bg-gray-50 focus:ring-blue-500'
+                                        }`}
+                                />
+                                {!customerExists && customerName.trim() && (
+                                    <p className="mt-1 text-xs text-green-600">✓ This customer will be saved to the database</p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Step 2: Sale Details */}
@@ -361,8 +416,8 @@ export default function NewSalesPage() {
                                     <div className="flex justify-between text-sm">
                                         <span className="font-medium">Total:</span>
                                         <span className={`font-bold ${Math.abs(calculateTotalPayment() - parseFloat(salesValue || '0')) < 0.01
-                                                ? 'text-green-600'
-                                                : 'text-red-600'
+                                            ? 'text-green-600'
+                                            : 'text-red-600'
                                             }`}>
                                             ₹{calculateTotalPayment().toFixed(2)}
                                         </span>
