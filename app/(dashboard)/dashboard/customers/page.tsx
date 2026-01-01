@@ -13,7 +13,7 @@ export default function CustomersPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
-    const [rows, setRows] = useState<Array<{ id: string; name: string; phone?: string | null; customer_code?: string | null; internal_customer_id?: string | null; created_at?: string | null }>>([]);
+    const [rows, setRows] = useState<Array<{ id: string; name: string; phone?: string | null; customer_code?: string | null; internal_customer_id?: string | null; created_at?: string | null; is_active?: boolean | null }>>([]);
     const [error, setError] = useState<string | null>(null);
     const [idPrefix, setIdPrefix] = useState('HP-TVL-C');
 
