@@ -24,6 +24,7 @@ export default function NewSalesPage() {
     const [salesValue, setSalesValue] = useState('');
     const [paymentModes, setPaymentModes] = useState<string[]>([]);
     const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>({});
+    const [autoCalculated, setAutoCalculated] = useState<Set<string>>(new Set()); // Track auto-calculated fields
     const [submitting, setSubmitting] = useState(false);
     const [fetchingCustomer, setFetchingCustomer] = useState(false);
     const [idPrefix, setIdPrefix] = useState('HP-TVL');
@@ -163,10 +164,65 @@ export default function NewSalesPage() {
     };
 
     const handlePaymentAmountChange = (mode: string, value: string) => {
-        setPaymentAmounts(prev => ({
-            ...prev,
-            [mode]: value
-        }));
+        const enteredAmount = parseFloat(value) || 0;
+        const totalSales = parseFloat(salesValue) || 0;
+
+        // Clear this mode from auto-calculated set (user is manually entering)
+        setAutoCalculated(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(mode);
+            return newSet;
+        });
+
+        // Update the current mode's amount
+        setPaymentAmounts(prev => {
+            const updated = { ...prev, [mode]: value };
+
+            // Track which fields we're auto-filling
+            const newAutoCalculated = new Set<string>();
+
+            // Auto-calculate for multiple payment modes
+            if (paymentModes.length >= 2 && totalSales > 0) {
+                // Find all modes that have NO value entered (empty fields)
+                const emptyModes = paymentModes.filter(m => {
+                    if (m === mode) return false; // Skip the current mode
+                    const existingValue = parseFloat(updated[m] || '0');
+                    return existingValue === 0 || updated[m] === '';
+                });
+
+                // Calculate sum of all filled amounts
+                const filledSum = paymentModes.reduce((sum, m) => {
+                    if (m === mode) {
+                        return sum + enteredAmount;
+                    }
+                    return sum + (parseFloat(updated[m] || '0'));
+                }, 0);
+
+                const remaining = totalSales - filledSum;
+
+                // Only auto-fill if there's remaining amount and empty modes
+                if (remaining > 0 && emptyModes.length > 0) {
+                    // Distribute remaining amount equally among empty modes
+                    const distributedAmount = (remaining / emptyModes.length).toFixed(2);
+
+                    emptyModes.forEach(emptyMode => {
+                        updated[emptyMode] = distributedAmount;
+                        newAutoCalculated.add(emptyMode); // Mark as auto-calculated
+                    });
+                } else if (remaining === 0 && emptyModes.length > 0) {
+                    // If total is fulfilled, clear empty modes
+                    emptyModes.forEach(emptyMode => {
+                        updated[emptyMode] = '0.00';
+                        newAutoCalculated.add(emptyMode); // Mark as auto-calculated
+                    });
+                }
+            }
+
+            // Update auto-calculated tracking
+            setAutoCalculated(newAutoCalculated);
+
+            return updated;
+        });
     };
 
     const calculateTotalPayment = () => {
@@ -583,20 +639,36 @@ export default function NewSalesPage() {
                         {paymentModes.length > 1 && (
                             <div className="mt-4 space-y-3 bg-blue-50 p-4 rounded">
                                 <p className="text-sm font-medium text-blue-900">Split Payment Amounts:</p>
-                                {paymentModes.map(mode => (
-                                    <div key={mode} className="flex items-center gap-3">
-                                        <label className="text-sm text-gray-700 w-20">{mode}:</label>
-                                        <input
-                                            type="number"
-                                            placeholder="0.00"
-                                            value={paymentAmounts[mode] || ''}
-                                            onChange={(e) => handlePaymentAmountChange(mode, e.target.value)}
-                                            step="0.01"
-                                            min="0"
-                                            className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                    </div>
-                                ))}
+                                {paymentModes.map(mode => {
+                                    const isAutoCalculated = autoCalculated.has(mode);
+                                    return (
+                                        <div key={mode} className="flex items-center gap-3">
+                                            <label className="text-sm text-gray-700 w-20">{mode}:</label>
+                                            <div className="flex-1 relative">
+                                                <input
+                                                    type="number"
+                                                    placeholder="0.00"
+                                                    value={paymentAmounts[mode] || ''}
+                                                    onChange={(e) => handlePaymentAmountChange(mode, e.target.value)}
+                                                    step="0.01"
+                                                    min="0"
+                                                    disabled={isLocked}
+                                                    className={`w-full px-3 py-2 pr-20 border rounded-md focus:outline-none focus:ring-2 transition-all ${isAutoCalculated
+                                                            ? 'bg-green-50 border-green-300 text-green-800 font-semibold focus:ring-green-500'
+                                                            : 'focus:ring-blue-500'
+                                                        } ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                />
+                                                {isAutoCalculated && paymentAmounts[mode] && (
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none" title="Auto-calculated and distributed">
+                                                        <span className="text-green-600 text-xs font-semibold flex items-center gap-0.5">
+                                                            ✨ Auto
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                                 <div className="pt-2 border-t border-blue-200">
                                     <div className="flex justify-between text-sm">
                                         <span className="font-medium">Total:</span>

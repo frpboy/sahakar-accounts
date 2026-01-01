@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { StaffDashboard } from '@/components/dashboard/staff-view';
 import { StoreManagerDashboard } from '@/components/dashboard/store-manager-view';
 import { AdminDashboard } from '@/components/dashboard/admin-view';
+import { HOAccountantDashboard } from '@/components/dashboard/ho-accountant-view';
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -14,9 +15,11 @@ export default function DashboardPage() {
     return (
         <div className="flex flex-col h-full">
             <TopBar title="Dashboard" />
-            <div className="p-6">
-                {(userRole === 'master_admin' || userRole === 'superadmin' || userRole === 'ho_accountant') ? (
+            <div className="flex-1 overflow-auto">
+                {(userRole === 'master_admin' || userRole === 'superadmin') ? (
                     <AdminDashboard />
+                ) : userRole === 'ho_accountant' ? (
+                    <HOAccountantDashboard />
                 ) : userRole === 'outlet_manager' ? (
                     <StoreManagerDashboard />
                 ) : (

@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // const cached = await cacheHelpers.getUser(authUser.id);
             // if (cached) { ... }
 
-            const res = await fetch('/api/profile', { 
+            const res = await fetch('/api/profile', {
                 method: 'GET',
                 cache: 'no-store', // Force fresh fetch
                 headers: { 'Cache-Control': 'no-cache' }
@@ -260,7 +260,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ action: event === 'SIGNED_IN' ? 'login' : 'session_update', entity: 'auth' }),
                             });
-                        } catch {}
+                        } catch { }
                     }
                 } else if (isMounted) {
                     setUser(null);
@@ -274,7 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ action: 'logout', entity: 'auth' }),
                             });
-                        } catch {}
+                        } catch { }
                     }
                 }
             }
@@ -295,7 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('[Auth] Signing in:', email);
 
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
@@ -303,6 +303,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
             console.error('[Auth] Sign in error:', error.message);
             throw error;
+        }
+
+        // Check if staff has ended duty today
+        if (data.user) {
+            const { data: profileData } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', data.user.id)
+                .single();
+
+            if (profileData?.role === 'outlet_staff') {
+                // Check login time window (7 AM - 2 AM only)
+                const now = new Date();
+                const hour = now.getHours(); // 0-23
+
+                // Block login between 2 AM (2) and 7 AM (7)
+                if (hour >= 2 && hour < 7) {
+                    await supabase.auth.signOut();
+                    throw new Error('Staff can only login between 7:00 AM and 2:00 AM. Please try again after 7:00 AM.');
+                }
+
+                const today = new Date().toISOString().split('T')[0];
+
+                const { data: dutyLog } = await (supabase
+                    .from('duty_logs' as any) as any)
+                    .select('duty_end')
+                    .eq('user_id', data.user.id)
+                    .eq('date', today)
+                    .single();
+
+                if (dutyLog?.duty_end) {
+                    // Staff has ended duty today - sign them out and block login
+                    await supabase.auth.signOut();
+                    throw new Error('Your duty has ended for today. Please login tomorrow after 7:00 AM.');
+                }
+            }
         }
 
         console.log('[Auth] Sign in successful');

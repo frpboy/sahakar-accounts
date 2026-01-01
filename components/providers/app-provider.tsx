@@ -17,6 +17,8 @@ export type AppContextType = {
     toggleMode: () => void;
     demoRole: UserRole;
     setDemoRole: (role: UserRole) => void;
+    isMobileMenuOpen: boolean;
+    setIsMobileMenuOpen: (open: boolean) => void;
 };
 
 /* ======================================================
@@ -32,23 +34,31 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
     const [isOffline, setIsOffline] = useState(false);
     const [demoRole, setDemoRole] = useState<UserRole>('outlet_staff');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const { user, signOut } = useAuth();
+
+    // Auto sign-out at 2 AM for staff
+    useEffect(() => {
+        if (user?.profile?.role !== 'outlet_staff') return;
+
+        const checkTime = () => {
+            const now = new Date();
+            const hour = now.getHours();
+            // If it's between 2:00 AM and 2:01 AM, sign out
+            if (hour === 2) {
+                console.log('[AutoSignOut] It is 2 AM, signing out staff...');
+                signOut();
+            }
+        };
+
+        const interval = setInterval(checkTime, 60000); // Check every minute
+        checkTime(); // Check immediately
+
+        return () => clearInterval(interval);
+    }, [user, signOut]);
 
     // Monitor network status
-    useEffect(() => {
-        const handleOnline = () => setIsOffline(false);
-        const handleOffline = () => setIsOffline(true);
-
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-
-        // Initial check
-        setIsOffline(!navigator.onLine);
-
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, []);
 
     const toggleMode = useCallback(() => {
         // For testing offline mode behavior
@@ -60,7 +70,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isOffline,
         toggleMode,
         demoRole,
-        setDemoRole
+        setDemoRole,
+        isMobileMenuOpen,
+        setIsMobileMenuOpen
     };
 
     return (
