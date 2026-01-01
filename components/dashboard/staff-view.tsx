@@ -1,19 +1,23 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { ShoppingCart, FileText, CheckCircle2, History, PlusCircle, ArrowRight } from 'lucide-react';
+import { ShoppingCart, FileText, CheckCircle2, History, PlusCircle, ArrowRight, TrendingUp, Clock } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { db } from '@/lib/offline-db';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 import Link from 'next/link';
 
 export function StaffDashboard() {
     const supabase = useMemo(() => createClientBrowser(), []);
     const { user } = useAuth();
     const [todaySales, setTodaySales] = useState(0);
+    const [todaySalesValue, setTodaySalesValue] = useState(0);
     const [draftsCount, setDraftsCount] = useState(0);
     const [dayStatus, setDayStatus] = useState<'open' | 'submitted' | 'locked' | 'none'>('none');
+    const [todayActivity, setTodayActivity] = useState<any[]>([]);
+    const [lastEntryTime, setLastEntryTime] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -23,14 +27,32 @@ export function StaffDashboard() {
             const todayStr = now.toISOString().split('T')[0];
 
             try {
-                // Today's personal sales count
-                const { count } = await supabase
+                // Today's personal sales count and value
+                const { data: salesData } = await supabase
                     .from('transactions')
-                    .select('*', { count: 'exact', head: true })
+                    .select('amount')
                     .eq('created_by', user.id)
                     .eq('category', 'sales')
                     .gte('created_at', todayStr);
-                setTodaySales(count || 0);
+
+                setTodaySales(salesData?.length || 0);
+                setTodaySalesValue(salesData?.reduce((sum, t) => sum + Number(t.amount), 0) || 0);
+
+                // Today's activity (all personal transactions)
+                const { data: activityData } = await supabase
+                    .from('transactions')
+                    .select('id, created_at, internal_entry_id, category, amount, daily_records(status)')
+                    .eq('created_by', user.id)
+                    .gte('created_at', todayStr)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                setTodayActivity(activityData || []);
+
+                // Last entry time
+                if (activityData && activityData.length > 0) {
+                    setLastEntryTime(activityData[0].created_at);
+                }
 
                 // Personal drafts
                 const dCount = await db.drafts
@@ -66,6 +88,29 @@ export function StaffDashboard() {
 
     return (
         <div className="space-y-8">
+            {/* Draft Sync Warning */}
+            {draftsCount > 0 && (
+                <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg shadow-sm">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                            <svg className="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-bold text-amber-900">⚠️ {draftsCount} draft {draftsCount === 1 ? 'entry' : 'entries'} not synced</p>
+                            <p className="text-sm text-amber-700 mt-1">These WILL NOT be saved unless submitted to the server.</p>
+                            <Link
+                                href="/dashboard/drafts"
+                                className="inline-block mt-3 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 transition-colors"
+                            >
+                                Review Drafts →
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Action Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-2xl border shadow-sm flex items-center justify-between">
