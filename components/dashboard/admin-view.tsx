@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
+import { createClientBrowser } from '@/lib/supabase-client';
 
 type OutletPerf = { name: string; sales: number };
 type GrowthPoint = { month: string; total: number };
@@ -15,6 +16,7 @@ type Referrer = { name: string; count: number };
 
 export function AdminDashboard() {
     const { user } = useAuth();
+    const supabase = useMemo(() => createClientBrowser(), []);
     const [outletCount, setOutletCount] = useState(0);
     const [totalRevenue, setTotalRevenue] = useState(0);
     const [totalCustomers, setTotalCustomers] = useState(0);

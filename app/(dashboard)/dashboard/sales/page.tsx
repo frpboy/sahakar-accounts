@@ -144,19 +144,20 @@ export default function NewSalesPage() {
         setCustomerSuggestions([]);
     };
 
-    const handlePaymentModeToggle = (mode: string) => {
+    const handlePaymentModeChange = (mode: string) => {
+        if (isLocked) return;
         setPaymentModes(prev => {
-            const newModes = prev.includes(mode)
+            const isRemoving = prev.includes(mode);
+            const newModes = isRemoving
                 ? prev.filter(m => m !== mode)
                 : [...prev, mode];
 
-            // Clear amounts for removed modes
-            if (!newModes.includes(mode)) {
+            // Clean up payment amounts if mode removed
+            if (isRemoving) {
                 const newAmounts = { ...paymentAmounts };
                 delete newAmounts[mode];
                 setPaymentAmounts(newAmounts);
             }
-
             return newModes;
         });
     };
@@ -186,6 +187,7 @@ export default function NewSalesPage() {
                 payment_modes: paymentModes.join(','),
                 customer_phone: customerPhone.trim(),
                 created_at: new Date().toISOString(),
+                created_by: user.id,
                 synced: false
             });
 
@@ -568,6 +570,7 @@ export default function NewSalesPage() {
                                     <input
                                         type="checkbox"
                                         checked={paymentModes.includes(mode)}
+                                        onChange={() => handlePaymentModeChange(mode)}
                                         disabled={isLocked}
                                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
                                     />

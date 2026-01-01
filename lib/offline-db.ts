@@ -11,6 +11,7 @@ export interface DraftTransaction {
     payment_modes: string;
     customer_phone?: string;
     created_at: string;
+    created_by?: string;
     synced: boolean;
 }
 
@@ -20,7 +21,7 @@ export class OfflineDB extends Dexie {
     constructor() {
         super('SahakarAccountsDB');
         this.version(1).stores({
-            drafts: '++id, outlet_id, created_at, synced'
+            drafts: '++id, outlet_id, created_at, created_by, synced'
         });
     }
 }

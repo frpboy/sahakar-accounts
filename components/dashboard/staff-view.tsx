@@ -15,7 +15,7 @@ export function StaffDashboard() {
     const [todaySales, setTodaySales] = useState(0);
     const [todaySalesValue, setTodaySalesValue] = useState(0);
     const [draftsCount, setDraftsCount] = useState(0);
-    const [dayStatus, setDayStatus] = useState<'open' | 'submitted' | 'locked' | 'none'>('none');
+    const [dayStatus, setDayStatus] = useState<'open' | 'submitted' | 'locked' | 'none' | 'draft'>('none');
     const [todayActivity, setTodayActivity] = useState<any[]>([]);
     const [lastEntryTime, setLastEntryTime] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -28,7 +28,7 @@ export function StaffDashboard() {
 
             try {
                 // Today's personal sales count and value
-                const { data: salesData } = await supabase
+                const { data: salesData } = await (supabase as any)
                     .from('transactions')
                     .select('amount')
                     .eq('created_by', user.id)
@@ -39,7 +39,7 @@ export function StaffDashboard() {
                 setTodaySalesValue(salesData?.reduce((sum, t) => sum + Number(t.amount), 0) || 0);
 
                 // Today's activity (all personal transactions)
-                const { data: activityData } = await supabase
+                const { data: activityData } = await (supabase as any)
                     .from('transactions')
                     .select('id, created_at, internal_entry_id, category, amount, daily_records(status)')
                     .eq('created_by', user.id)
@@ -51,7 +51,7 @@ export function StaffDashboard() {
 
                 // Last entry time
                 if (activityData && activityData.length > 0) {
-                    setLastEntryTime(activityData[0].created_at);
+                    setLastEntryTime((activityData as any)[0].created_at);
                 }
 
                 // Personal drafts
@@ -62,13 +62,13 @@ export function StaffDashboard() {
                 setDraftsCount(dCount);
 
                 // Current day status
-                const { data: record } = await supabase
+                const { data: record } = await (supabase as any)
                     .from('daily_records')
                     .select('status')
                     .eq('outlet_id', user.profile.outlet_id)
                     .eq('date', todayStr)
                     .single();
-                setDayStatus(record?.status || 'open');
+                setDayStatus((record?.status as any) || 'open');
 
             } catch (error) {
                 console.error('Error loading staff dashboard:', error);

@@ -73,7 +73,7 @@ CREATE POLICY "Manager Edit Customers" ON customers
         EXISTS (
             SELECT 1 FROM users 
             WHERE id = auth.uid() 
-            AND role IN ('store_manager', 'ho_accountant', 'master_admin', 'superadmin')
+            AND role IN ('outlet_manager', 'ho_accountant', 'master_admin', 'superadmin')
         )
     );
 
@@ -84,7 +84,7 @@ CREATE POLICY "Manager Update Customers" ON customers
         EXISTS (
             SELECT 1 FROM users 
             WHERE id = auth.uid() 
-            AND role IN ('store_manager', 'ho_accountant', 'master_admin', 'superadmin')
+            AND role IN ('outlet_manager', 'ho_accountant', 'master_admin', 'superadmin')
         )
     );
 

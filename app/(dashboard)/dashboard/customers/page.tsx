@@ -191,7 +191,7 @@ export default function CustomersPage() {
         setIsModalOpen(true);
     };
 
-    const canEdit = ['store_manager', 'ho_accountant', 'master_admin', 'superadmin'].includes(user?.profile?.role || '');
+    const canEdit = ['outlet_staff', 'outlet_manager', 'ho_accountant', 'master_admin', 'superadmin'].includes(user?.profile?.role || '');
 
     return (
         <div className="flex flex-col h-full">
@@ -322,15 +322,6 @@ export default function CustomersPage() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Customer ID
-                                    </label>
-                                    <div className="w-full px-3 py-2 border rounded-md bg-gray-100 text-gray-500 text-sm font-mono flex items-center justify-between cursor-help" title="Automatically generated professional ID">
-                                        <span>{idPrefix}XXXXXX</span>
-                                        <span className="text-[10px] bg-gray-200 px-1 rounded font-bold text-gray-400">AUTO</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Phone Number <span className="text-red-500">*</span>
                                     </label>
                                     <input
@@ -342,6 +333,27 @@ export default function CustomersPage() {
                                     />
                                 </div>
                             </div>
+
+                            {editingCustomer && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                            Sahakar ID
+                                        </label>
+                                        <div className="text-sm font-mono text-gray-600">
+                                            {editingCustomer.internal_customer_id || 'Generating...'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                            ERP Code
+                                        </label>
+                                        <div className="text-sm font-mono text-gray-600">
+                                            {editingCustomer.customer_code || 'N/A'}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>

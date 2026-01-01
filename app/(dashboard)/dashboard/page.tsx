@@ -17,7 +17,7 @@ export default function DashboardPage() {
             <div className="p-6">
                 {(userRole === 'master_admin' || userRole === 'superadmin' || userRole === 'ho_accountant') ? (
                     <AdminDashboard />
-                ) : userRole === 'store_manager' ? (
+                ) : userRole === 'outlet_manager' ? (
                     <StoreManagerDashboard />
                 ) : (
                     <StaffDashboard />

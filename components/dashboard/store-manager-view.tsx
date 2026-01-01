@@ -61,7 +61,7 @@ export function StoreManagerDashboard() {
                 const isoStart = startDate.toISOString().split('T')[0];
                 const isoEnd = now.toISOString().split('T')[0];
 
-                const { data: records } = await supabase
+                const { data: records } = await (supabase as any)
                     .from('daily_records')
                     .select('id,date')
                     .eq('outlet_id', user.profile.outlet_id)
@@ -70,7 +70,7 @@ export function StoreManagerDashboard() {
                     .order('date', { ascending: true });
                 const recordIds = (records || []).map((r: any) => r.id);
 
-                const { data: txs } = await supabase
+                const { data: txs } = await (supabase as any)
                     .from('transactions')
                     .select('amount,type,payment_mode')
                     .in('daily_record_id', recordIds);
@@ -114,7 +114,7 @@ export function StoreManagerDashboard() {
                 setNewCustomers((cust || []).length);
 
                 // Fetch Today's Sales Count
-                const { count: txCount } = await supabase
+                const { count: txCount } = await (supabase as any)
                     .from('transactions')
                     .select('*', { count: 'exact', head: true })
                     .eq('outlet_id', user.profile.outlet_id)
@@ -123,7 +123,7 @@ export function StoreManagerDashboard() {
                 setTodaySalesCount(txCount || 0);
 
                 // Fetch Last Locked Day
-                const { data: lastLocked } = await supabase
+                const { data: lastLocked } = await (supabase as any)
                     .from('daily_records')
                     .select('date')
                     .eq('outlet_id', user.profile.outlet_id)
@@ -139,7 +139,7 @@ export function StoreManagerDashboard() {
                 setDraftsCount(dCount);
 
                 // Fetch Pending Action Days (Submitted but not locked, or completely open)
-                const { data: pendingDays } = await supabase
+                const { data: pendingDays } = await (supabase as any)
                     .from('daily_records')
                     .select('*')
                     .eq('outlet_id', user.profile.outlet_id)
@@ -150,7 +150,7 @@ export function StoreManagerDashboard() {
                 // Fetch Staff Performance (Last 30 days transactions)
                 const thirtyDaysAgo = new Date();
                 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                const { data: staffTx } = await supabase
+                const { data: staffTx } = await (supabase as any)
                     .from('transactions')
                     .select('profiles(full_name)')
                     .eq('outlet_id', user.profile.outlet_id)

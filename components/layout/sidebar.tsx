@@ -27,14 +27,19 @@ export function Sidebar({ className }: { className?: string }) {
     const { user, signOut } = useAuth();
 
     const [isCollapsed, setIsCollapsed] = React.useState(false);
+    const [isTransactionsOpen, setIsTransactionsOpen] = React.useState(true);
     const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
     const [isLoaded, setIsLoaded] = React.useState(false);
 
     // Persist sidebar state
     React.useEffect(() => {
         const saved = localStorage.getItem('sidebar_collapsed');
+        const savedTx = localStorage.getItem('sidebar_transactions_open');
         if (saved !== null) {
             setIsCollapsed(saved === 'true');
+        }
+        if (savedTx !== null) {
+            setIsTransactionsOpen(savedTx === 'true');
         }
         setIsLoaded(true);
     }, []);
@@ -42,17 +47,28 @@ export function Sidebar({ className }: { className?: string }) {
     React.useEffect(() => {
         if (isLoaded) {
             localStorage.setItem('sidebar_collapsed', isCollapsed.toString());
+            localStorage.setItem('sidebar_transactions_open', isTransactionsOpen.toString());
         }
-    }, [isCollapsed, isLoaded]);
+    }, [isCollapsed, isTransactionsOpen, isLoaded]);
 
     if (!isLoaded) return <div className="w-64 h-full bg-white border-r" />;
 
     const navItems = [
         { label: 'Navigation', type: 'label' },
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { label: 'New Sales', href: '/dashboard/sales', icon: ShoppingCart },
-        { label: 'Sales Return', href: '/dashboard/returns', icon: Undo2 },
-        { label: 'Purchase', href: '/dashboard/purchase', icon: Package },
+        {
+            label: 'Transactions',
+            icon: ShoppingCart,
+            type: 'group',
+            isOpen: isTransactionsOpen,
+            setOpen: setIsTransactionsOpen,
+            items: [
+                { label: 'New Sales', href: '/dashboard/sales', icon: ShoppingCart },
+                { label: 'Sales Return', href: '/dashboard/returns', icon: Undo2 },
+                { label: 'Purchase', href: '/dashboard/purchase', icon: Package },
+                { label: 'Purchase Return', href: '/dashboard/returns?type=purchase', icon: Undo2 },
+            ]
+        },
         { label: 'Credit Received', href: '/dashboard/credit', icon: IndianRupee },
         { label: 'Customers', href: '/dashboard/customers', icon: Users },
         { label: 'Draft Entries', href: '/dashboard/drafts', icon: FileText, badge: '0' },
