@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ShoppingCart, Users, CreditCard, TrendingUp } from 'lucide-react';
-import { 
+import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
@@ -18,6 +18,8 @@ export function StoreManagerDashboard() {
     const [weekTotal, setWeekTotal] = useState(0);
     const [avgTx, setAvgTx] = useState(0);
     const [newCustomers, setNewCustomers] = useState(0);
+    const [creditOutstanding, setCreditOutstanding] = useState(0);
+    const [creditCount, setCreditCount] = useState(0);
     const [salesTrendData, setSalesTrendData] = useState<TrendPoint[]>([]);
     const [paymentData, setPaymentData] = useState<PaymentSlice[]>([
         { name: 'UPI', value: 0, color: '#3B82F6' },
@@ -81,6 +83,17 @@ export function StoreManagerDashboard() {
                     .gte('created_at', isoStart)
                     .lte('created_at', isoEnd);
 
+                // Fetch credit outstanding
+                const creditRes = await fetch(`/api/reports/credit-outstanding?outletId=${encodeURIComponent(user.profile.outlet_id)}`, { cache: 'no-store' });
+                if (creditRes.ok) {
+                    const creditData = await creditRes.json();
+                    setCreditOutstanding(creditData.total || 0);
+                    setCreditCount(creditData.count || 0);
+                } else {
+                    setCreditOutstanding(0);
+                    setCreditCount(0);
+                }
+
                 if (!mounted) return;
                 setSalesTrendData(trend);
                 setWeekTotal(weekSum);
@@ -97,6 +110,8 @@ export function StoreManagerDashboard() {
                 setSalesTrendData([]);
                 setWeekTotal(0);
                 setAvgTx(0);
+                setCreditOutstanding(0);
+                setCreditCount(0);
                 setPaymentData([
                     { name: 'UPI', value: 0, color: '#3B82F6' },
                     { name: 'Cash', value: 0, color: '#10B981' },
@@ -134,8 +149,8 @@ export function StoreManagerDashboard() {
                         <span className="text-sm font-medium text-gray-500">Credit Outstanding</span>
                         <CreditCard className="w-4 h-4 text-gray-400" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">—</div>
-                    <div className="text-xs text-gray-500 mt-1">Coming soon</div>
+                    <div className="text-2xl font-bold text-gray-900">₹{Math.round(creditOutstanding).toLocaleString('en-IN')}</div>
+                    <div className="text-xs text-gray-500 mt-1">{creditCount} customers</div>
                 </div>
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
@@ -155,14 +170,14 @@ export function StoreManagerDashboard() {
                         <LineChart data={salesTrendData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Number(value)/1000}K`} />
+                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Number(value) / 1000}K`} />
                             <Tooltip formatter={(value) => [`₹${Math.round(Number(value))}`, 'Sales']} />
-                            <Line 
-                                type="monotone" 
-                                dataKey="value" 
-                                stroke="#3B82F6" 
-                                strokeWidth={2} 
-                                dot={{ r: 4, fill: "#3B82F6", strokeWidth: 2, stroke: "#fff" }} 
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#3B82F6"
+                                strokeWidth={2}
+                                dot={{ r: 4, fill: "#3B82F6", strokeWidth: 2, stroke: "#fff" }}
                             />
                         </LineChart>
                     </ResponsiveContainer>

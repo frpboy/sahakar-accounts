@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Store, TrendingUp, Users, Award, Download } from 'lucide-react';
-import { 
+import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     LineChart, Line
 } from 'recharts';
@@ -10,13 +10,16 @@ import { useAuth } from '@/lib/auth-context';
 
 type OutletPerf = { name: string; sales: number };
 type GrowthPoint = { month: string; total: number };
+type Referrer = { name: string; count: number };
 
 export function AdminDashboard() {
     const { user } = useAuth();
     const [outletCount, setOutletCount] = useState(0);
     const [totalRevenue, setTotalRevenue] = useState(0);
+    const [totalCustomers, setTotalCustomers] = useState(0);
     const [outletPerformance, setOutletPerformance] = useState<OutletPerf[]>([]);
     const [customerGrowth, setCustomerGrowth] = useState<GrowthPoint[]>([]);
+    const [topReferrers, setTopReferrers] = useState<Referrer[]>([]);
 
     useEffect(() => {
         let mounted = true;
@@ -25,8 +28,10 @@ export function AdminDashboard() {
             if (!role || !['superadmin', 'master_admin', 'ho_accountant'].includes(role)) {
                 setOutletCount(0);
                 setTotalRevenue(0);
+                setTotalCustomers(0);
                 setOutletPerformance([]);
                 setCustomerGrowth([]);
+                setTopReferrers([]);
                 return;
             }
             try {
@@ -52,20 +57,37 @@ export function AdminDashboard() {
                 setOutletPerformance(perf);
                 setTotalRevenue(revenueSum);
 
-                const months: GrowthPoint[] = [];
-                for (let i = 5; i >= 0; i--) {
-                    const dt = new Date();
-                    dt.setMonth(dt.getMonth() - i);
-                    const label = dt.toLocaleDateString('en-IN', { month: 'short' });
-                    months.push({ month: label, total: 0 });
+                // Fetch customer growth data
+                const growthRes = await fetch('/api/reports/customer-growth?months=6', { cache: 'no-store' });
+                if (growthRes.ok) {
+                    const growthData = await growthRes.json();
+                    const formatted = growthData.labels.map((label: string, idx: number) => ({
+                        month: label,
+                        total: growthData.values[idx]
+                    }));
+                    setCustomerGrowth(formatted);
+                    setTotalCustomers(growthData.total);
+                } else {
+                    setCustomerGrowth([]);
                 }
-                setCustomerGrowth(months);
+
+                // Fetch top referrers
+                const referrersRes = await fetch('/api/reports/top-referrers?limit=5', { cache: 'no-store' });
+                if (referrersRes.ok) {
+                    const referrersData = await referrersRes.json();
+                    setTopReferrers(referrersData.referrers || []);
+                } else {
+                    setTopReferrers([]);
+                }
+
             } catch {
                 if (!mounted) return;
                 setOutletCount(0);
                 setTotalRevenue(0);
+                setTotalCustomers(0);
                 setOutletPerformance([]);
                 setCustomerGrowth([]);
+                setTopReferrers([]);
             }
         }
         load();
@@ -96,8 +118,8 @@ export function AdminDashboard() {
                         <span className="text-sm font-medium text-gray-500">Total Customers</span>
                         <Users className="w-4 h-4 text-gray-400" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">—</div>
-                    <div className="text-xs text-gray-500 mt-1">Coming soon</div>
+                    <div className="text-2xl font-bold text-gray-900">{totalCustomers.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500 mt-1">Last 6 months</div>
                 </div>
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
@@ -132,7 +154,7 @@ export function AdminDashboard() {
                         <BarChart data={outletPerformance}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Number(value)/1000}K`} />
+                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Number(value) / 1000}K`} />
                             <Tooltip formatter={(value) => [`₹${Math.round(Number(value))}`, 'Sales']} cursor={{ fill: 'transparent' }} />
                             <Bar dataKey="sales" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={60} />
                         </BarChart>
@@ -151,13 +173,13 @@ export function AdminDashboard() {
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} />
                                 <YAxis axisLine={false} tickLine={false} />
                                 <Tooltip />
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="total" 
-                                    stroke="#10B981" 
-                                    strokeWidth={2} 
+                                <Line
+                                    type="monotone"
+                                    dataKey="total"
+                                    stroke="#10B981"
+                                    strokeWidth={2}
                                     dot={{ r: 4, fill: "#10B981", strokeWidth: 2, stroke: "#fff" }}
-                                    name="Total Customers"
+                                    name="New Customers"
                                 />
                             </LineChart>
                         </ResponsiveContainer>
@@ -167,12 +189,30 @@ export function AdminDashboard() {
                 <div className="bg-white p-6 rounded-lg border shadow-sm">
                     <div className="flex justify-between items-center mb-4">
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900">Top Referring Staff</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">Top Referrers</h3>
                             <p className="text-sm text-gray-500">All-time leaderboard</p>
                         </div>
                     </div>
-                    <div className="space-y-4">
-                        <div className="text-sm text-gray-500">Coming soon</div>
+                    <div className="space-y-3">
+                        {topReferrers.length === 0 ? (
+                            <div className="text-sm text-gray-500 text-center py-8">No referral data yet</div>
+                        ) : (
+                            topReferrers.map((referrer, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
+                                                idx === 1 ? 'bg-gray-200 text-gray-700' :
+                                                    idx === 2 ? 'bg-orange-100 text-orange-700' :
+                                                        'bg-blue-50 text-blue-700'
+                                            }`}>
+                                            {idx + 1}
+                                        </div>
+                                        <span className="font-medium text-gray-900">{referrer.name}</span>
+                                    </div>
+                                    <span className="text-sm font-semibold text-blue-600">{referrer.count} referrals</span>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
