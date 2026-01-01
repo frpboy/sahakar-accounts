@@ -1,27 +1,129 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
+import { OnlineBanner } from '@/components/online-banner';
+import { useOnlineStatus } from '@/hooks/use-online-status';
+import { db } from '@/lib/offline-db';
+import { User } from 'lucide-react';
 
 export default function NewSalesPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
     const { user } = useAuth();
+    const isOnline = useOnlineStatus();
 
     // Form state
     const [customerPhone, setCustomerPhone] = useState('');
+    const [customerName, setCustomerName] = useState('');
+    const [customerExists, setCustomerExists] = useState(false);
     const [billNumber, setBillNumber] = useState('');
     const [salesValue, setSalesValue] = useState('');
     const [paymentModes, setPaymentModes] = useState<string[]>([]);
+    const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
+    const [fetchingCustomer, setFetchingCustomer] = useState(false);
+
+    // Auto-fetch customer when phone number is complete
+    useEffect(() => {
+        if (customerPhone.length === 10 && /^\d{10}$/.test(customerPhone)) {
+            fetchCustomer(customerPhone);
+        } else {
+            setCustomerName('');
+            setCustomerExists(false);
+        }
+    }, [customerPhone]);
+
+    // Auto-fill payment amount when single mode selected
+    useEffect(() => {
+        if (paymentModes.length === 1 && salesValue) {
+            setPaymentAmounts({ [paymentModes[0]]: salesValue });
+        }
+    }, [paymentModes, salesValue]);
+
+    const fetchCustomer = async (phone: string) => {
+        setFetchingCustomer(true);
+        try {
+            const { data, error } = await (supabase as any)
+                .from('customers')
+                .select('name')
+                .eq('phone', phone)
+                .eq('is_active', true)
+                .single();
+
+            if (data && !error) {
+                setCustomerName(data.name);
+                setCustomerExists(true);
+            } else {
+                setCustomerExists(false);
+                setCustomerName('');
+            }
+        } catch (e) {
+            setCustomerExists(false);
+            setCustomerName('');
+        } finally {
+            setFetchingCustomer(false);
+        }
+    };
 
     const handlePaymentModeToggle = (mode: string) => {
-        setPaymentModes(prev =>
-            prev.includes(mode)
+        setPaymentModes(prev => {
+            const newModes = prev.includes(mode)
                 ? prev.filter(m => m !== mode)
-                : [...prev, mode]
-        );
+                : [...prev, mode];
+
+            // Clear amounts for removed modes
+            if (!newModes.includes(mode)) {
+                const newAmounts = { ...paymentAmounts };
+                delete newAmounts[mode];
+                setPaymentAmounts(newAmounts);
+            }
+
+            return newModes;
+        });
+    };
+
+    const handlePaymentAmountChange = (mode: string, value: string) => {
+        setPaymentAmounts(prev => ({
+            ...prev,
+            [mode]: value
+        }));
+    };
+
+    const calculateTotalPayment = () => {
+        return Object.values(paymentAmounts).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+    };
+
+    const saveAsDraft = async () => {
+        if (!user?.profile?.outlet_id) return;
+
+        try {
+            await db.drafts.add({
+                outlet_id: user.profile.outlet_id,
+                transaction_type: 'income',
+                category: 'sales',
+                entry_number: billNumber.trim(),
+                description: `Sale to ${customerPhone}`,
+                amount: parseFloat(salesValue),
+                payment_modes: paymentModes.join(','),
+                customer_phone: customerPhone.trim(),
+                created_at: new Date().toISOString(),
+                synced: false
+            });
+
+            alert('✅ Saved as draft! View in Drafts page.');
+
+            // Reset form
+            setCustomerPhone('');
+            setBillNumber('');
+            setSalesValue('');
+            setPaymentModes([]);
+            setPaymentAmounts({});
+        } catch (e: any) {
+            console.error('Draft save error:', e);
+            alert(`❌ Failed to save draft: ${e?.message}`);
+        }
     };
 
     const handleSubmit = async () => {
@@ -47,8 +149,24 @@ export default function NewSalesPage() {
             alert('Please select at least one payment mode');
             return;
         }
+
+        // Multi-payment validation
+        if (paymentModes.length > 1) {
+            const totalPayment = calculateTotalPayment();
+            if (Math.abs(totalPayment - amount) > 0.01) {
+                alert(`Payment amounts (₹${totalPayment.toFixed(2)}) must equal sales value (₹${amount.toFixed(2)})`);
+                return;
+            }
+        }
+
         if (!user?.profile?.outlet_id) {
             alert('No outlet assigned to your account');
+            return;
+        }
+
+        // If offline, save as draft
+        if (!isOnline) {
+            await saveAsDraft();
             return;
         }
 
@@ -68,7 +186,6 @@ export default function NewSalesPage() {
             if (existingRecord) {
                 dailyRecordId = existingRecord.id;
             } else {
-                // Create new daily record
                 const { data: newRecord, error: recordError } = await (supabase as any)
                     .from('daily_records')
                     .insert({
@@ -99,9 +216,7 @@ export default function NewSalesPage() {
                     payment_modes: paymentModes.join(','),
                     customer_phone: customerPhone.trim(),
                     created_by: user.id
-                })
-                .select()
-                .single();
+                });
 
             if (error) throw error;
 
@@ -113,6 +228,7 @@ export default function NewSalesPage() {
             setBillNumber('');
             setSalesValue('');
             setPaymentModes([]);
+            setPaymentAmounts({});
         } catch (e: any) {
             console.error('Submit error:', e);
             alert(`❌ Failed to submit: ${e?.message || 'Unknown error'}`);
@@ -124,6 +240,7 @@ export default function NewSalesPage() {
     return (
         <div className="flex flex-col h-full">
             <TopBar title="New Sales Entry" />
+            <OnlineBanner isOnline={isOnline} />
             <div className="p-6">
                 <div className="max-w-3xl mx-auto space-y-6">
                     {/* Step 1: Customer Details */}
@@ -136,14 +253,30 @@ export default function NewSalesPage() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Customer Phone Number <span className="text-red-500">*</span>
                             </label>
-                            <input
-                                type="text"
-                                placeholder="Enter 10-digit phone number"
-                                value={customerPhone}
-                                onChange={(e) => setCustomerPhone(e.target.value)}
-                                maxLength={10}
-                                className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Enter 10-digit phone number"
+                                    value={customerPhone}
+                                    onChange={(e) => setCustomerPhone(e.target.value)}
+                                    maxLength={10}
+                                    className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                {fetchingCustomer && (
+                                    <div className="absolute right-3 top-2.5">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                    </div>
+                                )}
+                            </div>
+                            {customerExists && customerName && (
+                                <div className="mt-2 flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded">
+                                    <User className="w-4 h-4" />
+                                    <span>Existing customer: <strong>{customerName}</strong></span>
+                                </div>
+                            )}
+                            {customerPhone.length === 10 && !customerExists && !fetchingCustomer && (
+                                <p className="mt-2 text-sm text-gray-600">New customer - will be added automatically</p>
+                            )}
                         </div>
                     </div>
 
@@ -192,7 +325,7 @@ export default function NewSalesPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-3">
                             Select Payment Mode(s) <span className="text-red-500">*</span>
                         </label>
-                        <div className="flex flex-wrap gap-6">
+                        <div className="flex flex-wrap gap-6 mb-4">
                             {['Cash', 'UPI', 'Card', 'Credit'].map((mode) => (
                                 <label key={mode} className="flex items-center space-x-2 cursor-pointer">
                                     <input
@@ -205,6 +338,42 @@ export default function NewSalesPage() {
                                 </label>
                             ))}
                         </div>
+
+                        {/* Payment amount breakdown for multiple modes */}
+                        {paymentModes.length > 1 && (
+                            <div className="mt-4 space-y-3 bg-blue-50 p-4 rounded">
+                                <p className="text-sm font-medium text-blue-900">Split Payment Amounts:</p>
+                                {paymentModes.map(mode => (
+                                    <div key={mode} className="flex items-center gap-3">
+                                        <label className="text-sm text-gray-700 w-20">{mode}:</label>
+                                        <input
+                                            type="number"
+                                            placeholder="0.00"
+                                            value={paymentAmounts[mode] || ''}
+                                            onChange={(e) => handlePaymentAmountChange(mode, e.target.value)}
+                                            step="0.01"
+                                            min="0"
+                                            className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                ))}
+                                <div className="pt-2 border-t border-blue-200">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="font-medium">Total:</span>
+                                        <span className={`font-bold ${Math.abs(calculateTotalPayment() - parseFloat(salesValue || '0')) < 0.01
+                                                ? 'text-green-600'
+                                                : 'text-red-600'
+                                            }`}>
+                                            ₹{calculateTotalPayment().toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-sm text-gray-600">
+                                        <span>Expected:</span>
+                                        <span>₹{parseFloat(salesValue || '0').toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Submit Button */}
@@ -213,7 +382,7 @@ export default function NewSalesPage() {
                         disabled={submitting}
                         className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {submitting ? 'Submitting...' : 'Submit Entry'}
+                        {submitting ? 'Submitting...' : isOnline ? 'Submit Entry' : 'Save as Draft (Offline)'}
                     </button>
                 </div>
             </div>
