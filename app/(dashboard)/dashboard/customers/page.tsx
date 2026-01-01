@@ -40,7 +40,7 @@ export default function CustomersPage() {
             try {
                 let query = (supabase as any)
                     .from('customers')
-                    .select('id,name,phone,created_at,outlet_id,referred_by,customer_code,internal_customer_id,is_active')
+                    .select('*')
                     .order('created_at', { ascending: false });
 
                 // Global Access: removed outlet_id filter
@@ -49,6 +49,7 @@ export default function CustomersPage() {
                 if (error) throw error;
                 if (!mounted) return;
                 setRows((data || []).map((c: any) => ({
+                    ...c,
                     id: c.id,
                     name: c.name,
                     phone: c.phone,
@@ -142,9 +143,7 @@ export default function CustomersPage() {
 
                 setRows(prev => prev.map(r => r.id === editingCustomer.id ? {
                     ...r,
-                    name: insertData.name,
-                    phone: insertData.phone,
-                    is_active: insertData.is_active,
+                    ...insertData
                 } : r));
 
                 alert('✅ Customer updated successfully');

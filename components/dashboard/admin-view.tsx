@@ -114,6 +114,84 @@ export function AdminDashboard() {
         return () => { mounted = false; };
     }, [user]);
 
+    const handleExportCustomers = async () => {
+        try {
+            const { data, error } = await (supabase as any)
+                .from('customers')
+                .select('name, phone, email, internal_customer_id, customer_code, created_at');
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                alert('No customers to export');
+                return;
+            }
+
+            const headers = ['Name', 'Phone', 'Email', 'ID', 'Code', 'Created At'];
+            const csv = [
+                headers.join(','),
+                ...data.map((r: any) => [
+                    `"${r.name || ''}"`,
+                    `"${r.phone || ''}"`,
+                    `"${r.email || ''}"`,
+                    `"${r.internal_customer_id || ''}"`,
+                    `"${r.customer_code || ''}"`,
+                    `"${r.created_at || ''}"`
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `customers_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (e: any) {
+            alert(`Export failed: ${e.message}`);
+        }
+    };
+
+    const handleExportSales = async () => {
+        try {
+            const { data, error } = await (supabase as any)
+                .from('transactions')
+                .select('internal_entry_id, category, amount, payment_mode, created_at')
+                .eq('category', 'sales');
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                alert('No sales to export');
+                return;
+            }
+
+            const headers = ['Entry ID', 'Category', 'Amount', 'Payment Mode', 'Date'];
+            const csv = [
+                headers.join(','),
+                ...data.map((r: any) => [
+                    `"${r.internal_entry_id || ''}"`,
+                    `"${r.category || ''}"`,
+                    `"${r.amount || 0}"`,
+                    `"${r.payment_mode || ''}"`,
+                    `"${r.created_at || ''}"`
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `sales_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (e: any) {
+            alert(`Export failed: ${e.message}`);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -172,10 +250,16 @@ export function AdminDashboard() {
                     <p className="text-xs text-gray-500">Export customer and sales data</p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="flex items-center px-3 py-2 border rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <button
+                        onClick={handleExportCustomers}
+                        className="flex items-center px-3 py-2 border rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
                         <Download className="w-4 h-4 mr-2" /> Export Customers
                     </button>
-                    <button className="flex items-center px-3 py-2 border rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <button
+                        onClick={handleExportSales}
+                        className="flex items-center px-3 py-2 border rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
                         <Download className="w-4 h-4 mr-2" /> Export Sales
                     </button>
                 </div>

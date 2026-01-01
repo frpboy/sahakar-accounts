@@ -5,10 +5,14 @@ import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { User, Search } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 export default function SalesReturnPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
     const { user } = useAuth();
+    const searchParams = useSearchParams();
+    const returnType = searchParams.get('type') === 'purchase' ? 'purchase' : 'sales';
+    const isPurchase = returnType === 'purchase';
 
     // Form state
     const [customerPhone, setCustomerPhone] = useState('');
@@ -147,9 +151,9 @@ export default function SalesReturnPage() {
                     daily_record_id: dailyRecordId,
                     outlet_id: user.profile.outlet_id,
                     entry_number: billNumber.trim(),
-                    transaction_type: 'expense',
-                    category: 'sales_return',
-                    description: `Sales return from ${customerPhone} (Original bill: ${billNumber})`,
+                    transaction_type: isPurchase ? 'income' : 'expense',
+                    category: isPurchase ? 'purchase_return' : 'sales_return',
+                    description: `${isPurchase ? 'Purchase' : 'Sales'} return from ${customerPhone} (Original bill: ${billNumber})`,
                     amount: amount,
                     payment_modes: 'Cash', // Default to cash refund
                     customer_phone: customerPhone.trim(),
@@ -161,7 +165,7 @@ export default function SalesReturnPage() {
             if (error) throw error;
 
             // Success
-            alert(`✅ Sales return submitted successfully!\nBill: ${billNumber}\nReturn Amount: ₹${amount}`);
+            alert(`✅ ${isPurchase ? 'Purchase' : 'Sales'} return submitted successfully!\nBill: ${billNumber}\nReturn Amount: ₹${amount}`);
 
             // Reset form
             setCustomerPhone('');
@@ -177,7 +181,7 @@ export default function SalesReturnPage() {
 
     return (
         <div className="flex flex-col h-full">
-            <TopBar title="Sales Return" />
+            <TopBar title={isPurchase ? "Purchase Return" : "Sales Return"} />
             <div className="p-6">
                 {isLocked && (
                     <div className="max-w-3xl mx-auto mb-6 bg-red-600 text-white px-6 py-4 rounded-xl flex items-center justify-between shadow-lg">
