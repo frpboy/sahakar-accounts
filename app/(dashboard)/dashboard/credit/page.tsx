@@ -276,10 +276,9 @@ export default function CreditReceivedPage() {
                                     value={customerName}
                                     onChange={(e) => !customerExists && setCustomerName(e.target.value)}
                                     disabled={customerExists || isLocked}
-                                    className={cn(
-                                        "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
-                                        (customerExists || isLocked) ? "bg-gray-100 cursor-not-allowed" : "bg-gray-50"
-                                    )}
+                                    className={(customerExists || isLocked)
+                                        ? "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
+                                        : "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"}
                                 />
                             </div>
 
