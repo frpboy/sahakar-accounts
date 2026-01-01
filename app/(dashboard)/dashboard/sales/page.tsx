@@ -32,8 +32,6 @@ export default function NewSalesPage() {
 
     // Auto-search customers when typing (after 3 digits)
     useEffect(() => {
-        if (!user?.profile?.outlet_id) return;
-
         if (customerPhone.length >= 3 && /^\d{3,10}$/.test(customerPhone)) {
             searchCustomers(customerPhone);
         } else {
@@ -44,7 +42,7 @@ export default function NewSalesPage() {
                 setCustomerExists(false);
             }
         }
-    }, [customerPhone, user]);
+    }, [customerPhone]);
 
     // Auto-fill payment amount when single mode selected
     useEffect(() => {
@@ -92,11 +90,9 @@ export default function NewSalesPage() {
     }, [user]);
 
     const searchCustomers = async (phone: string) => {
-        const profile = (user as any).profile;
-        if (!profile?.outlet_id) return;
-
         setFetchingCustomer(true);
         try {
+            console.log('[Debug] Searching for customers with:', phone);
             const { data, error } = await (supabase as any)
                 .from('customers')
                 .select('phone, name, id, customer_code, internal_customer_id')
@@ -104,7 +100,14 @@ export default function NewSalesPage() {
                 .eq('is_active', true)
                 .limit(10);
 
-            if (data && !error) {
+            if (error) {
+                console.error('[Debug] Customer search query error:', error);
+                throw error;
+            }
+
+            console.log('[Debug] Search result:', data);
+
+            if (data) {
                 setCustomerSuggestions(data);
                 setShowSuggestions(data.length > 0);
 
@@ -125,6 +128,7 @@ export default function NewSalesPage() {
                 setShowSuggestions(false);
             }
         } catch (e) {
+            console.error('[Debug] Customer search exception:', e);
             setCustomerSuggestions([]);
             setShowSuggestions(false);
         } finally {

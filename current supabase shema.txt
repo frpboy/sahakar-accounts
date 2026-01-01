@@ -111,6 +111,9 @@ CREATE TABLE public.customers (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   created_by uuid,
+  referred_by text,
+  internal_customer_id text UNIQUE,
+  customer_code text UNIQUE,
   CONSTRAINT customers_pkey PRIMARY KEY (id),
   CONSTRAINT customers_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
   CONSTRAINT customers_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
@@ -245,6 +248,13 @@ CREATE TABLE public.outlet_chats (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT outlet_chats_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.outlet_counters (
+  outlet_id uuid NOT NULL,
+  next_entry_seq bigint NOT NULL DEFAULT 1,
+  next_customer_seq bigint NOT NULL DEFAULT 1,
+  CONSTRAINT outlet_counters_pkey PRIMARY KEY (outlet_id),
+  CONSTRAINT outlet_counters_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
 CREATE TABLE public.outlets (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   name text NOT NULL,
@@ -259,6 +269,8 @@ CREATE TABLE public.outlets (
   updated_at timestamp with time zone DEFAULT now(),
   type character varying NOT NULL DEFAULT 'hyper_pharmacy'::character varying CHECK (type::text = ANY (ARRAY['hyper_pharmacy'::character varying, 'smart_clinic'::character varying]::text[])),
   drive_folder_url text,
+  outlet_type text NOT NULL CHECK (outlet_type = ANY (ARRAY['HP'::text, 'SC'::text])),
+  location_code text NOT NULL,
   CONSTRAINT outlets_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.role_approvals (
@@ -309,6 +321,7 @@ CREATE TABLE public.transactions (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   idempotency_key text,
+  internal_entry_id text UNIQUE,
   CONSTRAINT transactions_pkey PRIMARY KEY (id),
   CONSTRAINT transactions_daily_record_id_fkey FOREIGN KEY (daily_record_id) REFERENCES public.daily_records(id),
   CONSTRAINT transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
