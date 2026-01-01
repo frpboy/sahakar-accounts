@@ -592,13 +592,12 @@ CREATE TABLE duty_logs (
 17. **Motivational UI** - Randomized encouraging messages on Login & Rest screens
 18. **Rest Mode** - Dedicated `/rest` screen with countdown timer for off-hours
 
-### 🚧 Planned Future Enhancements
-- Individual report pages with saved filters
-- Excel & PDF export (currently CSV only)
-- Real-time WebSocket updates
-- Custom date range selectors
-- Anomaly detection system refinement
-- Dashboard customization
+### 🚧 Phase 6: BI & Forecasting (Future Roadmap)
+- [ ] **BI Dashboards** - Advanced visual analytics
+- [ ] **Forecasting** - AI-driven revenue prediction
+- [ ] **Custom Reports** - Drag-and-drop report builder
+- [ ] **Real-time WebSocket updates**
+- [ ] **Anomaly detection system refinement**
 
 ---
 
@@ -642,6 +641,6 @@ Supabase auto-generated API docs available in Supabase dashboard
 
 ---
 
-**Last Updated:** January 2, 2026  
-**Version:** 2.0.0  
+**Last Updated:** 03:05 02/01/26
+**Version:** 2.1.0
 **System Status:** ✅ Production Ready
