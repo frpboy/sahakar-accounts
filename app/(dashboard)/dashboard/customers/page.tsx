@@ -269,10 +269,9 @@ export default function CustomersPage() {
                                         {customer.phone || '-'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={cn(
-                                            "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
-                                            customer.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                                        )}>
+                                        <span className={customer.is_active
+                                            ? "px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
+                                            : "px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800"}>
                                             {customer.is_active ? 'Active' : 'Inactive'}
                                         </span>
                                     </td>
