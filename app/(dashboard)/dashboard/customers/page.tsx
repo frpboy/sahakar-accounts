@@ -5,6 +5,7 @@ import { TopBar } from '@/components/layout/topbar';
 import { Plus, X, Search } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
+import { generateCustomerId } from '@/lib/customer-id-generator';
 
 export default function CustomersPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
@@ -12,14 +13,21 @@ export default function CustomersPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
-    const [rows, setRows] = useState<Array<{ id: string; name: string; phone?: string | null; created_at?: string | null }>>([]);
+    const [rows, setRows] = useState<Array<{ id: string; name: string; phone?: string | null; customer_code?: string | null; created_at?: string | null }>>([]);
     const [error, setError] = useState<string | null>(null);
 
     // Form state
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
+    const [email, setEmail] = useState('');
+    const [address, setAddress] = useState('');
+    const [notes, setNotes] = useState('');
+    const [creditLimit, setCreditLimit] = useState('10000');
+    const [outstandingBalance, setOutstandingBalance] = useState('0');
+    const [isActive, setIsActive] = useState(true);
     const [referredBy, setReferredBy] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
 
     useEffect(() => {
         let mounted = true;
@@ -30,7 +38,7 @@ export default function CustomersPage() {
             try {
                 let query = (supabase as any)
                     .from('customers')
-                    .select('id,name,phone,created_at,outlet_id,referred_by')
+                    .select('id,name,phone,created_at,outlet_id,referred_by,customer_code')
                     .order('created_at', { ascending: false });
 
                 // Filter by outlet for ALL roles
@@ -45,6 +53,7 @@ export default function CustomersPage() {
                     id: c.id,
                     name: c.name,
                     phone: c.phone,
+                    customer_code: c.customer_code,
                     created_at: c.created_at,
                 })));
             } catch (e: any) {
@@ -58,12 +67,26 @@ export default function CustomersPage() {
         return () => { mounted = false; };
     }, [supabase, user]);
 
+    useEffect(() => {
+        if (!user?.profile.outlet_id) return;
+        async function loadStaff() {
+            const { data } = await supabase
+                .from('users')
+                .select('id, name')
+                .eq('outlet_id', user.profile.outlet_id)
+                .in('role', ['outlet_staff', 'outlet_manager']);
+            setStaffList((data as any) || []);
+        }
+        loadStaff();
+    }, [supabase, user]);
+
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         if (!q) return rows;
         return rows.filter(r =>
             r.name?.toLowerCase().includes(q) ||
-            (r.phone || '').toLowerCase().includes(q)
+            (r.phone || '').toLowerCase().includes(q) ||
+            (r.customer_code || '').toLowerCase().includes(q)
         );
     }, [rows, search]);
 
@@ -83,13 +106,28 @@ export default function CustomersPage() {
 
         setSubmitting(true);
         try {
+            // Get current count to generate custom ID
+            const { count } = await (supabase as any)
+                .from('customers')
+                .select('*', { count: 'exact', head: true })
+                .eq('outlet_id', user.profile.outlet_id);
+
+            const outletName = (user.profile as any).outlet?.name || 'Sahakar Outlet';
+            const customId = generateCustomerId(outletName, count || 0);
+
             const insertData = {
                 name: customerName.trim(),
                 phone: customerPhone.trim(),
-                referred_by: referredBy.trim() || null,
+                email: email.trim() || null,
+                address: address.trim() || null,
+                notes: notes.trim() || null,
+                credit_limit: parseFloat(creditLimit) || 10000,
+                outstanding_balance: parseFloat(outstandingBalance) || 0,
+                is_active: isActive,
+                referred_by: referredBy || null,
+                customer_code: customId,
                 outlet_id: user.profile.outlet_id,
-                created_by: user.id,
-                is_active: true
+                created_by: user.id
             };
 
             console.log('Inserting customer:', insertData);
@@ -118,6 +156,12 @@ export default function CustomersPage() {
             // Reset form
             setCustomerName('');
             setCustomerPhone('');
+            setEmail('');
+            setAddress('');
+            setNotes('');
+            setCreditLimit('10000');
+            setOutstandingBalance('0');
+            setIsActive(true);
             setReferredBy('');
             setIsModalOpen(false);
         } catch (e: any) {
@@ -155,6 +199,9 @@ export default function CustomersPage() {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    ID
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Name
                                 </th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -175,13 +222,16 @@ export default function CustomersPage() {
                             )}
                             {!loading && filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={3} className="px-6 py-8 text-center text-sm text-gray-500">
+                                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
                                         {error || 'No customers found'}
                                     </td>
                                 </tr>
                             )}
                             {!loading && filtered.map((customer) => (
                                 <tr key={customer.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                                        {customer.customer_code || customer.id.substring(0, 8)}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                         {customer.name}
                                     </td>
@@ -200,18 +250,8 @@ export default function CustomersPage() {
 
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
-                        <div className="flex justify-between items-center p-4 border-b">
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900">Add New Customer</h3>
-                                <p className="text-sm text-gray-500">Enter customer details to add to the system</p>
-                            </div>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-500">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="p-4 space-y-4">
+                    <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Customer Name <span className="text-red-500">*</span>
@@ -221,7 +261,7 @@ export default function CustomersPage() {
                                     placeholder="Enter full name"
                                     value={customerName}
                                     onChange={(e) => setCustomerName(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                 />
                             </div>
                             <div>
@@ -233,39 +273,121 @@ export default function CustomersPage() {
                                     placeholder="10-digit phone number"
                                     value={customerPhone}
                                     onChange={(e) => setCustomerPhone(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    placeholder="customer@example.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Referred By
                                 </label>
-                                <input
-                                    type="text"
-                                    placeholder="Staff name"
+                                <select
                                     value={referredBy}
                                     onChange={(e) => setReferredBy(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                                >
+                                    <option value="">-- Select Staff --</option>
+                                    {staffList.map(staff => (
+                                        <option key={staff.id} value={staff.name}>{staff.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Address
+                            </label>
+                            <textarea
+                                placeholder="Enter full address"
+                                rows={2}
+                                value={address}
+                                onChange={(e) => setAddress(e.target.value)}
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Credit Limit (₹)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={creditLimit}
+                                    onChange={(e) => setCreditLimit(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Outstanding Balance (₹)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={outstandingBalance}
+                                    onChange={(e) => setOutstandingBalance(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                 />
                             </div>
                         </div>
 
-                        <div className="p-4 bg-gray-50 flex justify-end gap-3">
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                disabled={submitting}
-                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 font-medium disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleAddCustomer}
-                                disabled={submitting}
-                                className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 font-medium disabled:opacity-50"
-                            >
-                                {submitting ? 'Adding...' : 'Add Customer'}
-                            </button>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Notes
+                            </label>
+                            <textarea
+                                placeholder="Any internal notes..."
+                                rows={2}
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            />
                         </div>
+
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="isActive"
+                                checked={isActive}
+                                onChange={(e) => setIsActive(e.target.checked)}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
+                                Active Customer
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-gray-50 flex justify-end gap-3">
+                        <button
+                            onClick={() => setIsModalOpen(false)}
+                            disabled={submitting}
+                            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 font-medium disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleAddCustomer}
+                            disabled={submitting}
+                            className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 font-medium disabled:opacity-50"
+                        >
+                            {submitting ? 'Adding...' : 'Add Customer'}
+                        </button>
                     </div>
                 </div>
             )}
