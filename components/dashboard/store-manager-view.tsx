@@ -18,9 +18,12 @@ import {
     Download,
     Lock,
     Unlock,
-    RefreshCw
+    RefreshCw,
+    FileSpreadsheet,
+    FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { exportUtils } from '@/lib/export-utils';
 
 export function StoreManagerDashboard() {
     const supabase = useMemo(() => createClientBrowser(), []);
@@ -245,9 +248,38 @@ export function StoreManagerDashboard() {
         }
     };
 
-    const handleExport = () => {
-        alert('Exporting outlet data... (CSV)');
-        // Export logic as previously implemented
+    const handleExportExcel = () => {
+        const data = recentTransactions.map(t => ({
+            'Date': new Date(t.created_at).toLocaleDateString(),
+            'Category': t.category,
+            'Description': t.description || '-',
+            'Amount': t.amount,
+            'Type': t.type
+        }));
+
+        exportUtils.toExcel(data, {
+            filename: `Recent_Sales_${user?.profile?.outlet_id}_${new Date().toISOString().split('T')[0]}`,
+            title: 'Outlet Recent Transactions'
+        });
+    };
+
+    const handleExportPDF = () => {
+        const data = recentTransactions.map(t => [
+            new Date(t.created_at).toLocaleTimeString(),
+            t.category,
+            t.amount,
+            t.type
+        ]);
+
+        exportUtils.toPDF(
+            ['Time', 'Category', 'Amount', 'Type'],
+            data,
+            {
+                filename: `Recent_Sales_${user?.profile?.outlet_id}_${new Date().toISOString().split('T')[0]}`,
+                title: 'Sahakar Accounts - Management Export',
+                subtitle: `Outlet: ${user?.profile?.outlet_name} | Revenue: Rs. ${todayRevenue.toLocaleString()}`
+            }
+        );
     };
 
     if (loading) {
@@ -265,15 +297,15 @@ export function StoreManagerDashboard() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Manager Dashboard</h1>
-                    <p className="text-sm text-gray-500 mt-1">Real-time overview for your outlet</p>
+                    <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Manager Dashboard</h1>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Real-time overview for your outlet</p>
                 </div>
 
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => loadDashboardData(true)}
                         disabled={isRefreshing}
-                        className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        className="p-2 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-md transition-colors"
                         title="Refresh Data"
                     >
                         <RefreshCw className={cn("w-5 h-5", isRefreshing && "animate-spin")} />
@@ -282,23 +314,32 @@ export function StoreManagerDashboard() {
                     <button
                         onClick={handleLockDay}
                         className={cn(
-                            "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border transition-all",
+                            "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border transition-all shadow-sm",
                             dayLocked
-                                ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                                : "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/40"
+                                : "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-900/50 hover:bg-green-100 dark:hover:bg-green-900/40"
                         )}
                     >
                         {dayLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                         {dayLocked ? "Unlock Day" : "Lock Day"}
                     </button>
 
-                    <button
-                        onClick={handleExport}
-                        className="flex items-center gap-2 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors shadow-sm"
-                    >
-                        <Download className="w-4 h-4" />
-                        Export
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleExportExcel}
+                            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-green-300 dark:border-green-800 text-green-700 dark:text-green-400 text-xs font-bold rounded-md hover:bg-green-50 dark:hover:bg-green-900/10 transition-colors shadow-sm"
+                        >
+                            <FileSpreadsheet className="w-4 h-4" />
+                            Excel
+                        </button>
+                        <button
+                            onClick={handleExportPDF}
+                            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 text-xs font-bold rounded-md hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors shadow-sm"
+                        >
+                            <FileText className="w-4 h-4" />
+                            PDF
+                        </button>
+                    </div>
                 </div>
             </div>
 

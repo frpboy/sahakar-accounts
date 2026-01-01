@@ -90,16 +90,16 @@ export function StaffDashboard() {
         <div className="space-y-8">
             {/* Draft Sync Warning */}
             {draftsCount > 0 && (
-                <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg shadow-sm">
+                <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded-lg shadow-sm">
                     <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 mt-0.5">
-                            <svg className="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
                         </div>
                         <div className="flex-1">
-                            <p className="font-bold text-amber-900">⚠️ {draftsCount} draft {draftsCount === 1 ? 'entry' : 'entries'} not synced</p>
-                            <p className="text-sm text-amber-700 mt-1">These WILL NOT be saved unless submitted to the server.</p>
+                            <p className="font-bold text-amber-900 dark:text-amber-300">⚠️ {draftsCount} draft {draftsCount === 1 ? 'entry' : 'entries'} not synced</p>
+                            <p className="text-sm text-amber-700 dark:text-amber-400/80 mt-1">These WILL NOT be saved unless submitted to the server.</p>
                             <Link
                                 href="/dashboard/drafts"
                                 className="inline-block mt-3 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 transition-colors"
@@ -111,71 +111,77 @@ export function StaffDashboard() {
                 </div>
             )}
 
-            {/* Action Cards */}
+            {/* Action Cards (Top Metrics) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-2xl border shadow-sm flex items-center justify-between">
+                <div className="bg-white dark:bg-slate-900 px-6 py-8 rounded-2xl border dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
                     <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Today's Sales</p>
-                        <h3 className="text-3xl font-black text-gray-900">{todaySales}</h3>
-                        <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-green-500" /> Recorded by you
+                        <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-1">Today's Sales</p>
+                        <h3 className="text-4xl font-black text-gray-900 dark:text-white">{todaySales}</h3>
+                        <p className="text-[10px] text-gray-500 dark:text-slate-500 mt-2 flex items-center gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Recorded by you
                         </p>
                     </div>
-                    <div className="p-4 bg-gray-50 rounded-xl">
-                        <ShoppingCart className="w-8 h-8 text-gray-400" />
+                    <div className="p-5 bg-gray-50 dark:bg-slate-800 rounded-2xl border dark:border-slate-700">
+                        <ShoppingCart className="w-8 h-8 text-gray-400 dark:text-slate-500" />
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border shadow-sm flex items-center justify-between">
+                <div className="bg-white dark:bg-slate-900 px-6 py-8 rounded-2xl border dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
                     <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Local Drafts</p>
-                        <h3 className={cn("text-3xl font-black", draftsCount > 0 ? "text-orange-600" : "text-gray-900")}>
+                        <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-1">Local Drafts</p>
+                        <h3 className={cn("text-4xl font-black", draftsCount > 0 ? "text-orange-600 dark:text-orange-400" : "text-gray-900 dark:text-white")}>
                             {draftsCount}
                         </h3>
-                        <p className="text-[10px] text-gray-500 mt-1">Pending sync to server</p>
+                        <p className="text-[10px] text-gray-500 dark:text-slate-500 mt-2">Pending sync to server</p>
                     </div>
-                    <div className="p-4 bg-gray-50 rounded-xl">
-                        <FileText className="w-8 h-8 text-gray-400" />
+                    <div className="p-5 bg-gray-50 dark:bg-slate-800 rounded-2xl border dark:border-slate-700">
+                        <FileText className="w-8 h-8 text-gray-400 dark:text-slate-500" />
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border shadow-sm flex items-center justify-between overflow-hidden relative">
+                <div className="bg-white dark:bg-slate-900 px-6 py-8 rounded-2xl border dark:border-slate-800 shadow-sm flex items-center justify-between overflow-hidden relative transition-colors">
                     <div className="z-10">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Business Day</p>
-                        <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-1">Business Day</p>
+                        <div className="flex items-center gap-2 mt-1">
                             <div className={cn(
-                                "w-3 h-3 rounded-full animate-pulse",
+                                "w-2.5 h-2.5 rounded-full",
                                 dayStatus === 'open' ? "bg-green-500" : "bg-red-500"
                             )} />
-                            <h3 className="text-xl font-bold text-gray-900 capitalize">{dayStatus}</h3>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white capitalize">{dayStatus}</h3>
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-1">Current status for today</p>
+                        <p className="text-[10px] text-gray-500 dark:text-slate-500 mt-2">Current status for today</p>
                     </div>
                     <div className={cn(
-                        "absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-10",
+                        "absolute -right-4 -bottom-4 w-28 h-28 rounded-full opacity-5",
                         dayStatus === 'open' ? "bg-green-500" : "bg-red-500"
                     )} />
+                    <div className="p-5 bg-gray-50 dark:bg-slate-800 rounded-2xl border dark:border-slate-700 relative z-10">
+                        <Clock className="w-8 h-8 text-gray-400 dark:text-slate-500" />
+                    </div>
                 </div>
             </div>
 
             {/* Quick Actions Grid */}
             <section>
-                <h2 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <PlusCircle className="w-4 h-4 text-blue-500" /> Quick Actions
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex items-center gap-2 mb-6">
+                    <div className="w-1 h-6 bg-blue-600 rounded-full" />
+                    <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">
+                        Quick Actions
+                    </h2>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     {quickActions.map((action) => (
                         <Link
                             key={action.label}
                             href={action.href}
-                            className="group bg-white p-5 rounded-2xl border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col items-center text-center gap-3"
+                            className="group bg-white dark:bg-slate-900 py-10 rounded-2xl border dark:border-slate-800 shadow-sm hover:shadow-xl dark:hover:shadow-slate-950/50 hover:-translate-y-1 transition-all flex flex-col items-center justify-center gap-4 relative"
                         >
-                            <div className={cn("p-3 rounded-xl text-white shadow-lg shadow-gray-100 group-hover:scale-110 transition-transform", action.color)}>
+                            <div className={cn("p-4 rounded-xl text-white shadow-xl transition-transform group-hover:scale-110", action.color)}>
                                 {action.icon}
                             </div>
-                            <span className="text-sm font-bold text-gray-700">{action.label}</span>
+                            <span className="text-base font-bold text-gray-800 dark:text-slate-200">{action.label}</span>
                             {action.count !== undefined && action.count > 0 && (
-                                <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
+                                <span className="absolute top-4 right-4 bg-red-500 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900 shadow-sm">
                                     {action.count}
                                 </span>
                             )}
@@ -185,23 +191,24 @@ export function StaffDashboard() {
             </section>
 
             {/* Recent Tasks/History Links */}
-            <div className="bg-gray-900 rounded-3xl p-8 text-white relative overflow-hidden group">
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div>
-                        <h2 className="text-2xl font-black mb-2">Review Your History</h2>
-                        <p className="text-gray-400 max-w-md">Check your previous sales, returns, and customer registrations for today.</p>
+            <div className="bg-[#0F172A] dark:bg-[#020617] rounded-3xl p-10 text-white relative overflow-hidden group border dark:border-slate-800 shadow-2xl">
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="text-center md:text-left">
+                        <h2 className="text-3xl font-black mb-3">Review Your History</h2>
+                        <p className="text-slate-400 text-lg max-w-lg leading-relaxed">
+                            Check your previous sales, returns, and customer registrations for today to ensure accuracy.
+                        </p>
                     </div>
                     <Link
                         href="/dashboard/history/sales"
-                        className="flex items-center gap-2 px-6 py-4 bg-white text-gray-900 rounded-2xl font-black hover:bg-blue-50 transition-colors"
+                        className="flex items-center gap-3 px-8 py-5 bg-white text-gray-900 rounded-2xl font-black hover:bg-slate-100 transition-all hover:scale-105 shadow-lg whitespace-nowrap"
                     >
                         View All History
-                        <ArrowRight className="w-5 h-5" />
+                        <ArrowRight className="w-6 h-6" />
                     </Link>
                 </div>
-                {/* Decorative Elements */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl opacity-50" />
             </div>
         </div>
     );

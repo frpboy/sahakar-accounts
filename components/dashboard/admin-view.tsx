@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Store, TrendingUp, Users, Award, Download, Lock } from 'lucide-react';
+import { Store, TrendingUp, Users, Award, Download, Lock, FileSpreadsheet, FileText } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     LineChart, Line
@@ -9,6 +9,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { createClientBrowser } from '@/lib/supabase-client';
+import { exportUtils } from '@/lib/export-utils';
 
 type OutletPerf = { name: string; sales: number };
 type GrowthPoint = { month: string; total: number };
@@ -126,28 +127,10 @@ export function AdminDashboard() {
                 return;
             }
 
-            const headers = ['Name', 'Phone', 'Email', 'ID', 'Code', 'Created At'];
-            const csv = [
-                headers.join(','),
-                ...data.map((r: any) => [
-                    `"${r.name || ''}"`,
-                    `"${r.phone || ''}"`,
-                    `"${r.email || ''}"`,
-                    `"${r.internal_customer_id || ''}"`,
-                    `"${r.customer_code || ''}"`,
-                    `"${r.created_at || ''}"`
-                ].join(','))
-            ].join('\n');
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('hidden', '');
-            a.setAttribute('href', url);
-            a.setAttribute('download', `customers_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            exportUtils.toExcel(data, {
+                filename: `Customers_Export_${new Date().toISOString().split('T')[0]}`,
+                title: 'Customer Database'
+            });
         } catch (e: any) {
             alert(`Export failed: ${e.message}`);
         }
@@ -166,27 +149,10 @@ export function AdminDashboard() {
                 return;
             }
 
-            const headers = ['Entry ID', 'Category', 'Amount', 'Payment Mode', 'Date'];
-            const csv = [
-                headers.join(','),
-                ...data.map((r: any) => [
-                    `"${r.internal_entry_id || ''}"`,
-                    `"${r.category || ''}"`,
-                    `"${r.amount || 0}"`,
-                    `"${r.payment_mode || ''}"`,
-                    `"${r.created_at || ''}"`
-                ].join(','))
-            ].join('\n');
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('hidden', '');
-            a.setAttribute('href', url);
-            a.setAttribute('download', `sales_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            exportUtils.toExcel(data, {
+                filename: `Sales_Export_${new Date().toISOString().split('T')[0]}`,
+                title: 'Total Sales Export'
+            });
         } catch (e: any) {
             alert(`Export failed: ${e.message}`);
         }
@@ -195,39 +161,39 @@ export function AdminDashboard() {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-lg border shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Total Outlets</span>
-                        <Store className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Total Outlets</span>
+                        <Store className="w-4 h-4 text-gray-400 dark:text-slate-500" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{outletCount}</div>
-                    <div className="text-xs text-gray-500 mt-1">Active stores</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{outletCount}</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Active stores</div>
                 </div>
-                <div className="bg-white p-6 rounded-lg border shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Today's Total Sales</span>
+                        <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Today's Total Sales</span>
                         <TrendingUp className="w-4 h-4 text-blue-400" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{todayTotalSales}</div>
-                    <div className="text-xs text-blue-600 mt-1">Real-time count</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{todayTotalSales}</div>
+                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">Real-time count</div>
                 </div>
-                <div className="bg-white p-6 rounded-lg border shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Total Customers</span>
-                        <Users className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Total Customers</span>
+                        <Users className="w-4 h-4 text-gray-400 dark:text-slate-500" />
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{totalCustomers.toLocaleString()}</div>
-                    <div className="text-xs text-gray-500 mt-1">Last 6 months</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalCustomers.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Last 6 months</div>
                 </div>
-                <div className="bg-white p-6 rounded-lg border shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500">Unlocked Days</span>
+                        <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Unlocked Days</span>
                         <Lock className="w-4 h-4 text-orange-400" />
                     </div>
-                    <div className={cn("text-2xl font-bold", unlockedDaysCount > 0 ? "text-orange-600" : "text-gray-900")}>
+                    <div className={cn("text-2xl font-bold", unlockedDaysCount > 0 ? "text-orange-600 dark:text-orange-400" : "text-gray-900 dark:text-white")}>
                         {unlockedDaysCount}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">Pending audit closure</div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Pending audit closure</div>
                 </div>
             </div>
 
@@ -244,37 +210,42 @@ export function AdminDashboard() {
                 </div>
             )}
 
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-lg border dark:border-slate-800 shadow-sm transition-colors">
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-900">Data Export</h3>
-                    <p className="text-xs text-gray-500">Export customer and sales data</p>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Data Export</h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Export customer and sales data</p>
                 </div>
                 <div className="flex gap-3">
                     <button
                         onClick={handleExportCustomers}
-                        className="flex items-center px-3 py-2 border rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        className="flex items-center px-3 py-2 border dark:border-slate-800 rounded-md text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
                     >
-                        <Download className="w-4 h-4 mr-2" /> Export Customers
+                        <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600 dark:text-green-500" /> Export Customers
                     </button>
                     <button
                         onClick={handleExportSales}
-                        className="flex items-center px-3 py-2 border rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        className="flex items-center px-3 py-2 border dark:border-slate-800 rounded-md text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
                     >
-                        <Download className="w-4 h-4 mr-2" /> Export Sales
+                        <FileSpreadsheet className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-500" /> Export Sales
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg border shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">Outlet-wise Sales Performance</h3>
-                <p className="text-sm text-gray-500 mb-6">This month</p>
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm transition-colors">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Outlet-wise Sales Performance</h3>
+                <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">This month</p>
                 <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={outletPerformance}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Number(value) / 1000}K`} />
-                            <Tooltip formatter={(value) => [`₹${Math.round(Number(value))}`, 'Sales']} cursor={{ fill: 'transparent' }} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} />
+                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₹${Number(value) / 1000}K`} tick={{ fill: '#64748B' }} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#0F172A', border: 'none', borderRadius: '8px', color: '#F1F5F9' }}
+                                itemStyle={{ color: '#F1F5F9' }}
+                                formatter={(value) => [`₹${Math.round(Number(value))}`, 'Sales']}
+                                cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                            />
                             <Bar dataKey="sales" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={60} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -282,21 +253,24 @@ export function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-lg border shadow-sm">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Customer Growth Trend</h3>
-                    <p className="text-sm text-gray-500 mb-6">Last 6 months</p>
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm transition-colors">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Customer Growth Trend</h3>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">Last 6 months</p>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={customerGrowth}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                                <YAxis axisLine={false} tickLine={false} />
-                                <Tooltip />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B' }} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#0F172A', border: 'none', borderRadius: '8px', color: '#F1F5F9' }}
+                                    itemStyle={{ color: '#F1F5F9' }}
+                                />
                                 <Line
                                     type="monotone"
                                     dataKey="total"
                                     stroke="#10B981"
-                                    strokeWidth={2}
+                                    strokeWidth={3}
                                     dot={{ r: 4, fill: "#10B981", strokeWidth: 2, stroke: "#fff" }}
                                     name="New Customers"
                                 />
@@ -305,30 +279,30 @@ export function AdminDashboard() {
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg border shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm transition-colors">
                     <div className="flex justify-between items-center mb-4">
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900">Top Referrers</h3>
-                            <p className="text-sm text-gray-500">All-time leaderboard</p>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Top Referrers</h3>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">All-time leaderboard</p>
                         </div>
                     </div>
                     <div className="space-y-3">
                         {topReferrers.length === 0 ? (
-                            <div className="text-sm text-gray-500 text-center py-8">No referral data yet</div>
+                            <div className="text-sm text-gray-500 dark:text-slate-400 text-center py-8">No referral data yet</div>
                         ) : (
                             topReferrers.map((referrer, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                            idx === 1 ? 'bg-gray-200 text-gray-700' :
-                                                idx === 2 ? 'bg-orange-100 text-orange-700' :
-                                                    'bg-blue-50 text-blue-700'
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' :
+                                            idx === 1 ? 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-300' :
+                                                idx === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400' :
+                                                    'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
                                             }`}>
                                             {idx + 1}
                                         </div>
-                                        <span className="font-medium text-gray-900">{referrer.name}</span>
+                                        <span className="font-medium text-gray-900 dark:text-white">{referrer.name}</span>
                                     </div>
-                                    <span className="text-sm font-semibold text-blue-600">{referrer.count} referrals</span>
+                                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{referrer.count} referrals</span>
                                 </div>
                             ))
                         )}

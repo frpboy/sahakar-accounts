@@ -22,7 +22,7 @@ export default async function DashboardLayout({
 
     return (
         <AppProvider>
-            <div className="flex h-screen bg-gray-50 overflow-hidden">
+            <div className="flex h-screen bg-gray-50 dark:bg-slate-950 overflow-hidden text-gray-900 dark:text-slate-100 transition-colors duration-300">
                 {/* Sidebar */}
                 <Sidebar className="flex-shrink-0" />
 

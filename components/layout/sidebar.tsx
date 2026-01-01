@@ -162,7 +162,7 @@ export function Sidebar({ className }: { className?: string }) {
             />
 
             <div className={cn(
-                "flex flex-col h-full bg-white border-r transition-all duration-300 ease-in-out relative z-50",
+                "flex flex-col h-full bg-white dark:bg-slate-900 border-r dark:border-slate-800 transition-all duration-300 ease-in-out relative z-50",
                 "fixed lg:static inset-y-0 left-0",
                 isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
                 isCollapsed ? "w-20 lg:w-20" : "w-64 lg:w-64",

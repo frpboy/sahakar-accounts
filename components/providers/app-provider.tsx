@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { createClientBrowser } from '@/lib/supabase-client';
+import { getISTDate, getBusinessDate } from '@/lib/ist-utils';
 
 /* ======================================================
    TYPES
@@ -19,6 +21,8 @@ export type AppContextType = {
     setDemoRole: (role: UserRole) => void;
     isMobileMenuOpen: boolean;
     setIsMobileMenuOpen: (open: boolean) => void;
+    isDarkMode: boolean;
+    toggleDarkMode: () => void;
 };
 
 /* ======================================================
@@ -35,25 +39,71 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [isOffline, setIsOffline] = useState(false);
     const [demoRole, setDemoRole] = useState<UserRole>('outlet_staff');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(false);
+
+    // Initial theme load
+    useEffect(() => {
+        const saved = localStorage.getItem('theme-mode');
+        if (saved === 'dark') {
+            setIsDarkMode(true);
+            document.documentElement.classList.add('dark');
+        } else if (saved === 'light') {
+            setIsDarkMode(false);
+            document.documentElement.classList.remove('dark');
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setIsDarkMode(true);
+            document.documentElement.classList.add('dark');
+        }
+    }, []);
+
+    const toggleDarkMode = useCallback(() => {
+        setIsDarkMode(prev => {
+            const next = !prev;
+            localStorage.setItem('theme-mode', next ? 'dark' : 'light');
+            if (next) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+            return next;
+        });
+    }, []);
 
     const { user, signOut } = useAuth();
 
-    // Auto sign-out at 2 AM for staff
+    // Unified staff guard: Auto sign-out at 2 AM OR if duty ended OR outside business hours (7 AM - 2 AM)
     useEffect(() => {
-        if (user?.profile?.role !== 'outlet_staff') return;
+        if (!user || user?.profile?.role !== 'outlet_staff') return;
 
-        const checkTime = () => {
-            const now = new Date();
-            const hour = now.getHours();
-            // If it's between 2:00 AM and 2:01 AM, sign out
-            if (hour === 2) {
-                console.log('[AutoSignOut] It is 2 AM, signing out staff...');
-                signOut();
+        const checkStaffAccess = async () => {
+            const ist = getISTDate();
+            const hour = ist.getHours();
+
+            // 1. Check Business Hours (Locked between 02:00 and 07:00 IST)
+            if (hour >= 2 && hour < 7) {
+                console.log('[StaffGuard] Outside business hours (2 AM - 7 AM), signing out...');
+                alert('🛑 System is closed. Access is permitted only from 7:00 AM to 2:00 AM IST.');
+                await signOut();
+                return;
+            }
+
+            // 2. Check if Duty already Ended for current business date
+            const bizDate = getBusinessDate();
+            const supabase = createClientBrowser();
+
+            const { data: dutyLog } = await supabase
+                .from('duty_logs' as any)
+                .select('duty_end')
+                .eq('user_id', user.id)
+                .eq('date', bizDate)
+                .maybeSingle();
+
+            if (dutyLog?.duty_end) {
+                console.log('[StaffGuard] Duty already ended for today, signing out...');
+                alert('🔒 You have already ended your duty for today. Access is locked until 7:00 AM IST tomorrow.');
+                await signOut();
             }
         };
 
-        const interval = setInterval(checkTime, 60000); // Check every minute
-        checkTime(); // Check immediately
+        const interval = setInterval(checkStaffAccess, 120000); // Check every 2 minutes
+        checkStaffAccess(); // Check immediately
 
         return () => clearInterval(interval);
     }, [user, signOut]);
@@ -72,7 +122,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         demoRole,
         setDemoRole,
         isMobileMenuOpen,
-        setIsMobileMenuOpen
+        setIsMobileMenuOpen,
+        isDarkMode,
+        toggleDarkMode
     };
 
     return (

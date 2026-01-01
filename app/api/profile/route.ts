@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
             .from('users')
             .select('id,email,role,name,outlet_id,access_start_date,access_end_date,auditor_access_granted_at,auditor_access_expires_at')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });

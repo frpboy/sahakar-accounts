@@ -5,7 +5,8 @@ import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { MetricCard } from '@/components/dashboard/metrics/metric-card';
 import { SalesTrendChart } from '@/components/dashboard/charts/sales-trend-chart';
-import { Building2, IndianRupee, AlertTriangle, TrendingUp, Download } from 'lucide-react';
+import { Building2, IndianRupee, AlertTriangle, TrendingUp, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { exportUtils } from '@/lib/export-utils';
 
 export function HOAccountantDashboard() {
     const supabase = useMemo(() => createClientBrowser(), []);
@@ -100,22 +101,66 @@ export function HOAccountantDashboard() {
         }
     };
 
+    const handleExportExcel = () => {
+        const data = outlets.map(o => ({
+            'Outlet Name': o.name,
+            'Location': o.location || '-',
+            'Status': 'Active'
+        }));
+
+        exportUtils.toExcel(data, {
+            filename: `Consolidated_Report_${new Date().toISOString().split('T')[0]}`,
+            title: 'HO Consolidated Report'
+        });
+    };
+
+    const handleExportPDF = () => {
+        const data = outlets.map(o => [
+            o.name,
+            'Rs. 0', // Placeholder as not fully loaded in this view's table
+            'Rs. 0',
+            'Active'
+        ]);
+
+        exportUtils.toPDF(
+            ['Outlet', 'Today Rev', 'MTD Rev', 'Status'],
+            data,
+            {
+                filename: `HO_Consolidated_${new Date().toISOString().split('T')[0]}`,
+                title: 'Sahakar Accounts - HO Consolidated Report',
+                subtitle: `Period: ${new Date().toLocaleDateString()} | Total Revenue: Rs. ${totalRevenue.toLocaleString()}`
+            }
+        );
+    };
+
     if (loading) {
-        return <div className="p-6">Loading...</div>;
+        return <div className="p-6 text-center dark:text-slate-400">Loading HO Dashboard...</div>;
     }
 
     return (
         <div className="p-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">HO Accountant Dashboard</h1>
-                    <p className="text-sm text-gray-500 mt-1">Consolidated view across all outlets</p>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">HO Accountant Dashboard</h1>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Consolidated view across all outlets</p>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                    <Download className="h-4 w-4" />
-                    Export Consolidated
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleExportExcel}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-900 border border-green-300 dark:border-green-800 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/10 transition-all shadow-sm"
+                    >
+                        <FileSpreadsheet className="w-4 h-4" />
+                        Excel
+                    </button>
+                    <button
+                        onClick={handleExportPDF}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-900 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-all shadow-sm"
+                    >
+                        <FileText className="w-4 h-4" />
+                        PDF
+                    </button>
+                </div>
             </div>
 
             {/* Top Metrics */}
@@ -160,28 +205,28 @@ export function HOAccountantDashboard() {
             />
 
             {/* Outlet Comparison Table */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Outlet Performance</h3>
+            <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Outlet Performance</h3>
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50 border-b">
+                        <thead className="bg-gray-50 dark:bg-slate-800/50 border-b dark:border-slate-800">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Outlet</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Today's Revenue</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">MTD Revenue</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Credits</th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Outlet</th>
+                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Today's Revenue</th>
+                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">MTD Revenue</th>
+                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Credits</th>
+                                <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
                             {outlets.map((outlet) => (
-                                <tr key={outlet.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{outlet.name}</td>
-                                    <td className="px-6 py-4 text-sm text-right text-gray-900">₹--</td>
-                                    <td className="px-6 py-4 text-sm text-right text-gray-900">₹--</td>
-                                    <td className="px-6 py-4 text-sm text-right text-gray-900">₹--</td>
+                                <tr key={outlet.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/20 transition-colors">
+                                    <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">{outlet.name}</td>
+                                    <td className="px-6 py-4 text-sm text-right text-gray-900 dark:text-slate-300">₹--</td>
+                                    <td className="px-6 py-4 text-sm text-right text-gray-900 dark:text-slate-300">₹--</td>
+                                    <td className="px-6 py-4 text-sm text-right text-gray-900 dark:text-slate-300">₹--</td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
                                             Active
                                         </span>
                                     </td>
