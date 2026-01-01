@@ -277,7 +277,7 @@ export function StoreManagerDashboard() {
             {
                 filename: `Recent_Sales_${user?.profile?.outlet_id}_${new Date().toISOString().split('T')[0]}`,
                 title: 'Sahakar Accounts - Management Export',
-                subtitle: `Outlet: ${user?.profile?.outlet_name} | Revenue: Rs. ${todayRevenue.toLocaleString()}`
+                subtitle: `Outlet: ${(user?.profile as any)?.outlet_name || user?.profile?.outlet_id || 'Main'} | Revenue: Rs. ${todayRevenue.toLocaleString()}`
             }
         );
     };

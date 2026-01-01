@@ -579,8 +579,8 @@ CREATE TABLE duty_logs (
 4. **HO Accountant Dashboard** - Multi-outlet consolidated view
 5. **Admin Navigation** - Reports & Management sections
 6. **Reports Page** - 6 report cards with descriptions
-7. **User Management Page** - List, search, stats
-8. **Outlet Management Page** - Cards, search, stats
+7. **User Management Page** - List, search, stats, **Add/Edit Functionality**
+8. **Outlet Management Page** - Cards, search, stats, **Add/Edit Functionality**
 9. **Export Functionality** - CSV downloads (3 options)
 10. **Lock/Unlock Day** - Database integration
 11. **Duty End Feature** - Button, tracking, login prevention
@@ -588,17 +588,17 @@ CREATE TABLE duty_logs (
 13. **Auto Sign-Out** - Automatic session termination at 2 AM for staff
 14. **Responsive Layout** - Collapsible sidebar drawer with overlay on mobile
 15. **Role-Based Dashboards** - Auto-routing by role
+16. **Universal Dark Mode** - Full system-wide dark theme support
+17. **Motivational UI** - Randomized encouraging messages on Login & Rest screens
+18. **Rest Mode** - Dedicated `/rest` screen with countdown timer for off-hours
 
 ### 🚧 Planned Future Enhancements
-- Individual report pages with filters
-- Add/Edit modals for users/outlets
+- Individual report pages with saved filters
 - Excel & PDF export (currently CSV only)
 - Real-time WebSocket updates
 - Custom date range selectors
-- Anomaly detection system
-- Auto sign-out at 2 AM
+- Anomaly detection system refinement
 - Dashboard customization
-- Dark mode support
 
 ---
 

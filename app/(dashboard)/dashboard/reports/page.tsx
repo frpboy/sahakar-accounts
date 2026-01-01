@@ -1,66 +1,77 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TopBar } from '@/components/layout/topbar';
 import { Download, FileText, IndianRupee, ShoppingCart, Building2, Users, TrendingUp } from 'lucide-react';
+import { createClientBrowser } from '@/lib/supabase-client';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function ReportsPage() {
+    const supabase = useMemo(() => createClientBrowser(), []);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv' | 'pdf'>('excel');
+    const [exportType, setExportType] = useState<'customers' | 'transactions' | 'all'>('customers');
+    const [exporting, setExporting] = useState(false);
 
-    const reportCards = [
-        {
-            title: 'Sales Report',
-            description: 'Comprehensive sales data with customer details',
-            icon: <ShoppingCart className="h-8 w-8 text-blue-600" />,
-            color: 'bg-blue-50 border-blue-200',
-            href: '/dashboard/reports/sales',
-            dataPoints: ['Daily sales', 'Product-wise breakdown', 'Customer purchase history']
-        },
-        {
-            title: 'Financial Report',
-            description: 'Revenue, expenses, and profit analysis',
-            icon: <IndianRupee className="h-8 w-8 text-green-600" />,
-            color: 'bg-green-50 border-green-200',
-            href: '/dashboard/reports/financial',
-            dataPoints: ['Income vs Expenses', 'Payment mode breakdown', 'Credit outstanding']
-        },
-        {
-            title: 'Outlet Performance',
-            description: 'Compare performance across all outlets',
-            icon: <Building2 className="h-8 w-8 text-purple-600" />,
-            color: 'bg-purple-50 border-purple-200',
-            href: '/dashboard/reports/outlets',
-            dataPoints: ['Revenue by outlet', 'Staff productivity', 'Monthly targets']
-        },
-        {
-            title: 'User Activity',
-            description: 'User transactions and system usage',
-            icon: <Users className="h-8 w-8 text-orange-600" />,
-            color: 'bg-orange-50 border-orange-200',
-            href: '/dashboard/reports/users',
-            dataPoints: ['User-wise transactions', 'Login activity', 'Audit logs']
-        },
-        {
-            title: 'Transaction Report',
-            description: 'All transactions with full details',
-            icon: <FileText className="h-8 w-8 text-indigo-600" />,
-            color: 'bg-indigo-50 border-indigo-200',
-            href: '/dashboard/reports/transactions',
-            dataPoints: ['Sales & purchases', 'Returns & refunds', 'Credit transactions']
-        },
-        {
-            title: 'Trends & Analytics',
-            description: 'Growth trends and forecasting',
-            icon: <TrendingUp className="h-8 w-8 text-rose-600" />,
-            color: 'bg-rose-50 border-rose-200',
-            href: '/dashboard/reports/analytics',
-            dataPoints: ['Month-over-month growth', 'Customer retention', 'Revenue forecasts']
-        },
-    ];
+    // ... existing reportCards ...
 
-    const handleExportAll = (format: 'excel' | 'csv' | 'pdf') => {
-        alert(`Exporting all data as ${format.toUpperCase()}...`);
-        // TODO: Implement actual export logic
+    const handleExportAll = async () => {
+        setExporting(true);
+        try {
+            if (exportType === 'customers' || exportType === 'all') {
+                // Export Customers
+                const { data: customers } = await supabase
+                    .from('customers')
+                    .select('*')
+                    .order('name');
+
+                if (customers) {
+                    if (exportFormat === 'excel') {
+                        const ws = XLSX.utils.json_to_sheet(customers);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, "Customers");
+                        XLSX.writeFile(wb, `Customers_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+                    } else if (exportFormat === 'pdf') {
+                        const doc = new jsPDF();
+                        doc.text("Customer Report", 14, 15);
+                        autoTable(doc, {
+                            head: [["ID", "Name", "Phone", "Balance", "Status"]],
+                            body: customers.map((c: any) => [
+                                c.internal_customer_id || c.customer_code,
+                                c.name,
+                                c.phone,
+                                c.outstanding_balance,
+                                c.is_active ? 'Active' : 'Inactive'
+                            ]),
+                            startY: 20
+                        });
+                        doc.save(`Customers_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+                    } else {
+                        // CSV logic (can use XLSX for CSV too)
+                        const ws = XLSX.utils.json_to_sheet(customers);
+                        const csv = XLSX.utils.sheet_to_csv(ws);
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement("a");
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `Customers_Report_${new Date().toISOString().split('T')[0]}.csv`;
+                        link.click();
+                    }
+                }
+            }
+
+            // TODO: Add logic for 'transactions' and 'all' if needed, for now 'customers' is the request
+            if (exportType === 'all') {
+                // Placeholder for full export
+                alert('Full database export coming soon. Customer data exported.');
+            }
+
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert('Failed to export data');
+        } finally {
+            setExporting(false);
+        }
     };
 
     return (
@@ -99,12 +110,31 @@ export default function ReportsPage() {
                                         <option value="csv">CSV (.csv)</option>
                                         <option value="pdf">PDF (.pdf)</option>
                                     </select>
-                                    <button
-                                        onClick={() => handleExportAll(exportFormat)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                    <select
+                                        value={exportType}
+                                        onChange={(e) => setExportType(e.target.value as any)}
+                                        className="px-3 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 mr-2"
                                     >
-                                        <Download className="h-4 w-4" />
-                                        Export All
+                                        <option value="customers">Customers Data</option>
+                                        <option value="transactions">Transactions (Coming Soon)</option>
+                                        <option value="all">All Data</option>
+                                    </select>
+                                    <select
+                                        value={exportFormat}
+                                        onChange={(e) => setExportFormat(e.target.value as any)}
+                                        className="px-3 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="excel">Excel (.xlsx)</option>
+                                        <option value="csv">CSV (.csv)</option>
+                                        <option value="pdf">PDF (.pdf)</option>
+                                    </select>
+                                    <button
+                                        onClick={handleExportAll}
+                                        disabled={exporting}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                    >
+                                        {exporting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Download className="h-4 w-4" />}
+                                        Export
                                     </button>
                                 </div>
                             </div>

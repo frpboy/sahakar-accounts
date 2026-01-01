@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Store, TrendingUp, Users, Award, Download, Lock, FileSpreadsheet, FileText } from 'lucide-react';
+import Link from 'next/link';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     LineChart, Line
@@ -161,40 +162,51 @@ export function AdminDashboard() {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Total Outlets</span>
-                        <Store className="w-4 h-4 text-gray-400 dark:text-slate-500" />
+                <Link href="/dashboard/management/outlets" className="block transition-transform hover:scale-105">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm h-full hover:shadow-md transition-shadow cursor-pointer">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Total Outlets</span>
+                            <Store className="w-4 h-4 text-gray-400 dark:text-slate-500" />
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{outletCount}</div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Active stores</div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{outletCount}</div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Active stores</div>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Today's Total Sales</span>
-                        <TrendingUp className="w-4 h-4 text-blue-400" />
+                </Link>
+
+                <Link href="/dashboard/reports/financial" className="block transition-transform hover:scale-105">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm h-full hover:shadow-md transition-shadow cursor-pointer">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Today's Total Sales</span>
+                            <TrendingUp className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{todayTotalSales}</div>
+                        <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">Real-time count</div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{todayTotalSales}</div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">Real-time count</div>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Total Customers</span>
-                        <Users className="w-4 h-4 text-gray-400 dark:text-slate-500" />
+                </Link>
+
+                <Link href="/dashboard/customers" className="block transition-transform hover:scale-105">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm h-full hover:shadow-md transition-shadow cursor-pointer">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Total Customers</span>
+                            <Users className="w-4 h-4 text-gray-400 dark:text-slate-500" />
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalCustomers.toLocaleString()}</div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Last 6 months</div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalCustomers.toLocaleString()}</div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Last 6 months</div>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Unlocked Days</span>
-                        <Lock className="w-4 h-4 text-orange-400" />
+                </Link>
+
+                <Link href="/dashboard/history" className="block transition-transform hover:scale-105">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border dark:border-slate-800 shadow-sm h-full hover:shadow-md transition-shadow cursor-pointer">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-sm font-medium text-gray-500 dark:text-slate-400">Unlocked Days</span>
+                            <Lock className="w-4 h-4 text-orange-400" />
+                        </div>
+                        <div className={cn("text-2xl font-bold", unlockedDaysCount > 0 ? "text-orange-600 dark:text-orange-400" : "text-gray-900 dark:text-white")}>
+                            {unlockedDaysCount}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Pending audit closure</div>
                     </div>
-                    <div className={cn("text-2xl font-bold", unlockedDaysCount > 0 ? "text-orange-600 dark:text-orange-400" : "text-gray-900 dark:text-white")}>
-                        {unlockedDaysCount}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">Pending audit closure</div>
-                </div>
+                </Link>
             </div>
 
             {outletCount === 0 && (

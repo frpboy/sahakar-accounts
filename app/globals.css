@@ -55,4 +55,16 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Force uppercase for all text inputs except login/password fields */
+  input:not([type="password"]):not([type="email"]),
+  textarea,
+  select {
+    text-transform: uppercase;
+  }
+
+  /* Ensure number inputs show numeric keyboard */
+  input[type="number"] {
+    appearance: textfield;
+  }
 }

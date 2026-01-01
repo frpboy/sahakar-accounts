@@ -22,13 +22,14 @@ export default function UserManagementPage() {
     const loadUsers = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('*, outlet:outlets(name)')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setUsers(data || []);
+            // Use API endpoint to bypass client-side RLS if needed and get consistent data
+            const res = await fetch('/api/users');
+            if (res.ok) {
+                const data = await res.json();
+                setUsers(data || []);
+            } else {
+                console.error('Failed to fetch users:', res.statusText);
+            }
         } catch (err) {
             console.error('Error loading users:', err);
         } finally {

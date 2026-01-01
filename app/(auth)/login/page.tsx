@@ -45,12 +45,44 @@ function LoginForm() {
         { label: 'Karinkallathani - Staff', email: 'staff.hp.karinkall@sahakar.com', role: 'Staff' },
     ];
 
+    const [quote, setQuote] = useState({ text: '', author: '' });
+
+    useEffect(() => {
+        const quotes = [
+            { text: "Consistency is what transforms average into excellence.", author: "Sahakar Team" },
+            { text: "Your hard work is the foundation of our success.", author: "Leadership" },
+            { text: "Every entry matters. Accuracy is our signature.", author: "Quality Control" },
+            { text: "Small daily improvements are the key to staggering long-term results.", author: "Growth Mindset" },
+            { text: "Discipline is doing what needs to be done, even if you don't want to do it.", author: "Motivation" },
+            { text: "The only place where success comes before work is in the dictionary.", author: "Vidal Sassoon" },
+            { text: "Quality means doing it right when no one is looking.", author: "Henry Ford" },
+            { text: "Hard work beats talent when talent doesn't work hard.", author: "Tim Notke" },
+            { text: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
+            { text: "Start where you are. Use what you have. Do what you can.", author: "Arthur Ashe" },
+            { text: "Your dedication today builds a better tomorrow for everyone.", author: "Sahakar Vision" },
+            { text: "Focus on being productive instead of busy.", author: "Tim Ferriss" },
+            { text: "Excellence is not a skill. It is an attitude.", author: "Ralph Marston" },
+            { text: "Determine never to be idle. No person will have occasion to complain of the want of time who never loses any.", author: "Thomas Jefferson" },
+        ];
+        // Pick one based on time of day for variety key but random for content
+        const random = quotes[Math.floor(Math.random() * quotes.length)];
+        setQuote(random);
+    }, []);
 
     return (
         <div className="max-w-md w-full space-y-8">
-            <div>
-                <h1 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Sahakar Accounts</h1>
-                <p className="mt-2 text-center text-sm text-gray-600">Sign in to your account</p>
+            <div className="text-center">
+                <h1 className="mt-6 text-3xl font-extrabold text-gray-900">Sahakar Accounts</h1>
+                <p className="mt-2 text-sm text-gray-600">Sign in to your account</p>
+
+                {/* Daily Motivation Card */}
+                {quote.text && (
+                    <div className="mt-6 bg-slate-50 border border-slate-100 rounded-lg p-4 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                        <p className="text-sm text-slate-700 italic font-medium leading-relaxed">"{quote.text}"</p>
+                        <p className="text-xs text-slate-500 mt-2 uppercase tracking-wide font-bold">- {quote.author}</p>
+                    </div>
+                )}
             </div>
 
             {error && (

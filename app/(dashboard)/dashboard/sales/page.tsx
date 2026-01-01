@@ -112,9 +112,16 @@ export default function NewSalesPage() {
     useEffect(() => {
         if (user?.profile) {
             const profile = user.profile as any;
-            const type = profile.outlet?.outlet_type || (profile.outlet?.type === 'smart_clinic' ? 'SC' : 'HP');
-            const code = profile.outlet?.location_code || (profile.outlet?.name ? profile.outlet.name.split(' ').pop()?.substring(0, 3).toUpperCase() : 'TVL');
-            setIdPrefix(`${type}-${code}`);
+            // Always use HP for Hyperpharmacy as per request, fallback to TVL if no location code
+            // Location code: Use location_code if available, else first 3 chars of name, else TVL
+            let code = profile.outlet?.location_code;
+            if (!code && profile.outlet?.name) {
+                // Try to extract from name (e.g. "Tirunelveli Branch" -> "TIR")
+                code = profile.outlet.name.trim().substring(0, 3).toUpperCase();
+            }
+            code = (code || 'TVL').substring(0, 4).toUpperCase(); // Max 4 chars as per request
+
+            setIdPrefix(`HP-${code}`);
         }
     }, [user]);
 

@@ -6,10 +6,10 @@ import { ReportFilters } from '@/components/dashboard/reports/report-filters';
 import { ReportTable } from '@/components/dashboard/reports/report-table';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { useAuth } from '@/lib/auth-context';
-import { UserCog, History as HistoryIcon, ShieldCheck, Search, Filter, FileSpreadsheet, FileText } from 'lucide-react';
-import { MetricCard } from '@/components/dashboard/metrics/metric-card';
+import { UserCog, History as HistoryIcon, ShieldCheck, Search, Filter, FileSpreadsheet, FileText, ShoppingCart, UserPlus, File, RefreshCcw } from 'lucide-react';
 import { exportUtils } from '@/lib/export-utils';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function UserActivityPage() {
     const supabase = createClientBrowser();
@@ -117,10 +117,16 @@ export default function UserActivityPage() {
 
     const columns = [
         {
-            header: 'Time',
+            header: 'Date & Time',
             accessor: (l: any) => (
-                <div className="text-xs font-mono text-gray-500">
-                    {new Date(l.created_at).toLocaleTimeString()}
+                <div className="text-xs font-mono text-gray-500 whitespace-nowrap">
+                    {new Date(l.created_at).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    })}
                 </div>
             )
         },
@@ -168,30 +174,47 @@ export default function UserActivityPage() {
             <TopBar title="User Activity Log" />
 
             <main className="p-4 lg:p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <MetricCard
-                        title="Total Events"
-                        value={logs.length.toString()}
-                        icon={<HistoryIcon className="w-5 h-5 text-blue-600" />}
-                        subtitle="Audit trail entries"
-                    />
-                    <MetricCard
-                        title="Active Users"
-                        value={new Set(logs.map(l => l.user_id)).size.toString()}
-                        icon={<UserCog className="w-5 h-5 text-purple-600" />}
-                    />
-                    <MetricCard
-                        title="Safety Checks"
-                        value="PASS"
-                        icon={<ShieldCheck className="w-5 h-5 text-green-600" />}
-                        subtitle="System integrity ok"
-                    />
-                    <MetricCard
-                        title="Last Entry"
-                        value={logs.length > 0 ? new Date(logs[0].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
-                        icon={<HistoryIcon className="w-5 h-5 text-gray-600" />}
-                        subtitle="Most recent activity"
-                    />
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Link
+                        href="/dashboard/sales"
+                        className="bg-white dark:bg-slate-900 p-6 rounded-xl border dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group"
+                    >
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-full group-hover:scale-110 transition-transform">
+                            <ShoppingCart className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <span className="font-semibold text-gray-900 dark:text-white">New Sale</span>
+                    </Link>
+
+                    <Link
+                        href="/dashboard/returns?type=sales"
+                        className="bg-white dark:bg-slate-900 p-6 rounded-xl border dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group"
+                    >
+                        <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-full group-hover:scale-110 transition-transform">
+                            <RefreshCcw className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <span className="font-semibold text-gray-900 dark:text-white">Sales Return</span>
+                    </Link>
+
+                    <Link
+                        href="/dashboard/customers"
+                        className="bg-white dark:bg-slate-900 p-6 rounded-xl border dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group"
+                    >
+                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-full group-hover:scale-110 transition-transform">
+                            <UserPlus className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        </div>
+                        <span className="font-semibold text-gray-900 dark:text-white">Add Customer</span>
+                    </Link>
+
+                    <Link
+                        href="/dashboard/drafts"
+                        className="bg-white dark:bg-slate-900 p-6 rounded-xl border dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-3 group"
+                    >
+                        <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-full group-hover:scale-110 transition-transform">
+                            <File className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <span className="font-semibold text-gray-900 dark:text-white">View Drafts</span>
+                    </Link>
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border dark:border-slate-800 shadow-sm space-y-4">

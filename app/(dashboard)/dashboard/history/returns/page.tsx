@@ -26,6 +26,7 @@ export default function ReturnsHistoryPage() {
                         created_at,
                         internal_entry_id,
                         entry_number,
+                        customer_phone,
                         amount,
                         payment_modes,
                         category,

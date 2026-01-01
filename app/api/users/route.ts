@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await adminClient
             .from('users')
             .select('*, outlet:outlets(name)')
-            .order('created_at', { ascending: false })
+            .order('name', { ascending: true })
             .limit(100); // Limit to 100 users
 
         if (error) {

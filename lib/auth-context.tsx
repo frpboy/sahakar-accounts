@@ -328,16 +328,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const today = new Date().toISOString().split('T')[0];
 
                 const { data: dutyLog } = await (supabase
-                    .from('duty_logs' as any) as any)
+                    .from('duty_logs' as any)
                     .select('duty_end')
                     .eq('user_id', data.user.id)
                     .eq('date', today)
-                    .single();
+                    .single() as any);
 
-                if (dutyLog?.duty_end) {
+                if (dutyLog && dutyLog.duty_end) {
                     // Staff has ended duty today - sign them out and block login
                     await supabase.auth.signOut();
-                    throw new Error('Your duty has ended for today. Please login tomorrow after 7:00 AM.');
+                    router.push('/rest?reason=duty_end');
+                    return;
                 }
             }
         }

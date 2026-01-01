@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { X, UserPlus, Loader2 } from 'lucide-react';
 
 interface CreateUserModalProps {
+import { X, UserPlus, Loader2 } from 'lucide-react';
+
+interface CreateUserModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
@@ -23,6 +26,25 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
     const [success, setSuccess] = useState('');
     const [approvalId, setApprovalId] = useState<string>('');
     const router = useRouter();
+    const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchOutlets();
+        }
+    }, [isOpen]);
+
+    const fetchOutlets = async () => {
+        try {
+            const res = await fetch('/api/outlets');
+            if (res.ok) {
+                const data = await res.json();
+                setOutlets(data || []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch outlets:', err);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -97,6 +119,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                             {approvalId && (
                                 <div className="mt-2">
                                     <button
+                                        type="button"
                                         onClick={() => router.push(`/dashboard/admin?approvalId=${approvalId}#approvals`)}
                                         className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
                                     >
@@ -171,21 +194,27 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                         />
                     </div>
 
-                    {/* Outlet ID (Optional - for staff/manager) */}
+                    {/* Outlet Selection */}
                     {(formData.role === 'outlet_staff' || formData.role === 'outlet_manager') && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Outlet ID (Optional)
+                                Assign Outlet *
                             </label>
-                            <input
-                                type="text"
+                            <select
+                                required
                                 value={formData.outletId}
                                 onChange={(e) => setFormData({ ...formData, outletId: e.target.value })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="Enter outlet UUID"
-                            />
+                            >
+                                <option value="" disabled>Select an outlet...</option>
+                                {outlets.map((outlet) => (
+                                    <option key={outlet.id} value={outlet.id}>
+                                        {outlet.name}
+                                    </option>
+                                ))}
+                            </select>
                             <p className="text-xs text-gray-500 mt-1">
-                                Leave blank to assign later
+                                User will be restricted to this outlet
                             </p>
                         </div>
                     )}

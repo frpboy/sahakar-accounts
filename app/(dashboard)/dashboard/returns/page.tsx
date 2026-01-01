@@ -17,6 +17,7 @@ export default function SalesReturnPage() {
     // Form state
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerName, setCustomerName] = useState('');
+    const [supplierName, setSupplierName] = useState(''); // New state for purchase return
     const [customerExists, setCustomerExists] = useState(false);
     const [customerSuggestions, setCustomerSuggestions] = useState<Array<{ phone: string; name: string; id: string }>>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -90,13 +91,20 @@ export default function SalesReturnPage() {
             return;
         }
         // Validation
-        if (!customerPhone.trim()) {
-            alert('Please enter customer phone number');
-            return;
-        }
-        if (!/^\d{10}$/.test(customerPhone.trim())) {
-            alert('Please enter a valid 10-digit phone number');
-            return;
+        if (isPurchase) {
+            if (!supplierName.trim()) {
+                alert('Please enter supplier name or reason');
+                return;
+            }
+        } else {
+            if (!customerPhone.trim()) {
+                alert('Please enter customer phone number');
+                return;
+            }
+            if (!/^\d{10}$/.test(customerPhone.trim())) {
+                alert('Please enter a valid 10-digit phone number');
+                return;
+            }
         }
         if (!billNumber.trim()) {
             alert('Please enter bill/entry number');
@@ -153,10 +161,12 @@ export default function SalesReturnPage() {
                     entry_number: billNumber.trim(),
                     transaction_type: isPurchase ? 'income' : 'expense',
                     category: isPurchase ? 'purchase_return' : 'sales_return',
-                    description: `${isPurchase ? 'Purchase' : 'Sales'} return from ${customerPhone} (Original bill: ${billNumber})`,
+                    description: isPurchase
+                        ? `Purchase return: ${supplierName} (Ref: ${billNumber})`
+                        : `Sales return from ${customerPhone} (Original bill: ${billNumber})`,
                     amount: amount,
                     payment_modes: 'Cash', // Default to cash refund
-                    customer_phone: customerPhone.trim(),
+                    customer_phone: isPurchase ? null : customerPhone.trim(),
                     created_by: user.id
                 })
                 .select()
@@ -169,6 +179,7 @@ export default function SalesReturnPage() {
 
             // Reset form
             setCustomerPhone('');
+            setSupplierName('');
             setBillNumber('');
             setReturnAmount('');
         } catch (e: any) {
@@ -207,53 +218,71 @@ export default function SalesReturnPage() {
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Return Details</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="relative">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Customer Phone <span className="text-red-500">*</span>
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        placeholder="10-digit phone"
-                                        value={customerPhone}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            setCustomerPhone(val);
-                                            if (val.length >= 3) searchCustomers(val);
-                                            else { setShowSuggestions(false); setCustomerExists(false); }
-                                        }}
-                                        maxLength={10}
-                                        disabled={isLocked}
-                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                    />
-                                    {fetchingCustomer && (
-                                        <div className="absolute right-3 top-2.5">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                                        </div>
-                                    )}
-                                </div>
-                                {showSuggestions && customerSuggestions.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-auto">
-                                        {customerSuggestions.map((c, idx) => (
-                                            <div
-                                                key={idx}
-                                                onClick={() => {
-                                                    setCustomerPhone(c.phone);
-                                                    setCustomerName(c.name);
-                                                    setCustomerExists(true);
-                                                    setShowSuggestions(false);
+                                {isPurchase ? (
+                                    <>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Supplier Name / Reason <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Enter supplier details or return reason"
+                                            value={supplierName}
+                                            onChange={(e) => setSupplierName(e.target.value)}
+                                            disabled={isLocked}
+                                            className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Customer Phone <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="10-digit phone"
+                                                value={customerPhone}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setCustomerPhone(val);
+                                                    if (val.length >= 3) searchCustomers(val);
+                                                    else { setShowSuggestions(false); setCustomerExists(false); }
                                                 }}
-                                                className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 text-sm"
-                                            >
-                                                <div className="font-medium">{c.name}</div>
-                                                <div className="text-xs text-gray-500">{c.phone}</div>
+                                                maxLength={10}
+                                                disabled={isLocked}
+                                                className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                            />
+                                            {fetchingCustomer && (
+                                                <div className="absolute right-3 top-2.5">
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {showSuggestions && customerSuggestions.length > 0 && (
+                                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-auto">
+                                                {customerSuggestions.map((c, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        onClick={() => {
+                                                            setCustomerPhone(c.phone);
+                                                            setCustomerName(c.name);
+                                                            setCustomerExists(true);
+                                                            setShowSuggestions(false);
+                                                        }}
+                                                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 text-sm"
+                                                    >
+                                                        <div className="font-medium">{c.name}</div>
+                                                        <div className="text-xs text-gray-500">{c.phone}</div>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {customerExists && (
-                                    <div className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
-                                        <User className="w-3 h-3" /> Found: {customerName}
-                                    </div>
+                                        )}
+                                        {customerExists && (
+                                            <div className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
+                                                <User className="w-3 h-3" /> Found: {customerName}
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                             <div>
@@ -288,7 +317,7 @@ export default function SalesReturnPage() {
                         {!isLocked && (
                             <button
                                 onClick={handleSubmit}
-                                disabled={submitting || !customerPhone || !billNumber || !returnAmount}
+                                disabled={submitting || (isPurchase ? !supplierName : !customerPhone) || !billNumber || !returnAmount}
                                 className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {submitting ? 'Submitting...' : 'Submit Return'}

@@ -93,12 +93,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 .select('duty_end')
                 .eq('user_id', user.id)
                 .eq('date', bizDate)
-                .maybeSingle();
+                .maybeSingle() as any;
 
-            if (dutyLog?.duty_end) {
+            if (dutyLog && dutyLog.duty_end) {
                 console.log('[StaffGuard] Duty already ended for today, signing out...');
-                alert('🔒 You have already ended your duty for today. Access is locked until 7:00 AM IST tomorrow.');
                 await signOut();
+                window.location.href = '/rest?reason=duty_locked';
             }
         };
 

@@ -6,30 +6,31 @@ import { Plus, X, Search } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { generateCustomerId } from '@/lib/customer-id-generator';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import { useDebounce } from '@/hooks/use-debounce';
+import { CustomerModal } from '@/components/customer-modal';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Download, FileSpreadsheet, FileText } from 'lucide-react';
 
 export default function CustomersPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
     const { user } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 500);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalRecords, setTotalRecords] = useState(0);
+
     const [loading, setLoading] = useState(false);
     const [rows, setRows] = useState<Array<{ id: string; name: string; phone?: string | null; customer_code?: string | null; internal_customer_id?: string | null; created_at?: string | null; is_active?: boolean | null }>>([]);
     const [error, setError] = useState<string | null>(null);
-    const [idPrefix, setIdPrefix] = useState('HP-TVL-C');
-
-    // Form state
-    const [customerName, setCustomerName] = useState('');
-    const [customerPhone, setCustomerPhone] = useState('');
-    const [email, setEmail] = useState('');
-    const [address, setAddress] = useState('');
-    const [notes, setNotes] = useState('');
-    const [creditLimit, setCreditLimit] = useState('10000');
-    const [outstandingBalance, setOutstandingBalance] = useState('0');
-    const [isActive, setIsActive] = useState(true);
-    const [referredBy, setReferredBy] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-    const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
     const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+    const [exporting, setExporting] = useState(false);
+    const [showExportMenu, setShowExportMenu] = useState(false);
+
 
     useEffect(() => {
         let mounted = true;
@@ -40,14 +41,30 @@ export default function CustomersPage() {
             try {
                 let query = (supabase as any)
                     .from('customers')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                    .select('*', { count: 'exact' })
+                    .order('name', { ascending: true });
 
-                // Global Access: removed outlet_id filter
+                // Search filter (Server-side)
+                if (debouncedSearch.trim()) {
+                    const q = debouncedSearch.trim();
+                    const isPhone = /^\d+$/.test(q);
+                    if (isPhone) {
+                        query = query.ilike('phone', `%${q}%`);
+                    } else {
+                        query = query.or(`name.ilike.%${q}%,customer_code.ilike.%${q}%,internal_customer_id.ilike.%${q}%`);
+                    }
+                }
 
-                const { data, error } = await query.limit(200);
+                // Pagination
+                const from = (page - 1) * pageSize;
+                const to = from + pageSize - 1;
+
+                const { data, count, error } = await query.range(from, to);
+
                 if (error) throw error;
                 if (!mounted) return;
+
+                setTotalRecords(count || 0);
                 setRows((data || []).map((c: any) => ({
                     ...c,
                     id: c.id,
@@ -67,130 +84,92 @@ export default function CustomersPage() {
         }
         load();
         return () => { mounted = false; };
-    }, [supabase, user]);
+    }, [supabase, user, page, pageSize, debouncedSearch]);
 
-    useEffect(() => {
-        if (!user?.profile.outlet_id) return;
-        async function loadStaff() {
-            const { data } = await supabase
-                .from('users')
-                .select('id, name')
-                .eq('outlet_id', user.profile.outlet_id)
-                .in('role', ['outlet_staff', 'outlet_manager']);
-            setStaffList((data as any) || []);
-        }
-        loadStaff();
-    }, [supabase, user]);
 
-    // Construct ID prefix from outlet details
-    useEffect(() => {
-        if (user?.profile) {
-            const profile = user.profile as any;
-            const type = profile.outlet?.outlet_type || (profile.outlet?.type === 'smart_clinic' ? 'SC' : 'HP');
-            const code = profile.outlet?.location_code || (profile.outlet?.name ? profile.outlet.name.split(' ').pop()?.substring(0, 3).toUpperCase() : 'TVL');
-            setIdPrefix(`${type}-${code}-C`);
-        }
-    }, [user]);
-
-    const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        if (!q) return rows;
-        return rows.filter(r =>
-            r.name?.toLowerCase().includes(q) ||
-            (r.phone || '').toLowerCase().includes(q) ||
-            (r.customer_code || '').toLowerCase().includes(q) ||
-            (r.internal_customer_id || '').toLowerCase().includes(q)
-        );
-    }, [rows, search]);
-
-    const handleAddCustomer = async () => {
-        if (!customerName.trim()) {
-            alert('Please enter customer name');
-            return;
-        }
-        if (!customerPhone.trim()) {
-            alert('Please enter phone number');
-            return;
-        }
-        if (!user?.profile?.outlet_id) {
-            alert('No outlet assigned to your account');
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const insertData: any = {
-                name: customerName.trim(),
-                phone: customerPhone.trim(),
-                email: email.trim() || null,
-                address: address.trim() || null,
-                notes: notes.trim() || null,
-                credit_limit: parseFloat(creditLimit) || 10000,
-                outstanding_balance: parseFloat(outstandingBalance) || 0,
-                is_active: isActive,
-                referred_by: referredBy || null,
-                outlet_id: user.profile.outlet_id,
-                created_by: user.id
-            };
-
-            if (editingCustomer) {
-                const { error: updateError } = await (supabase as any)
-                    .from('customers')
-                    .update(insertData)
-                    .eq('id', editingCustomer.id);
-
-                if (updateError) throw updateError;
-
-                setRows(prev => prev.map(r => r.id === editingCustomer.id ? {
-                    ...r,
-                    ...insertData
-                } : r));
-
-                alert('✅ Customer updated successfully');
-            } else {
-                const { data, error } = await (supabase as any)
-                    .from('customers')
-                    .insert(insertData)
-                    .select()
-                    .single();
-
-                if (error) throw error;
-
-                setRows(prev => [{
-                    id: data.id,
-                    name: data.name,
-                    phone: data.phone,
-                    customer_code: data.customer_code,
-                    internal_customer_id: data.internal_customer_id,
-                    is_active: data.is_active,
-                    created_at: data.created_at
-                }, ...prev]);
-            }
-
-            setEditingCustomer(null);
-            setIsModalOpen(false);
-        } catch (e: any) {
-            alert(e?.message || 'Failed to save customer');
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    // Use rows directly since filtering is now server-side
+    const filtered = rows;
 
     const handleEditClick = (customer: any) => {
         setEditingCustomer(customer);
-        setCustomerName(customer.name || '');
-        setCustomerPhone(customer.phone || '');
-        setEmail(customer.email || '');
-        setAddress(customer.address || '');
-        setNotes(customer.notes || '');
-        setCreditLimit(customer.credit_limit?.toString() || '10000');
-        setOutstandingBalance(customer.outstanding_balance?.toString() || '0');
-        setIsActive(customer.is_active !== false);
-        setReferredBy(customer.referred_by || '');
         setIsModalOpen(true);
     };
 
     const canEdit = ['outlet_staff', 'outlet_manager', 'ho_accountant', 'master_admin', 'superadmin'].includes(user?.profile?.role || '');
+
+    const handleExport = async (type: 'excel' | 'pdf') => {
+        setExporting(true);
+        setShowExportMenu(false);
+        try {
+            // Fetch all customers for export
+            let allCustomers: any[] = [];
+            let pageIndex = 0;
+            const limit = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+                const { data, error } = await supabase
+                    .from('customers')
+                    .select('*')
+                    .order('name', { ascending: true })
+                    .range(pageIndex * limit, (pageIndex + 1) * limit - 1);
+
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    hasMore = false;
+                } else {
+                    allCustomers = [...allCustomers, ...data];
+                    if (data.length < limit) hasMore = false;
+                    pageIndex++;
+                }
+            }
+
+            if (type === 'excel') {
+                const ws = XLSX.utils.json_to_sheet(allCustomers.map(c => ({
+                    'ID': c.internal_customer_id || c.customer_code || c.id,
+                    'Name': c.name,
+                    'Phone': c.phone,
+                    'Email': c.email,
+                    'Address': c.address,
+                    'Credit Limit': c.credit_limit,
+                    'Outstanding Balance': c.outstanding_balance,
+                    'Referred By': c.referred_by,
+                    'Status': c.is_active ? 'Active' : 'Inactive',
+                    'Created At': c.created_at ? new Date(c.created_at).toLocaleDateString() : ''
+                })));
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Customers");
+                XLSX.writeFile(wb, `Customers_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
+            } else {
+                const doc = new jsPDF();
+                const tableColumn = ["ID", "Name", "Phone", "Balance", "Status"];
+                const tableRows = allCustomers.map(c => [
+                    c.internal_customer_id || c.customer_code || c.id.substring(0, 8),
+                    c.name,
+                    c.phone || '-',
+                    c.outstanding_balance?.toString() || '0',
+                    c.is_active ? 'Active' : 'Inactive'
+                ]);
+
+                doc.text("Customer List", 14, 15);
+                doc.setFontSize(10);
+                doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 20);
+
+                autoTable(doc, {
+                    head: [tableColumn],
+                    body: tableRows,
+                    startY: 25,
+                });
+
+                doc.save(`Customers_Export_${new Date().toISOString().split('T')[0]}.pdf`);
+            }
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert('Failed to export data');
+        } finally {
+            setExporting(false);
+        }
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -204,16 +183,52 @@ export default function CustomersPage() {
                             placeholder="Search by name, phone or ID..."
                             className="w-full pl-10 pr-4 py-2 border dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-950 dark:text-white transition-colors"
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setPage(1); // Reset to page 1 on search
+                            }}
                         />
                     </div>
                     {canEdit && (
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="bg-gray-900 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-gray-800 dark:hover:bg-blue-500 transition-colors flex items-center gap-2"
-                        >
-                            <Plus className="w-4 h-4" /> Add Customer
-                        </button>
+                        <div className="flex gap-2">
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowExportMenu(!showExportMenu)}
+                                    disabled={exporting}
+                                    className="bg-white dark:bg-slate-800 border dark:border-slate-700 text-gray-700 dark:text-slate-300 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
+                                >
+                                    {exporting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div> : <Download className="w-4 h-4" />}
+                                    Export
+                                </button>
+                                {showExportMenu && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-md shadow-lg border dark:border-slate-800 z-10">
+                                        <div className="py-1">
+                                            <button
+                                                onClick={() => handleExport('excel')}
+                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 w-full text-left"
+                                            >
+                                                <FileSpreadsheet className="w-4 h-4 text-green-600" /> Export Excel
+                                            </button>
+                                            <button
+                                                onClick={() => handleExport('pdf')}
+                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 w-full text-left"
+                                            >
+                                                <FileText className="w-4 h-4 text-red-600" /> Export PDF
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setEditingCustomer(null);
+                                    setIsModalOpen(true);
+                                }}
+                                className="bg-gray-900 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-gray-800 dark:hover:bg-blue-500 transition-colors flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" /> Add Customer
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -232,6 +247,9 @@ export default function CustomersPage() {
                                 </th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                     Status
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                                    Referred By
                                 </th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                     Created Date
@@ -274,6 +292,9 @@ export default function CustomersPage() {
                                             {customer.is_active ? 'Active' : 'Inactive'}
                                         </span>
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400 uppercase">
+                                        {customer.referred_by || '-'}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                                         {customer.created_at ? new Date(customer.created_at).toLocaleDateString('en-IN') : '-'}
                                     </td>
@@ -291,182 +312,34 @@ export default function CustomersPage() {
                             ))}
                         </tbody>
                     </table>
+
+                    <PaginationControls
+                        currentPage={page}
+                        totalRecords={totalRecords}
+                        pageSize={pageSize}
+                        onPageChange={setPage}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size);
+                            setPage(1);
+                        }}
+                    />
                 </div>
             </div>
 
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/80 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-2xl overflow-hidden border dark:border-slate-800">
-                        <div className="px-6 py-4 border-b dark:border-slate-800 flex justify-between items-center bg-gray-50 dark:bg-slate-950">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
-                            </h3>
-                            <button onClick={() => { setIsModalOpen(false); setEditingCustomer(null); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Customer Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Enter full name"
-                                        value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Phone Number <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="10-digit phone number"
-                                        value={customerPhone}
-                                        onChange={(e) => setCustomerPhone(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            {editingCustomer && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                            Sahakar ID
-                                        </label>
-                                        <div className="text-sm font-mono text-gray-600">
-                                            {editingCustomer.internal_customer_id || 'Generating...'}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                            ERP Code
-                                        </label>
-                                        <div className="text-sm font-mono text-gray-600">
-                                            {editingCustomer.customer_code || 'N/A'}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Email
-                                    </label>
-                                    <input
-                                        type="email"
-                                        placeholder="customer@example.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Referred By
-                                    </label>
-                                    <select
-                                        value={referredBy}
-                                        onChange={(e) => setReferredBy(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                                    >
-                                        <option value="">-- Select Staff --</option>
-                                        {staffList.map(staff => (
-                                            <option key={staff.id} value={staff.name}>{staff.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Address
-                                </label>
-                                <textarea
-                                    placeholder="Enter full address"
-                                    rows={2}
-                                    value={address}
-                                    onChange={(e) => setAddress(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Credit Limit (₹)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={creditLimit}
-                                        onChange={(e) => setCreditLimit(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Outstanding Balance (₹)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={outstandingBalance}
-                                        onChange={(e) => setOutstandingBalance(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Notes
-                                </label>
-                                <textarea
-                                    placeholder="Any internal notes..."
-                                    rows={2}
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="isActive"
-                                    checked={isActive}
-                                    onChange={(e) => setIsActive(e.target.checked)}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                />
-                                <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
-                                    Active Customer
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="p-4 bg-gray-50 flex justify-end gap-3">
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                disabled={submitting}
-                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 font-medium disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleAddCustomer}
-                                disabled={submitting}
-                                className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 font-medium disabled:opacity-50"
-                            >
-                                {submitting ? (editingCustomer ? 'Saving...' : 'Adding...') : (editingCustomer ? 'Save Changes' : 'Add Customer')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <CustomerModal
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        setEditingCustomer(null);
+                    }}
+                    customer={editingCustomer}
+                    onSuccess={() => {
+                        // Reload data
+                        setSearch(prev => prev + ' ');
+                        setTimeout(() => setSearch(prev => prev.trim()), 0);
+                    }}
+                />
             )}
         </div>
     );
