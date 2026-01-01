@@ -29,12 +29,12 @@ function LoginForm() {
         }
     };
 
-    // List of test users for dropdown
+    // List of test users for dropdown (Active accounts only - updated 2026-01-01)
     const testUsers = [
         { label: 'Superadmin (Global)', email: 'frpboy12@gmail.com', role: 'Superadmin' },
         { label: 'HO Accountant', email: 'paymentstarterxpmna@gmail.com', role: 'HO Accountant' },
         { label: 'Auditor', email: 'auditor.test@sahakar.com', role: 'Auditor' },
-        { label: '--- Hyper Pharmacy ---', email: '', role: '', disabled: true },
+        { label: '--- Active Outlets ---', email: '', role: '', disabled: true },
         { label: 'Tirur - Manager', email: 'manager.hp.tirur@sahakar.com', role: 'Manager' },
         { label: 'Tirur - Staff', email: 'staff.hp.tirur@sahakar.com', role: 'Staff' },
         { label: 'Makkaraparamba - Manager', email: 'manager.hp.makkara@sahakar.com', role: 'Manager' },
@@ -43,13 +43,8 @@ function LoginForm() {
         { label: 'Melattur - Staff', email: 'staff.hp.melattur@sahakar.com', role: 'Staff' },
         { label: 'Karinkallathani - Manager', email: 'manager.hp.karinkall@sahakar.com', role: 'Manager' },
         { label: 'Karinkallathani - Staff', email: 'staff.hp.karinkall@sahakar.com', role: 'Staff' },
-        { label: '--- Smart Clinic ---', email: '', role: '', disabled: true },
-        { label: 'Tirur - Manager', email: 'manager.sc.tirur@sahakar.com', role: 'Manager' },
-        { label: 'Tirur - Staff', email: 'staff.sc.tirur@sahakar.com', role: 'Staff' },
-        { label: '--- Test Accounts ---', email: '', role: '', disabled: true },
-        { label: 'Demo Manager', email: 'manager.test@sahakar.com', role: 'Manager' },
-        { label: 'Demo Staff', email: 'staff.test@sahakar.com', role: 'Staff' },
     ];
+
 
     return (
         <div className="max-w-md w-full space-y-8">
@@ -68,10 +63,10 @@ function LoginForm() {
                 <div className="space-y-4">
                     {/* Quick Fill Dropdown */}
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
-                         <label className="block text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+                        <label className="block text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
                             <Beaker className="w-4 h-4" /> Quick Fill Credentials
                         </label>
-                        <select 
+                        <select
                             className="block w-full rounded-md border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                             onChange={(e) => {
                                 const user = testUsers.find(u => u.email === e.target.value);
@@ -121,7 +116,7 @@ function LoginForm() {
                         />
                     </div>
                 </div>
-                
+
                 <div>
                     <button
                         type="submit"
