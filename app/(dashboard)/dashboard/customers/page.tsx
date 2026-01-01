@@ -15,6 +15,12 @@ export default function CustomersPage() {
     const [rows, setRows] = useState<Array<{ id: string; name: string; phone?: string | null; created_at?: string | null }>>([]);
     const [error, setError] = useState<string | null>(null);
 
+    // Form state
+    const [customerName, setCustomerName] = useState('');
+    const [customerPhone, setCustomerPhone] = useState('');
+    const [referredBy, setReferredBy] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
     useEffect(() => {
         let mounted = true;
         async function load() {
@@ -63,6 +69,56 @@ export default function CustomersPage() {
         );
     }, [rows, search]);
 
+    const handleAddCustomer = async () => {
+        if (!customerName.trim()) {
+            alert('Please enter customer name');
+            return;
+        }
+        if (!customerPhone.trim()) {
+            alert('Please enter phone number');
+            return;
+        }
+        if (!user?.profile?.outlet_id) {
+            alert('No outlet assigned to your account');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const { data, error } = await (supabase as any)
+                .from('customers')
+                .insert({
+                    name: customerName.trim(),
+                    phone: customerPhone.trim(),
+                    referred_by: referredBy.trim() || null,
+                    outlet_id: user.profile.outlet_id,
+                    created_by: user.id
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // Add to local state
+            setRows(prev => [{
+                id: data.id,
+                name: data.name,
+                phone: data.phone,
+                created_at: data.created_at
+            }, ...prev]);
+
+            // Reset form
+            setCustomerName('');
+            setCustomerPhone('');
+            setReferredBy('');
+            setIsModalOpen(false);
+        } catch (e: any) {
+            alert(e?.message || 'Failed to add customer');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full">
             <TopBar title="Customers" />
@@ -70,15 +126,15 @@ export default function CustomersPage() {
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div className="relative w-full md:w-96">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder="Search by name or phone..."
                             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <button 
+                    <button
                         onClick={() => setIsModalOpen(true)}
                         className="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
                     >
@@ -146,15 +202,17 @@ export default function CustomersPage() {
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        
+
                         <div className="p-4 space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Customer Name <span className="text-red-500">*</span>
                                 </label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     placeholder="Enter full name"
+                                    value={customerName}
+                                    onChange={(e) => setCustomerName(e.target.value)}
                                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
@@ -162,9 +220,11 @@ export default function CustomersPage() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Phone Number <span className="text-red-500">*</span>
                                 </label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     placeholder="10-digit phone number"
+                                    value={customerPhone}
+                                    onChange={(e) => setCustomerPhone(e.target.value)}
                                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
@@ -172,23 +232,30 @@ export default function CustomersPage() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Referred By
                                 </label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     placeholder="Staff name"
+                                    value={referredBy}
+                                    onChange={(e) => setReferredBy(e.target.value)}
                                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                         </div>
 
                         <div className="p-4 bg-gray-50 flex justify-end gap-3">
-                            <button 
+                            <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 font-medium"
+                                disabled={submitting}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 font-medium disabled:opacity-50"
                             >
                                 Cancel
                             </button>
-                            <button className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 font-medium">
-                                Add Customer
+                            <button
+                                onClick={handleAddCustomer}
+                                disabled={submitting}
+                                className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 font-medium disabled:opacity-50"
+                            >
+                                {submitting ? 'Adding...' : 'Add Customer'}
                             </button>
                         </div>
                     </div>
