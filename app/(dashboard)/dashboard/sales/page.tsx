@@ -30,6 +30,8 @@ export default function NewSalesPage() {
 
     // Auto-search customers when typing (after 3 digits)
     useEffect(() => {
+        if (!user?.profile?.outlet_id) return;
+
         if (customerPhone.length >= 3 && /^\d{3,10}$/.test(customerPhone)) {
             searchCustomers(customerPhone);
         } else {
@@ -40,7 +42,7 @@ export default function NewSalesPage() {
                 setCustomerExists(false);
             }
         }
-    }, [customerPhone]);
+    }, [customerPhone, user]);
 
     // Auto-fill payment amount when single mode selected
     useEffect(() => {
@@ -50,12 +52,16 @@ export default function NewSalesPage() {
     }, [paymentModes, salesValue]);
 
     const searchCustomers = async (phone: string) => {
+        const profile = (user as any).profile;
+        if (!profile?.outlet_id) return;
+
         setFetchingCustomer(true);
         try {
             const { data, error } = await (supabase as any)
                 .from('customers')
                 .select('phone, name, id')
                 .ilike('phone', `${phone}%`)
+                .eq('outlet_id', profile.outlet_id)
                 .eq('is_active', true)
                 .limit(10);
 
