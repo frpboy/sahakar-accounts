@@ -7,6 +7,7 @@ import { createClientBrowser } from '@/lib/supabase-client';
 import { OnlineBanner } from '@/components/online-banner';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { db } from '@/lib/offline-db';
+import { generateCustomerId } from '@/lib/customer-id-generator';
 import { User } from 'lucide-react';
 
 export default function NewSalesPage() {
@@ -205,45 +206,81 @@ export default function NewSalesPage() {
         }
 
         setSubmitting(true);
+        console.log('🚀 Starting sales submission...', {
+            phone: customerPhone,
+            name: customerName,
+            amount,
+            bill: billNumber,
+            modes: paymentModes
+        });
+
         try {
             // Step 1: Create customer if new
             if (!customerExists) {
-                const { error: customerError } = await (supabase as any)
+                console.log('📝 Creating new customer...');
+
+                const profile = (user as any).profile;
+                // Get count for ID generation
+                const { count } = await (supabase as any)
+                    .from('customers')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('outlet_id', profile.outlet_id);
+
+                const outletName = profile.outlet?.name || 'Sahakar Outlet';
+                const customId = generateCustomerId(outletName, count || 0);
+
+                const { data: newCust, error: customerError } = await (supabase as any)
                     .from('customers')
                     .insert({
-                        outlet_id: user.profile.outlet_id,
+                        outlet_id: profile.outlet_id,
                         phone: customerPhone.trim(),
                         name: customerName.trim(),
+                        customer_code: customId,
                         is_active: true,
                         created_by: user.id
-                    });
+                    })
+                    .select()
+                    .single();
 
                 if (customerError) {
-                    // Check if it's a duplicate (customer was just created by someone else)
+                    console.error('❌ Customer creation error:', customerError);
                     if (!customerError.message.includes('duplicate')) {
                         throw customerError;
                     }
+                } else {
+                    console.log('✅ New customer created:', newCust);
                 }
+            } else {
+                console.log('👤 Using existing customer');
             }
 
             // Step 2: Get or create today's daily_record
             const today = new Date().toISOString().split('T')[0];
+            console.log('📅 Getting daily record for:', today);
 
+            const profile = (user as any).profile;
             let dailyRecordId: string;
-            const { data: existingRecord } = await (supabase as any)
+            const { data: existingRecord, error: fetchRecordError } = await (supabase as any)
                 .from('daily_records')
                 .select('id')
-                .eq('outlet_id', user.profile.outlet_id)
+                .eq('outlet_id', profile.outlet_id)
                 .eq('date', today)
-                .single();
+                .maybeSingle();
+
+            if (fetchRecordError) {
+                console.error('❌ Fetch daily record error:', fetchRecordError);
+                throw fetchRecordError;
+            }
 
             if (existingRecord) {
+                console.log('✅ Found existing daily record:', existingRecord.id);
                 dailyRecordId = existingRecord.id;
             } else {
+                console.log('➕ Creating new daily record...');
                 const { data: newRecord, error: recordError } = await (supabase as any)
                     .from('daily_records')
                     .insert({
-                        outlet_id: user.profile.outlet_id,
+                        outlet_id: profile.outlet_id,
                         date: today,
                         opening_cash: 0,
                         opening_upi: 0,
@@ -252,16 +289,21 @@ export default function NewSalesPage() {
                     .select('id')
                     .single();
 
-                if (recordError) throw recordError;
+                if (recordError) {
+                    console.error('❌ Create daily record error:', recordError);
+                    throw recordError;
+                }
                 dailyRecordId = newRecord.id;
+                console.log('✅ Created new daily record:', dailyRecordId);
             }
 
             // Create transaction
-            const { data, error } = await (supabase as any)
+            console.log('💸 Creating transaction...');
+            const { data: transData, error } = await (supabase as any)
                 .from('transactions')
                 .insert({
                     daily_record_id: dailyRecordId,
-                    outlet_id: user.profile.outlet_id,
+                    outlet_id: profile.outlet_id,
                     entry_number: billNumber.trim(),
                     transaction_type: 'income',
                     category: 'sales',
@@ -270,9 +312,16 @@ export default function NewSalesPage() {
                     payment_modes: paymentModes.join(','),
                     customer_phone: customerPhone.trim(),
                     created_by: user.id
-                });
+                })
+                .select()
+                .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Transaction error:', error);
+                throw error;
+            }
+
+            console.log('✅ Transaction complete:', transData);
 
             // Success
             const customerLabel = customerExists ? 'Existing customer' : 'New customer added';
