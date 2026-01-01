@@ -18,6 +18,8 @@ export default function NewSalesPage() {
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [customerExists, setCustomerExists] = useState(false);
+    const [customerSuggestions, setCustomerSuggestions] = useState<Array<{ phone: string; name: string; id: string }>>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const [billNumber, setBillNumber] = useState('');
     const [salesValue, setSalesValue] = useState('');
     const [paymentModes, setPaymentModes] = useState<string[]>([]);
@@ -25,13 +27,17 @@ export default function NewSalesPage() {
     const [submitting, setSubmitting] = useState(false);
     const [fetchingCustomer, setFetchingCustomer] = useState(false);
 
-    // Auto-fetch customer when phone number is complete
+    // Auto-search customers when typing (after 3 digits)
     useEffect(() => {
-        if (customerPhone.length === 10 && /^\d{10}$/.test(customerPhone)) {
-            fetchCustomer(customerPhone);
+        if (customerPhone.length >= 3 && /^\d{3,10}$/.test(customerPhone)) {
+            searchCustomers(customerPhone);
         } else {
-            setCustomerName('');
-            setCustomerExists(false);
+            setCustomerSuggestions([]);
+            setShowSuggestions(false);
+            if (customerPhone.length < 10) {
+                setCustomerName('');
+                setCustomerExists(false);
+            }
         }
     }, [customerPhone]);
 
@@ -42,29 +48,50 @@ export default function NewSalesPage() {
         }
     }, [paymentModes, salesValue]);
 
-    const fetchCustomer = async (phone: string) => {
+    const searchCustomers = async (phone: string) => {
         setFetchingCustomer(true);
         try {
             const { data, error } = await (supabase as any)
                 .from('customers')
-                .select('name')
-                .eq('phone', phone)
+                .select('phone, name, id')
+                .ilike('phone', `${phone}%`)
                 .eq('is_active', true)
-                .single();
+                .limit(10);
 
             if (data && !error) {
-                setCustomerName(data.name);
-                setCustomerExists(true);
+                setCustomerSuggestions(data);
+                setShowSuggestions(data.length > 0);
+
+                // If exact match with 10 digits, auto-select
+                if (phone.length === 10) {
+                    const exactMatch = data.find((c: any) => c.phone === phone);
+                    if (exactMatch) {
+                        setCustomerName(exactMatch.name);
+                        setCustomerExists(true);
+                        setShowSuggestions(false);
+                    } else {
+                        setCustomerExists(false);
+                        setCustomerName('');
+                    }
+                }
             } else {
-                setCustomerExists(false);
-                setCustomerName('');
+                setCustomerSuggestions([]);
+                setShowSuggestions(false);
             }
         } catch (e) {
-            setCustomerExists(false);
-            setCustomerName('');
+            setCustomerSuggestions([]);
+            setShowSuggestions(false);
         } finally {
             setFetchingCustomer(false);
         }
+    };
+
+    const selectCustomer = (customer: { phone: string; name: string }) => {
+        setCustomerPhone(customer.phone);
+        setCustomerName(customer.name);
+        setCustomerExists(true);
+        setShowSuggestions(false);
+        setCustomerSuggestions([]);
     };
 
     const handlePaymentModeToggle = (mode: string) => {
@@ -298,6 +325,28 @@ export default function NewSalesPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Autocomplete Suggestions */}
+                            {showSuggestions && customerSuggestions.length > 0 && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                                    {customerSuggestions.map((customer, idx) => (
+                                        <div
+                                            key={idx}
+                                            onClick={() => selectCustomer(customer)}
+                                            className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <div className="font-medium text-gray-900">{customer.name}</div>
+                                                    <div className="text-sm text-gray-500">{customer.phone}</div>
+                                                </div>
+                                                <User className="w-4 h-4 text-gray-400" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             {customerExists && customerName && (
                                 <div className="mt-2 flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded">
                                     <User className="w-4 h-4" />
@@ -324,8 +373,8 @@ export default function NewSalesPage() {
                                     onChange={(e) => !customerExists && setCustomerName(e.target.value)}
                                     disabled={customerExists}
                                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${customerExists
-                                            ? 'bg-gray-100 text-gray-700 cursor-not-allowed'
-                                            : 'bg-gray-50 focus:ring-blue-500'
+                                        ? 'bg-gray-100 text-gray-700 cursor-not-allowed'
+                                        : 'bg-gray-50 focus:ring-blue-500'
                                         }`}
                                 />
                                 {!customerExists && customerName.trim() && (

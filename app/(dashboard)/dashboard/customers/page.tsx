@@ -33,11 +33,9 @@ export default function CustomersPage() {
                     .select('id,name,phone,created_at,outlet_id,referred_by')
                     .order('created_at', { ascending: false });
 
-                const role = user.profile.role;
-                if (role === 'outlet_manager' && user.profile.outlet_id) {
+                // Filter by outlet for ALL roles
+                if (user.profile.outlet_id) {
                     query = query.eq('outlet_id', user.profile.outlet_id);
-                } else if (role === 'outlet_staff') {
-                    query = query.eq('referred_by', user.id);
                 }
 
                 const { data, error } = await query.limit(200);
@@ -85,19 +83,29 @@ export default function CustomersPage() {
 
         setSubmitting(true);
         try {
+            const insertData = {
+                name: customerName.trim(),
+                phone: customerPhone.trim(),
+                referred_by: referredBy.trim() || null,
+                outlet_id: user.profile.outlet_id,
+                created_by: user.id,
+                is_active: true
+            };
+
+            console.log('Inserting customer:', insertData);
+
             const { data, error } = await (supabase as any)
                 .from('customers')
-                .insert({
-                    name: customerName.trim(),
-                    phone: customerPhone.trim(),
-                    referred_by: referredBy.trim() || null,
-                    outlet_id: user.profile.outlet_id,
-                    created_by: user.id
-                })
+                .insert(insertData)
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Insert error:', error);
+                throw error;
+            }
+
+            console.log('Customer created:', data);
 
             // Add to local state
             setRows(prev => [{
