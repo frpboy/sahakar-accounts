@@ -11,20 +11,14 @@ import {
     IndianRupee,
     Users,
     FileText,
-    LogOut,
-    Menu,
-    X,
-    ChevronDown
+    LogOut
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { useApp } from '@/components/providers/app-provider';
 import { cn } from '@/lib/utils';
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const { user, signOut } = useAuth();
-    const { demoRole, setDemoRole } = useApp();
-    const [isRoleMenuOpen, setIsRoleMenuOpen] = React.useState(false);
 
     const navItems = [
         { label: 'Navigation', type: 'label' },
@@ -84,45 +78,16 @@ export function Sidebar({ className }: { className?: string }) {
                 })}
             </nav>
 
-            {/* Footer Role Switcher */}
+            {/* Footer User Info */}
             <div className="p-4 border-t bg-gray-50">
-                <div className="relative">
-                    <button 
-                        onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
-                        className="w-full flex items-center justify-between px-3 py-2 border rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                        <span className="truncate text-left">
-                            <span className="block text-xs text-gray-500">User Role (Demo)</span>
-                            <span className="font-medium">
-                                {demoRole === 'outlet_manager' ? 'Store Manager' : 
-                                 demoRole === 'admin' ? 'Admin' : 'Store User'}
-                            </span>
-                        </span>
-                        <ChevronDown className="h-4 w-4 text-gray-400" />
-                    </button>
-
-                    {isRoleMenuOpen && (
-                        <div className="absolute bottom-full left-0 w-full mb-2 bg-white border rounded-md shadow-lg py-1 z-20">
-                            <button
-                                onClick={() => { setDemoRole('outlet_staff'); setIsRoleMenuOpen(false); }}
-                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                                Store User
-                            </button>
-                            <button
-                                onClick={() => { setDemoRole('outlet_manager'); setIsRoleMenuOpen(false); }}
-                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                                Store Manager
-                            </button>
-                            <button
-                                onClick={() => { setDemoRole('admin'); setIsRoleMenuOpen(false); }}
-                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                                Admin
-                            </button>
-                        </div>
-                    )}
+                <div className="px-3 py-2 border rounded-md bg-white">
+                    <div className="text-xs text-gray-500 mb-1">Logged in as</div>
+                    <div className="font-medium text-sm text-gray-900 truncate">
+                        {user?.profile?.name || user?.email || 'User'}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 capitalize">
+                        {user?.profile?.role?.replace(/_/g, ' ') || 'Staff'}
+                    </div>
                 </div>
                 <button
                     onClick={() => signOut()}
