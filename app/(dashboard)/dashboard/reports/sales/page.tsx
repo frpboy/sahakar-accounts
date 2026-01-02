@@ -45,13 +45,25 @@ export default function SalesReportPage() {
             }
 
             // 2. Query transactions
+            // 2. Query transactions
+            // Business Day: 7 AM to next day 2 AM (or just shift start time?)
+            // If selecting "Today" (2025-01-03), we want 2025-01-03 07:00:00 to 2025-01-04 02:00:00?
+            // Or just 2025-01-03 07:00:00 to 2025-01-03 23:59:59 (plus next day parts if requested).
+            // Current strict logic: Date From to Date To (Inclusive).
+            // Let's set Start Time to 07:00:00 of From Date.
+            // And End Time to 02:00:00 of (To Date + 1 Day).
+
+            const toDateObj = new Date(dateRange.to);
+            toDateObj.setDate(toDateObj.getDate() + 1);
+            const toDateNext = toDateObj.toISOString().split('T')[0];
+
             let query = (supabase as any)
                 .from('transactions')
-                .select('*, users(name), outlets(name), profiles!customer_id(full_name)')
+                .select('*, users(name), outlets(name)') // Removed profiles!customer_id(full_name) to avoid errors
                 .eq('type', 'income')
                 .eq('category', 'sales')
-                .gte('created_at', `${dateRange.from}T00:00:00`)
-                .lte('created_at', `${dateRange.to}T23:59:59`)
+                .gte('created_at', `${dateRange.from}T07:00:00`)
+                .lte('created_at', `${toDateNext}T02:00:00`)
                 .order('created_at', { ascending: false });
 
             // Apply outlet filter

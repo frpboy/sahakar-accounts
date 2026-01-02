@@ -64,7 +64,7 @@ export function StoreManagerDashboard() {
         else setIsRefreshing(true);
 
         const outletId = user.profile.outlet_id;
-        const outletId = user.profile.outlet_id;
+
 
         // Business Day Logic: Today 7AM to Next Day 2AM
         const now = new Date();

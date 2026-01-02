@@ -24,7 +24,9 @@ import {
     Settings,
     AlertTriangle,
     Tag,
-    TrendingUp
+    TrendingUp,
+    Calculator,
+    Scale
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useApp } from '@/components/providers/app-provider';
@@ -39,6 +41,7 @@ export function Sidebar({ className }: { className?: string }) {
     const [isTransactionsOpen, setIsTransactionsOpen] = React.useState(true);
     const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
     const [isReportsOpen, setIsReportsOpen] = React.useState(false);
+    const [isAccountingOpen, setIsAccountingOpen] = React.useState(false);
     const [isManagementOpen, setIsManagementOpen] = React.useState(false);
     const [isLoaded, setIsLoaded] = React.useState(false);
 
@@ -47,11 +50,13 @@ export function Sidebar({ className }: { className?: string }) {
         const saved = localStorage.getItem('sidebar_collapsed');
         const savedTx = localStorage.getItem('sidebar_transactions_open');
         const savedReports = localStorage.getItem('sidebar_reports_open');
+        const savedAcct = localStorage.getItem('sidebar_accounting_open');
         const savedMgmt = localStorage.getItem('sidebar_management_open');
 
         if (saved !== null) setIsCollapsed(saved === 'true');
         if (savedTx !== null) setIsTransactionsOpen(savedTx === 'true');
         if (savedReports !== null) setIsReportsOpen(savedReports === 'true');
+        if (savedAcct !== null) setIsAccountingOpen(savedAcct === 'true');
         if (savedMgmt !== null) setIsManagementOpen(savedMgmt === 'true');
 
         setIsLoaded(true);
@@ -62,6 +67,7 @@ export function Sidebar({ className }: { className?: string }) {
             localStorage.setItem('sidebar_collapsed', isCollapsed.toString());
             localStorage.setItem('sidebar_transactions_open', isTransactionsOpen.toString());
             localStorage.setItem('sidebar_reports_open', isReportsOpen.toString());
+            localStorage.setItem('sidebar_accounting_open', isAccountingOpen.toString());
             localStorage.setItem('sidebar_management_open', isManagementOpen.toString());
         }
     }, [isCollapsed, isTransactionsOpen, isReportsOpen, isManagementOpen, isLoaded]);
@@ -147,6 +153,31 @@ export function Sidebar({ className }: { className?: string }) {
                 items: reportItems
             }
         );
+
+        // Ledger Module (Admins + Managers + HO + Staff? Spec says Staff has 24h edit window, implies access)
+        // Spec: "Sidebar Button 📘 Ledger"
+        // Let's make it a group for easy access to sub-pages
+        navItems.push({
+            label: 'Ledger',
+            icon: Calculator, // Placeholder, maybe Book?
+            type: 'group',
+            isOpen: isAccountingOpen, // Reuse state or rename? adhering to "isAccountingOpen" for now to save edits
+            setOpen: setIsAccountingOpen,
+            items: [
+                { label: 'Overview', href: '/dashboard/ledger', icon: LayoutDashboard },
+                { label: 'Register', href: '/dashboard/ledger/register', icon: FileText },
+                { label: 'Day Book', href: '/dashboard/ledger/day-book', icon: History },
+                { label: 'Cash Book', href: '/dashboard/ledger/cash-book', icon: IndianRupee },
+                { label: 'Bank / UPI', href: '/dashboard/ledger/bank-book', icon: CreditCard }, // Need import
+                { label: 'Customers', href: '/dashboard/ledger/customers', icon: Users },
+                { label: 'Expenses', href: '/dashboard/ledger/expenses', icon: Tag }, // Tag or similar
+                // Phase L-B Items (Trial Balance, P&L, BS) - Add later or now? 
+                // Spec says Phase L-B. I will omit for now or comment out.
+                // { label: 'Trial Balance', href: '/dashboard/ledger/trial-balance', icon: Scale },
+                // { label: 'P & L', href: '/dashboard/ledger/pnl', icon: TrendingUp },
+                // { label: 'Balance Sheet', href: '/dashboard/ledger/balance-sheet', icon: Building2 }
+            ]
+        });
     }
 
     // Admin-only Management

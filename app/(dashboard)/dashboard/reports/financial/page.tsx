@@ -44,11 +44,15 @@ export default function FinancialReportPage() {
                 setOutlets(oData || []);
             }
 
+            const toDateObj = new Date(dateRange.to);
+            toDateObj.setDate(toDateObj.getDate() + 1);
+            const toDateNext = toDateObj.toISOString().split('T')[0];
+
             let query = (supabase as any)
                 .from('transactions')
                 .select('*, outlets(name)')
-                .gte('created_at', `${dateRange.from}T00:00:00`)
-                .lte('created_at', `${dateRange.to}T23:59:59`)
+                .gte('created_at', `${dateRange.from}T07:00:00`)
+                .lte('created_at', `${toDateNext}T02:00:00`)
                 .order('created_at', { ascending: false });
 
             if (outletId !== 'all') {

@@ -69,6 +69,22 @@ export async function GET(request: NextRequest) {
         const now = new Date();
         const istOffset = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in milliseconds
         const istTime = new Date(now.getTime() + istOffset);
+
+        // Business Day Shift: If before 7AM, it is previous day.
+        const currentHour = istTime.getUTCHours(); // istTime is technically UTC shifted number. wait.
+        // new Date(now.getTime() + offset) creates a Date object where .toISOString() matches the locl time string? No.
+        // It's a "Shifted Date object". .getUTCHours() would roughly match the shifted time if we treat it as UTC.
+        // Actually, safest is to use .toISOString().split('T')[1] and parse hours?
+        // Let's rely on getUTCHours() of the SHIFTED object which represents IST hours.
+        // Wait, `new Date(now + offset)` is tricky.
+        // Better: use getHours() on a formatted string?
+        // Or simply:
+
+        const istHours = istTime.getUTCHours();
+        if (istHours < 7) {
+            istTime.setDate(istTime.getDate() - 1);
+        }
+
         const today = istTime.toISOString().split('T')[0];
 
         // Try to get existing record for today
