@@ -37,7 +37,7 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess }: CreateOutletMo
     }, [isOpen]);
 
     const fetchTypes = async () => {
-        const { data } = await supabase.from('outlet_types').select('*').order('name');
+        const { data } = await (supabase as any).from('outlet_types').select('*').order('name');
         if (data) setOutletTypes(data);
     };
 

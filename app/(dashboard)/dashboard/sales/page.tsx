@@ -1,16 +1,28 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { OnlineBanner } from '@/components/online-banner';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { db } from '@/lib/offline-db';
-import { User, Hash } from 'lucide-react';
+import { User, Hash, Clock } from 'lucide-react';
 import { detectAnomalies } from '@/lib/anomaly-engine';
+import { RecentTransactions } from '@/components/history/recent-transactions';
 
 export default function NewSalesPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <SalesPageContent />
+        </Suspense>
+    );
+}
+
+function SalesPageContent() {
+    const searchParams = useSearchParams();
+    const editId = searchParams.get('id');
     const supabase = useMemo(() => createClientBrowser(), []);
     const { user } = useAuth();
     const isOnline = useOnlineStatus();
@@ -129,6 +141,36 @@ export default function NewSalesPage() {
         }
         checkLock();
     }, [user, supabase]);
+
+    // Load transaction if editing
+    useEffect(() => {
+        async function loadTransaction() {
+            if (!editId || !user) return;
+            try {
+                const { data: tx, error } = await supabase
+                    .from('transactions')
+                    .select('*, daily_records(date)')
+                    .eq('id', editId)
+                    .single();
+
+                if (error) throw error;
+                if (tx) {
+                    const trans = tx as any;
+                    setCustomerPhone(trans.customer_phone || '');
+                    setBillNumber(trans.entry_number || '');
+                    setSalesValue(trans.amount.toString());
+                    const modes = trans.payment_modes?.split(',') || [];
+                    setPaymentModes(modes);
+
+                    // If the transaction is from a generic "Sale to..." description, extract customer name if possible
+                    // but better to just let the phone search trigger the name.
+                }
+            } catch (e) {
+                console.error('Load edit error:', e);
+            }
+        }
+        loadTransaction();
+    }, [editId, user, supabase]);
 
     // Construct ID prefix from outlet details
     useEffect(() => {
@@ -412,6 +454,25 @@ export default function NewSalesPage() {
         });
 
         try {
+            if (editId) {
+                // Update existing transaction
+                const { error: updateError } = await supabase
+                    .from('transactions')
+                    .update({
+                        entry_number: billNumber.trim(),
+                        amount: amount,
+                        payment_modes: paymentModes.join(','),
+                        customer_phone: customerPhone.trim(),
+                        description: `Updated Sale to ${customerName.trim()} (${customerPhone})`,
+                    } as any)
+                    .eq('id', editId);
+
+                if (updateError) throw updateError;
+                alert('✅ Transaction updated successfully!');
+                window.location.href = '/dashboard/history/sales';
+                return;
+            }
+
             // Step 1: Create customer if new
             if (!customerExists) {
                 console.log('📝 Creating new customer...');
@@ -588,237 +649,260 @@ export default function NewSalesPage() {
                         </button>
                     </div>
                 )}
-                <div className="max-w-3xl mx-auto space-y-6">
-                    {/* Step 1: Customer Details */}
-                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                            <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs mr-2">1</span>
-                            Customer Details
-                        </h2>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
-                                Customer Phone Number <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative max-w-sm">
-                                <input
-                                    type="text"
-                                    placeholder="Enter 10-digit phone number"
-                                    value={customerPhone}
-                                    onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
-                                    maxLength={10}
-                                    disabled={isLocked}
-                                    className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
-                                />
-                                {fetchingCustomer && (
-                                    <div className="absolute right-3 top-2.5">
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
+                    <div className="flex-1 space-y-6">
+                        {/* Step 1: Customer Details */}
+                        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs mr-2">1</span>
+                                Customer Details
+                            </h2>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
+                                    Customer Phone Number <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative max-w-sm">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter 10-digit phone number"
+                                        value={customerPhone}
+                                        onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                                        maxLength={10}
+                                        disabled={isLocked}
+                                        className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
+                                    />
+                                    {fetchingCustomer && (
+                                        <div className="absolute right-3 top-2.5">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                                        </div>
+                                    )}
+
+                                    {/* Autocomplete Suggestions */}
+                                    {showSuggestions && customerSuggestions.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-md shadow-lg max-h-40 overflow-auto">
+                                            {customerSuggestions.map((customer, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    onClick={() => selectCustomer(customer)}
+                                                    className="px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b dark:border-slate-800 last:border-b-0"
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">{customer.name}</div>
+                                                            <div className="text-xs text-gray-500 dark:text-slate-400">{customer.phone}</div>
+                                                        </div>
+                                                        <User className="w-3 h-3 text-gray-400 dark:text-slate-500" />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {customerExists && customerName && (
+                                    <div className="mt-2 flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded border dark:border-green-900/30">
+                                        <User className="w-4 h-4" />
+                                        <span>Existing customer: <strong>{customerName}</strong></span>
                                     </div>
                                 )}
+                                {customerPhone.length === 10 && !customerExists && !fetchingCustomer && (
+                                    <div className="mt-2 text-sm text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-3 py-2 rounded border dark:border-orange-900/30">
+                                        ⚠️ New customer - please enter name below
+                                    </div>
+                                )}
+                            </div>
 
-                                {/* Autocomplete Suggestions */}
-                                {showSuggestions && customerSuggestions.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-md shadow-lg max-h-40 overflow-auto">
-                                        {customerSuggestions.map((customer, idx) => (
-                                            <div
-                                                key={idx}
-                                                onClick={() => selectCustomer(customer)}
-                                                className="px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b dark:border-slate-800 last:border-b-0"
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{customer.name}</div>
-                                                        <div className="text-xs text-gray-500 dark:text-slate-400">{customer.phone}</div>
-                                                    </div>
-                                                    <User className="w-3 h-3 text-gray-400 dark:text-slate-500" />
+                            {/* Customer Name Field */}
+                            {customerPhone.length === 10 && (
+                                <div className="mt-4 max-w-sm">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
+                                        Customer Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder={customerExists ? "Auto-filled from database" : "Enter customer name"}
+                                        value={customerName}
+                                        onChange={(e) => !customerExists && setCustomerName(e.target.value)}
+                                        disabled={customerExists || isLocked}
+                                        className={`w-full px-3 py-2 border dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 transition-colors ${customerExists
+                                            ? 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-400 cursor-not-allowed'
+                                            : isLocked ? 'bg-gray-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:ring-blue-500'
+                                            }`}
+                                    />
+                                    {!customerExists && customerName.trim() && (
+                                        <p className="mt-1 text-xs text-green-600 dark:text-green-500">✓ This customer will be saved to the database</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Step 2: Sale Details */}
+                        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs mr-2">2</span>
+                                Sale Details
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
+                                        ERP Bill Number <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., 458723"
+                                        value={billNumber}
+                                        onChange={(e) => setBillNumber(e.target.value.replace(/\D/g, ''))}
+                                        disabled={isLocked}
+                                        className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
+                                        Sahakar Entry ID
+                                    </label>
+                                    <div
+                                        className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 flex items-center justify-between cursor-help"
+                                        title="System-generated internal reference"
+                                    >
+                                        <span className="font-mono">{idPrefix}-XXXXXX</span>
+                                        <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-slate-500 bg-gray-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">Auto</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
+                                        Sales Value (₹) <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={salesValue}
+                                        onChange={(e) => {
+                                            // Remove leading zeros
+                                            const val = e.target.value;
+                                            if (val.length > 1 && val.startsWith('0') && val[1] !== '.') {
+                                                setSalesValue(val.replace(/^0+/, ''));
+                                            } else {
+                                                setSalesValue(val);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                                        step="0.01"
+                                        min="0"
+                                        disabled={isLocked}
+                                        className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Step 3: Payment Modes */}
+                        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs mr-2">3</span>
+                                Payment Modes
+                            </h2>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-3">
+                                Select Payment Mode(s) <span className="text-red-500">*</span>
+                            </label>
+                            <div className="flex flex-wrap gap-6 mb-4">
+                                {['Cash', 'UPI', 'Card', 'Credit'].map((mode) => (
+                                    <label key={mode} className="flex items-center space-x-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={paymentModes.includes(mode)}
+                                            onChange={() => handlePaymentModeChange(mode)}
+                                            disabled={isLocked}
+                                            className="w-4 h-4 text-blue-600 dark:text-blue-500 border-gray-300 dark:border-slate-700 rounded focus:ring-blue-500 disabled:opacity-50"
+                                        />
+                                        <span className="text-gray-700 dark:text-slate-300">{mode}</span>
+                                    </label>
+                                ))}
+                            </div>
+
+                            {/* Payment amount breakdown for multiple modes */}
+                            {paymentModes.length > 1 && (
+                                <div className="mt-4 space-y-3 bg-blue-50 dark:bg-slate-800/40 p-4 rounded border dark:border-slate-800">
+                                    <p className="text-sm font-medium text-blue-900 dark:text-blue-400">Split Payment Amounts:</p>
+                                    {paymentModes.map(mode => {
+                                        const isAutoCalculated = autoCalculated.has(mode);
+                                        return (
+                                            <div key={mode} className="flex items-center gap-3">
+                                                <label className="text-sm text-gray-700 dark:text-slate-400 w-20">{mode}:</label>
+                                                <div className="flex-1 relative">
+                                                    <input
+                                                        type="number"
+                                                        placeholder="0.00"
+                                                        value={paymentAmounts[mode] || ''}
+                                                        onChange={(e) => handlePaymentAmountChange(mode, e.target.value)}
+                                                        onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                                                        step="0.01"
+                                                        min="0"
+                                                        disabled={isLocked}
+                                                        className={`w-full px-3 py-2 pr-20 border dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 transition-all ${isAutoCalculated
+                                                            ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-900/40 text-green-800 dark:text-green-400 font-semibold focus:ring-green-500'
+                                                            : 'bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:ring-blue-500'
+                                                            } ${isLocked ? 'bg-gray-100 dark:bg-slate-800 cursor-not-allowed' : ''}`}
+                                                    />
+                                                    {isAutoCalculated && paymentAmounts[mode] && (
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none" title="Auto-calculated and distributed">
+                                                            <span className="text-green-600 dark:text-green-400 text-[10px] font-bold flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100/50 dark:bg-green-900/30 rounded uppercase tracking-tighter">
+                                                                AUTO
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {customerExists && customerName && (
-                                <div className="mt-2 flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded border dark:border-green-900/30">
-                                    <User className="w-4 h-4" />
-                                    <span>Existing customer: <strong>{customerName}</strong></span>
-                                </div>
-                            )}
-                            {customerPhone.length === 10 && !customerExists && !fetchingCustomer && (
-                                <div className="mt-2 text-sm text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 px-3 py-2 rounded border dark:border-orange-900/30">
-                                    ⚠️ New customer - please enter name below
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Customer Name Field */}
-                        {customerPhone.length === 10 && (
-                            <div className="mt-4 max-w-sm">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
-                                    Customer Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder={customerExists ? "Auto-filled from database" : "Enter customer name"}
-                                    value={customerName}
-                                    onChange={(e) => !customerExists && setCustomerName(e.target.value)}
-                                    disabled={customerExists || isLocked}
-                                    className={`w-full px-3 py-2 border dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 transition-colors ${customerExists
-                                        ? 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-400 cursor-not-allowed'
-                                        : isLocked ? 'bg-gray-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:ring-blue-500'
-                                        }`}
-                                />
-                                {!customerExists && customerName.trim() && (
-                                    <p className="mt-1 text-xs text-green-600 dark:text-green-500">✓ This customer will be saved to the database</p>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Step 2: Sale Details */}
-                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                            <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs mr-2">2</span>
-                            Sale Details
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
-                                    ERP Bill Number <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g., 458723"
-                                    value={billNumber}
-                                    onChange={(e) => setBillNumber(e.target.value.replace(/\D/g, ''))}
-                                    disabled={isLocked}
-                                    className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
-                                    Sahakar Entry ID
-                                </label>
-                                <div
-                                    className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 flex items-center justify-between cursor-help"
-                                    title="System-generated internal reference"
-                                >
-                                    <span className="font-mono">{idPrefix}-XXXXXX</span>
-                                    <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-slate-500 bg-gray-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">Auto</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
-                                    Sales Value (₹) <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    placeholder="0.00"
-                                    value={salesValue}
-                                    onChange={(e) => {
-                                        // Remove leading zeros
-                                        const val = e.target.value;
-                                        if (val.length > 1 && val.startsWith('0') && val[1] !== '.') {
-                                            setSalesValue(val.replace(/^0+/, ''));
-                                        } else {
-                                            setSalesValue(val);
-                                        }
-                                    }}
-                                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
-                                    step="0.01"
-                                    min="0"
-                                    disabled={isLocked}
-                                    className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Step 3: Payment Modes */}
-                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border dark:border-slate-800 p-6 transition-colors">
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                            <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs mr-2">3</span>
-                            Payment Modes
-                        </h2>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-3">
-                            Select Payment Mode(s) <span className="text-red-500">*</span>
-                        </label>
-                        <div className="flex flex-wrap gap-6 mb-4">
-                            {['Cash', 'UPI', 'Card', 'Credit'].map((mode) => (
-                                <label key={mode} className="flex items-center space-x-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={paymentModes.includes(mode)}
-                                        onChange={() => handlePaymentModeChange(mode)}
-                                        disabled={isLocked}
-                                        className="w-4 h-4 text-blue-600 dark:text-blue-500 border-gray-300 dark:border-slate-700 rounded focus:ring-blue-500 disabled:opacity-50"
-                                    />
-                                    <span className="text-gray-700 dark:text-slate-300">{mode}</span>
-                                </label>
-                            ))}
-                        </div>
-
-                        {/* Payment amount breakdown for multiple modes */}
-                        {paymentModes.length > 1 && (
-                            <div className="mt-4 space-y-3 bg-blue-50 dark:bg-slate-800/40 p-4 rounded border dark:border-slate-800">
-                                <p className="text-sm font-medium text-blue-900 dark:text-blue-400">Split Payment Amounts:</p>
-                                {paymentModes.map(mode => {
-                                    const isAutoCalculated = autoCalculated.has(mode);
-                                    return (
-                                        <div key={mode} className="flex items-center gap-3">
-                                            <label className="text-sm text-gray-700 dark:text-slate-400 w-20">{mode}:</label>
-                                            <div className="flex-1 relative">
-                                                <input
-                                                    type="number"
-                                                    placeholder="0.00"
-                                                    value={paymentAmounts[mode] || ''}
-                                                    onChange={(e) => handlePaymentAmountChange(mode, e.target.value)}
-                                                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
-                                                    step="0.01"
-                                                    min="0"
-                                                    disabled={isLocked}
-                                                    className={`w-full px-3 py-2 pr-20 border dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 transition-all ${isAutoCalculated
-                                                        ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-900/40 text-green-800 dark:text-green-400 font-semibold focus:ring-green-500'
-                                                        : 'bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:ring-blue-500'
-                                                        } ${isLocked ? 'bg-gray-100 dark:bg-slate-800 cursor-not-allowed' : ''}`}
-                                                />
-                                                {isAutoCalculated && paymentAmounts[mode] && (
-                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none" title="Auto-calculated and distributed">
-                                                        <span className="text-green-600 dark:text-green-400 text-[10px] font-bold flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100/50 dark:bg-green-900/30 rounded uppercase tracking-tighter">
-                                                            AUTO
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                        );
+                                    })}
+                                    <div className="pt-2 border-t border-blue-200 dark:border-slate-700">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="font-medium dark:text-slate-400">Total:</span>
+                                            <span className={`font-bold ${Math.abs(calculateTotalPayment() - parseFloat(salesValue || '0')) < 0.01
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : 'text-red-600 dark:text-red-400'
+                                                }`}>
+                                                ₹{calculateTotalPayment().toFixed(2)}
+                                            </span>
                                         </div>
-                                    );
-                                })}
-                                <div className="pt-2 border-t border-blue-200 dark:border-slate-700">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="font-medium dark:text-slate-400">Total:</span>
-                                        <span className={`font-bold ${Math.abs(calculateTotalPayment() - parseFloat(salesValue || '0')) < 0.01
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : 'text-red-600 dark:text-red-400'
-                                            }`}>
-                                            ₹{calculateTotalPayment().toFixed(2)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between text-sm text-gray-600 dark:text-slate-500">
-                                        <span>Expected:</span>
-                                        <span>₹{parseFloat(salesValue || '0').toFixed(2)}</span>
+                                        <div className="flex justify-between text-sm text-gray-600 dark:text-slate-500">
+                                            <span>Expected:</span>
+                                            <span>₹{parseFloat(salesValue || '0').toFixed(2)}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
+
+                        {/* Submit Button */}
+                        <button
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                            className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {submitting ? 'Submitting...' : isOnline ? 'Submit Entry' : 'Save as Draft (Offline)'}
+                        </button>
                     </div>
 
-                    {/* Submit Button */}
-                    <button
-                        onClick={handleSubmit}
-                        disabled={submitting}
-                        className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {submitting ? 'Submitting...' : isOnline ? 'Submit Entry' : 'Save as Draft (Offline)'}
-                    </button>
+                    {/* Right Side: Recent Transactions */}
+                    <div className="w-full lg:w-96 space-y-6">
+                        <RecentTransactions
+                            outletId={user?.profile?.outlet_id || ''}
+                            category="sales"
+                            title="Recent Sales"
+                        />
+
+                        {/* Quick Permission Reference */}
+                        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4">
+                            <h4 className="text-[10px] font-black text-blue-900 dark:text-blue-300 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <Clock className="w-3 h-3" />
+                                Policy Reminder
+                            </h4>
+                            <div className="space-y-2 text-[10px] text-blue-700 dark:text-blue-400">
+                                <p>• <strong>Staff</strong>: Own entries only, until Shift End.</p>
+                                <p>• <strong>Managers</strong>: 30-day editing window.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

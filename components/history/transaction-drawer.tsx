@@ -130,8 +130,8 @@ export function TransactionDrawer({ isOpen, onClose, transaction }: TransactionD
                             <div className="grid grid-cols-1 gap-4">
                                 <DetailItem
                                     icon={<User className="w-4 h-4" />}
-                                    label="Managed By"
-                                    value={transaction.profiles?.full_name || 'System'}
+                                    label="Processed By"
+                                    value={transaction.users?.full_name || transaction.users?.name || 'System'}
                                 />
                                 <DetailItem
                                     icon={<Clock className="w-4 h-4" />}

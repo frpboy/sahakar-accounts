@@ -12,17 +12,20 @@ export default function UserActivityPage() {
     const { user } = useAuth();
     const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
-    // Fetch users (admin/ho only usually, but let's make it available for now)
+    const isAdmin = ['superadmin', 'master_admin', 'ho_accountant'].includes(user?.profile?.role || '');
+
+    // Fetch users
     const { data: users, isLoading: usersLoading } = useQuery({
         queryKey: ['users-list'],
         queryFn: async () => {
             const { data, error } = await supabase
-                .from('users')
+                .from('profiles')
                 .select('id, email, full_name, role, last_login_at, is_active')
                 .order('full_name');
             if (error) throw error;
             return data;
-        }
+        },
+        enabled: isAdmin // Only fetch if admin
     });
 
     // Fetch activity for selected user or recent activity for all
@@ -53,6 +56,25 @@ export default function UserActivityPage() {
             return txns || [];
         }
     });
+
+    if (!isAdmin) {
+        return (
+            <div className="flex-1 flex flex-col min-h-screen bg-gray-50">
+                <TopBar title="Access Denied" />
+                <div className="flex-1 flex items-center justify-center p-6">
+                    <div className="text-center space-y-4">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mb-2">
+                            <Shield className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900">HO Exclusive Audit</h2>
+                        <p className="text-gray-600 max-w-sm mx-auto">
+                            System user activity logs and audit trails are only accessible to Head Office accounts and Administrators.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full bg-gray-50">
@@ -138,7 +160,7 @@ export default function UserActivityPage() {
                                 <div className="text-center py-10 text-gray-500">No recent activity found.</div>
                             ) : activity?.map((log: any) => (
                                 <div key={log.id} className="flex gap-4 p-4 rounded-lg bg-gray-50 border border-gray-100">
-                                    <div className={`mt-1 p-2 rounded-full ${log.transaction_type === 'income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                                    <div className={`mt-1 p-2 rounded-full ${log.type === 'income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
                                         }`}>
                                         <Clock className="w-4 h-4" />
                                     </div>
@@ -153,9 +175,9 @@ export default function UserActivityPage() {
                                             <span className="text-gray-600">
                                                 ID: {log.id.slice(0, 8)}...
                                             </span>
-                                            <span className={`font-bold ${log.transaction_type === 'income' ? 'text-green-600' : 'text-red-600'
+                                            <span className={`font-bold ${log.type === 'income' ? 'text-green-600' : 'text-red-600'
                                                 }`}>
-                                                {log.transaction_type === 'income' ? '+' : '-'}₹{log.amount}
+                                                {log.type === 'income' ? '+' : '-'}₹{log.amount}
                                             </span>
                                         </div>
                                     </div>

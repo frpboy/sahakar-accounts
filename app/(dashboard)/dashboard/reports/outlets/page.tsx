@@ -126,6 +126,25 @@ export default function OutletPerformancePage() {
         if (user) loadData();
     }, [user, loadData]);
 
+    if (!isHO && !loading) {
+        return (
+            <div className="flex-1 flex flex-col min-h-screen bg-gray-50">
+                <TopBar title="Access Denied" />
+                <div className="flex-1 flex items-center justify-center p-6">
+                    <div className="text-center space-y-4">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mb-2">
+                            <Building2 className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900">HO Exclusive Report</h2>
+                        <p className="text-gray-600 max-w-sm mx-auto">
+                            The Outlet Performance comparison report is only accessible to Head Office accounts and Administrators.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex-1 flex flex-col min-h-screen bg-gray-50">
             <TopBar title="Outlet Performance" />

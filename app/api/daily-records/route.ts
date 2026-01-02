@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
         const requestedOutletId = searchParams.get('outletId');
         const month = searchParams.get('month'); // Format: YYYY-MM
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await (supabase as any)
             .from('users')
             .select('role,outlet_id')
             .eq('id', session.user.id)
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Outlet ID is required or not assigned to user' }, { status: 400 });
         }
 
-        let query = supabase
+        let query = (supabase as any)
             .from('daily_records')
             .select('*')
             .eq('outlet_id', outletId)

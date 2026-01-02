@@ -2,10 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { TopBar } from '@/components/layout/topbar';
-import { Search, Download, Edit2, Filter, FileSpreadsheet, FileText, CheckSquare, Square } from 'lucide-react';
+import { Search, Download, Edit2, Filter, FileSpreadsheet, FileText, CheckSquare, Square, History } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { CustomerModal } from '@/components/customer-modal';
+import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -37,10 +38,19 @@ export default function CustomerReportsPage() {
         if (!user) return;
         setLoading(true);
         try {
-            const { data, error } = await (supabase as any)
+            const isAdmin = ['superadmin', 'master_admin', 'ho_accountant'].includes(user.profile.role);
+
+            let query = (supabase as any)
                 .from('customers')
-                .select('*')
+                .select('*, profiles!added_by(outlet_id)')
                 .order('name', { ascending: true });
+
+            if (!isAdmin && user.profile.outlet_id) {
+                // Filter by outlet_id via the joined profiles table
+                query = query.filter('profiles.outlet_id', 'eq', user.profile.outlet_id);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
             setCustomers(data || []);
@@ -240,7 +250,7 @@ export default function CustomerReportsPage() {
                                     <th className="px-4 py-3 text-right">Limit</th>
                                     <th className="px-4 py-3">Referrer</th>
                                     <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-center">Action</th>
+                                    <th className="px-4 py-3 text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
@@ -285,17 +295,25 @@ export default function CustomerReportsPage() {
                                                     {c.is_active ? 'Active' : 'Inactive'}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <button
-                                                    onClick={() => {
-                                                        setEditingCustomer(c);
-                                                        setIsModalOpen(true);
-                                                    }}
-                                                    className="p-1 hover:bg-gray-100 rounded text-blue-600 dark:hover:bg-slate-700 transition"
-                                                    title="Edit Customer"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </button>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <Link
+                                                        href={`/dashboard/history/sales?customer=${encodeURIComponent(c.phone)}`}
+                                                        className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded text-blue-600 transition"
+                                                        title="View Sales History"
+                                                    >
+                                                        <History className="w-4 h-4" />
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingCustomer(c);
+                                                            setIsModalOpen(true);
+                                                        }}
+                                                        className="p-1 hover:bg-gray-100 rounded text-blue-600 dark:hover:bg-slate-700 transition"
+                                                        title="Edit Customer"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
                                             </td>
                                         </tr>
                                     ))

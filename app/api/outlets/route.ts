@@ -9,6 +9,7 @@ type CreateOutletBody = {
     location?: string;
     phone?: string;
     email?: string;
+    type?: string;
 };
 
 function getErrorMessage(error: unknown): string {

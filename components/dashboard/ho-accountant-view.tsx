@@ -7,6 +7,7 @@ import { MetricCard } from '@/components/dashboard/metrics/metric-card';
 import { SalesTrendChart } from '@/components/dashboard/charts/sales-trend-chart';
 import { Building2, IndianRupee, AlertTriangle, TrendingUp, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { exportUtils } from '@/lib/export-utils';
+import { cn } from '@/lib/utils';
 
 export function HOAccountantDashboard() {
     const supabase = useMemo(() => createClientBrowser(), []);
@@ -93,6 +94,27 @@ export function HOAccountantDashboard() {
                 trendData.push({ date: dateStr, sales: dayTotal });
             }
             setSalesTrendData(trendData);
+
+            // Get today's daily records for all outlets
+            const { data: dailyData } = await supabase
+                .from('daily_records')
+                .select('outlet_id, opening_cash, opening_upi, total_income, total_expense, physical_cash, physical_upi, tally_comment, status')
+                .eq('date', today);
+
+            // Merge outlet data with their today's record
+            const mergedOutlets = outletsData?.map(o => {
+                const record = (dailyData as any[])?.find(r => r.outlet_id === o.id);
+                const expected = record ? (Number(record.opening_cash) || 0) + (Number(record.opening_upi) || 0) + (Number(record.total_income) || 0) - (Number(record.total_expense) || 0) : 0;
+                const physical = record ? (Number(record.physical_cash) || 0) + (Number(record.physical_upi) || 0) : 0;
+                return {
+                    ...o,
+                    todayRecord: record,
+                    expected,
+                    physical,
+                    difference: physical - expected
+                };
+            }) || [];
+            setOutlets(mergedOutlets);
 
         } catch (error) {
             console.error('Error loading HO data:', error);
@@ -212,22 +234,39 @@ export function HOAccountantDashboard() {
                         <thead className="bg-gray-50 dark:bg-slate-800/50 border-b dark:border-slate-800">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Outlet</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Today's Revenue</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">MTD Revenue</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Credits</th>
+                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Expected Balance</th>
+                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Physical Tally</th>
+                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Difference</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Comments</th>
                                 <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
                             {outlets.map((outlet) => (
                                 <tr key={outlet.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/20 transition-colors">
-                                    <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">{outlet.name}</td>
-                                    <td className="px-6 py-4 text-sm text-right text-gray-900 dark:text-slate-300">₹--</td>
-                                    <td className="px-6 py-4 text-sm text-right text-gray-900 dark:text-slate-300">₹--</td>
-                                    <td className="px-6 py-4 text-sm text-right text-gray-900 dark:text-slate-300">₹--</td>
+                                    <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
+                                        {outlet.name}
+                                        <p className="text-[10px] text-gray-400 font-normal">{outlet.location}</p>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-right text-gray-900 dark:text-slate-300">₹{outlet.expected.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-sm text-right font-bold text-gray-900 dark:text-white">₹{outlet.physical.toLocaleString()}</td>
+                                    <td className={cn(
+                                        "px-6 py-4 text-sm text-right font-black",
+                                        Math.abs(outlet.difference) < 0.01 ? "text-green-500" : "text-red-500"
+                                    )}>
+                                        {outlet.difference > 0 ? '+' : ''}{outlet.difference.toLocaleString()}
+                                    </td>
+                                    <td className="px-6 py-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs truncate italic">
+                                        {outlet.todayRecord?.tally_comment || '-'}
+                                    </td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
-                                            Active
+                                        <span className={cn(
+                                            "px-2 py-0.5 text-[10px] font-bold uppercase rounded-full",
+                                            outlet.todayRecord?.status === 'locked' ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" :
+                                                outlet.todayRecord?.status === 'submitted' ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" :
+                                                    "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
+                                        )}>
+                                            {outlet.todayRecord?.status || 'open'}
                                         </span>
                                     </td>
                                 </tr>

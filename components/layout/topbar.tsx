@@ -27,22 +27,65 @@ export function TopBar({ title }: { title: string }) {
     const handleDutyEnd = async () => {
         if (!user?.id || !user?.profile?.outlet_id) return;
 
-        const confirmed = confirm(
-            '⚠️ End Duty?\n\n' +
-            'You will be logged out and locked out until 7:00 AM IST tomorrow.\n\n' +
-            'Are you sure you want to end your duty for today?'
-        );
-
-        if (!confirmed) return;
-
         setEndingDuty(true);
 
         try {
             const bizDate = getBusinessDate();
+
+            // 1. Fetch Today's Daily Record for Tally Validation
+            const { data: record, error: fetchError } = await (supabase
+                .from('daily_records')
+                .select('opening_cash, opening_upi, total_income, total_expense, physical_cash, physical_upi, tally_comment')
+                .eq('outlet_id', user.profile.outlet_id)
+                .eq('date', bizDate)
+                .maybeSingle() as any);
+
+            if (fetchError) throw fetchError;
+
+            if (!record) {
+                alert('⚠️ No daily record found for today. Please ensure you have started your shift correctly.');
+                setEndingDuty(false);
+                return;
+            }
+
+            // 2. Validation Logic
+            const totalExpected = (record.opening_cash || 0) + (record.opening_upi || 0) + (record.total_income || 0) - (record.total_expense || 0);
+            const totalPhysical = (record.physical_cash || 0) + (record.physical_upi || 0);
+            const difference = totalPhysical - totalExpected;
+
+            // Check if tally was even entered (if total income > 0 and physical is still 0, it's suspicious)
+            if (totalExpected > 0 && totalPhysical === 0) {
+                const proceed = confirm('⚠️ Your physical tally is currently ₹0.00 while expected is ₹' + totalExpected.toLocaleString() + '.\n\nDid you forget to enter your physical cash/UPI in the Dashboard summary?');
+                if (!proceed) {
+                    setEndingDuty(false);
+                    return;
+                }
+            }
+
+            // Mismatch Validation
+            if (Math.abs(difference) > 0.01 && !record.tally_comment?.trim()) {
+                alert('❌ Tally Mismatch: There is a difference of ₹' + difference.toLocaleString() + '.\n\nYou MUST provide a comment in the "Daily Summary" section explaining this mismatch before ending your duty.');
+                setEndingDuty(false);
+                return;
+            }
+
+            // 3. Final Confirmation
+            const confirmed = confirm(
+                '⚠️ End Duty?\n\n' +
+                'Tally Status: ' + (Math.abs(difference) < 0.01 ? '✅ Matched' : '⚠️ Mis-matched (Comment provided)') + '\n' +
+                'You will be logged out and locked out until 7:00 AM IST tomorrow.\n\n' +
+                'Are you sure you want to end your duty for today?'
+            );
+
+            if (!confirmed) {
+                setEndingDuty(false);
+                return;
+            }
+
             const now = getISTDate().toISOString();
 
-            // Record duty end in duty_logs
-            const { error } = await (supabase
+            // 4. Record duty end
+            const { error: logError } = await (supabase
                 .from('duty_logs' as any) as any)
                 .upsert({
                     user_id: user.id,
@@ -53,12 +96,10 @@ export function TopBar({ title }: { title: string }) {
                     onConflict: 'user_id,date'
                 });
 
-            if (error) throw error;
+            if (logError) throw logError;
 
-            // Success feedback
+            // 5. Success
             alert('✅ Duty ended successfully. See you tomorrow at 7 AM!');
-
-            // Sign out user
             await signOut();
 
         } catch (error) {
@@ -77,6 +118,7 @@ export function TopBar({ title }: { title: string }) {
                 >
                     {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
+                <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain rounded-md" />
                 <h1 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white truncate">{title}</h1>
             </div>
 

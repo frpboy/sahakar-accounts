@@ -59,7 +59,7 @@ export async function PATCH(
 
         const { data: tx, error: txError } = await supabase
             .from('transactions')
-            .select('id,created_by,daily_record_id')
+            .select('id,created_by,daily_record_id,created_at')
             .eq('id', (await context.params).id)
             .single();
 
@@ -72,7 +72,7 @@ export async function PATCH(
 
         const typedTx = tx as Pick<
             Database['public']['Tables']['transactions']['Row'],
-            'id' | 'created_by' | 'daily_record_id'
+            'id' | 'created_by' | 'daily_record_id' | 'created_at'
         >;
 
         if (!typedTx.daily_record_id) {
@@ -81,10 +81,10 @@ export async function PATCH(
 
         const { data: dailyRecord } = await supabase
             .from('daily_records')
-            .select('id,outlet_id,status')
+            .select('id,outlet_id,status,date')
             .eq('id', typedTx.daily_record_id)
             .single();
-        const typedDailyRecord = dailyRecord as Pick<DailyRecordRow, 'outlet_id' | 'status'> | null;
+        const typedDailyRecord = dailyRecord as Pick<DailyRecordRow, 'outlet_id' | 'status' | 'date'> | null;
         const dailyRecordOutletId = typedDailyRecord?.outlet_id;
         const dailyRecordStatus = typedDailyRecord?.status;
 
@@ -101,8 +101,30 @@ export async function PATCH(
             return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
         }
 
-        if (profileRole === 'outlet_staff' && typedTx.created_by !== session.user.id) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        if (profileRole === 'outlet_staff') {
+            if (typedTx.created_by !== session.user.id) {
+                return NextResponse.json({ error: 'Forbidden: You can only edit your own entries' }, { status: 403 });
+            }
+            // Check Duty End for staff
+            const bizDate = typedDailyRecord?.date; // Need to select date in query
+            if (bizDate) {
+                const { data: dutyLog } = await (supabase as any)
+                    .from('duty_logs')
+                    .select('duty_end')
+                    .eq('user_id', session.user.id)
+                    .eq('date', bizDate)
+                    .maybeSingle();
+                if (dutyLog?.duty_end) {
+                    return NextResponse.json({ error: 'Forbidden: Cannot edit after duty end' }, { status: 403 });
+                }
+            }
+        }
+
+        if (profileRole === 'outlet_manager') {
+            const daysDiff = (new Date().getTime() - new Date(typedTx.created_at || '').getTime()) / (1000 * 3600 * 24);
+            if (daysDiff > 30) {
+                return NextResponse.json({ error: 'Forbidden: Manager edit window (30 days) expired' }, { status: 403 });
+            }
         }
 
         const body = (await request.json()) as PatchTransactionBody;
@@ -124,7 +146,7 @@ export async function PATCH(
         if (amount !== undefined) updateData.amount = amount;
         if (description !== undefined) updateData.description = description;
 
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
             .from('transactions')
             .update(updateData as unknown as never)
             .eq('id', id)
@@ -150,7 +172,7 @@ export async function PATCH(
                     new_data: data as any,
                     severity: 'normal',
                 } as any);
-        } catch {}
+        } catch { }
 
         return NextResponse.json(data);
     } catch (error: unknown) {
@@ -184,9 +206,9 @@ export async function DELETE(
         const profileRole = typedProfile.role;
         const profileOutletId = typedProfile.outlet_id;
 
-        const canDelete = ['outlet_staff', 'outlet_manager', 'master_admin', 'superadmin'].includes(profileRole || '');
+        const canDelete = ['master_admin', 'superadmin', 'ho_accountant'].includes(profileRole || '');
         if (!canDelete) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return NextResponse.json({ error: 'Forbidden: Only Admins and HO Accountants can delete entries' }, { status: 403 });
         }
 
         const { data: tx, error: txError } = await supabase
@@ -246,7 +268,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Entries are locked between 2:00–6:59 AM' }, { status: 423 });
         }
 
-        const { error } = await supabase
+        const { error } = await (supabase as any)
             .from('transactions')
             .delete()
             .eq('id', id);
@@ -269,7 +291,7 @@ export async function DELETE(
                     new_data: null,
                     severity: 'warning',
                 } as any);
-        } catch {}
+        } catch { }
 
         return NextResponse.json({ success: true });
     } catch (error: unknown) {

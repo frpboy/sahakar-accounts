@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Eye, Edit2, Calendar, Lock, Unlock, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Search, Filter, Eye, Edit2, Calendar, Lock, Unlock, ChevronLeft, ChevronRight, Download, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { TransactionDrawer } from './transaction-drawer';
@@ -14,8 +14,11 @@ interface HistoryTableProps {
     onSearchChange?: (val: string) => void;
     onViewRow?: (row: any) => void;
     onEditRow?: (row: any) => void;
+    onDeleteRow?: (row: any) => void;
     emptyMessage?: string;
     category?: 'sales' | 'returns' | 'purchase' | 'credit';
+    currentUser?: { id: string; role: string };
+    dutyLogs?: Record<string, boolean>; // date -> isEnded
 }
 
 export function HistoryTable({
@@ -26,8 +29,11 @@ export function HistoryTable({
     onSearchChange,
     onViewRow,
     onEditRow,
+    onDeleteRow,
     emptyMessage = 'No transactions found',
-    category = 'sales'
+    category = 'sales',
+    currentUser,
+    dutyLogs = {}
 }: HistoryTableProps) {
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
         start: '',
@@ -154,6 +160,7 @@ export function HistoryTable({
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Reference</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Details</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider text-right">Amount</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Staff</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -204,6 +211,9 @@ export function HistoryTable({
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-right text-gray-900 dark:text-white">
                                             ₹{parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-400 font-medium">
+                                            {t.users?.full_name || t.users?.name || '---'}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2">
                                                 {t.daily_records?.status === 'locked' ? (
@@ -226,13 +236,27 @@ export function HistoryTable({
                                                 >
                                                     <Eye className="w-4 h-4" />
                                                 </button>
-                                                {t.daily_records?.status !== 'locked' && (
+                                                {getCanEdit(t, currentUser, dutyLogs) && (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); onEditRow?.(t); }}
                                                         title="Edit Entry"
                                                         className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-slate-800 rounded-lg transition-all"
                                                     >
                                                         <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                {getCanDelete(currentUser) && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm('Are you sure you want to delete this transaction? This cannot be undone.')) {
+                                                                onDeleteRow?.(t);
+                                                            }
+                                                        }}
+                                                        title="Delete Entry"
+                                                        className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-slate-800 rounded-lg transition-all"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 )}
                                             </div>
@@ -245,18 +269,13 @@ export function HistoryTable({
                 </div>
 
                 {/* Pagination Placeholder */}
-                <div className="px-6 py-4 bg-gray-50 dark:bg-slate-950 border-t dark:border-slate-800 flex items-center justify-between transition-colors">
-                    <p className="text-xs text-gray-500 dark:text-slate-400">
-                        Showing <span className="font-bold text-gray-700 dark:text-slate-300">{filteredData.length}</span> entries
-                    </p>
-                    <div className="flex gap-2">
-                        <button disabled className="p-1 border dark:border-slate-800 rounded bg-white dark:bg-slate-900 text-gray-300 dark:text-slate-700 cursor-not-allowed">
-                            <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button disabled className="p-1 border dark:border-slate-800 rounded bg-white dark:bg-slate-900 text-gray-300 dark:text-slate-700 cursor-not-allowed">
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
-                    </div>
+                <div className="flex gap-2">
+                    <button disabled className="p-1 border dark:border-slate-800 rounded bg-white dark:bg-slate-900 text-gray-300 dark:text-slate-700 cursor-not-allowed">
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button disabled className="p-1 border dark:border-slate-800 rounded bg-white dark:bg-slate-900 text-gray-300 dark:text-slate-700 cursor-not-allowed">
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
 
@@ -267,4 +286,36 @@ export function HistoryTable({
             />
         </div>
     );
+}
+
+// Helper functions for permissions
+function getCanEdit(t: any, user: any, dutyLogs: any) {
+    if (!user) return false;
+    const isLocked = t.daily_records?.status === 'locked';
+    if (isLocked) return false;
+
+    // Admin/HO Accountant bypass
+    if (['master_admin', 'superadmin', 'ho_accountant'].includes(user.role)) return true;
+
+    const txDate = format(new Date(t.created_at), 'yyyy-MM-dd');
+
+    // Manager: 30 day window
+    if (user.role === 'outlet_manager') {
+        const daysDiff = (new Date().getTime() - new Date(t.created_at).getTime()) / (1000 * 3600 * 24);
+        return daysDiff <= 30;
+    }
+
+    // Staff: Own entries only + before Duty End
+    if (user.role === 'outlet_staff') {
+        const isOwner = t.created_by === user.id;
+        const isDutyEnded = dutyLogs[txDate] === true;
+        return isOwner && !isDutyEnded;
+    }
+
+    return false;
+}
+
+function getCanDelete(user: any) {
+    if (!user) return false;
+    return ['master_admin', 'superadmin', 'ho_accountant'].includes(user.role);
 }

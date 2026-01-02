@@ -120,24 +120,37 @@ export function Sidebar({ className }: { className?: string }) {
         ]
     });
 
-    // Admin sections
-    if (isAdmin) {
+    // Reports & Analytics (HO + Managers)
+    if (isAdmin || isManager) {
+        const reportItems = [
+            { label: 'All Reports', href: '/dashboard/reports', icon: Download },
+            { label: 'Sales Report', href: '/dashboard/reports/sales', icon: ShoppingCart },
+            { label: 'Financial Report', href: '/dashboard/reports/financial', icon: IndianRupee },
+        ];
+
+        // Only HO sees Outlet Performance (comparisons)
+        if (isAdmin) {
+            reportItems.push({ label: 'Outlet Performance', href: '/dashboard/reports/outlets', icon: Building2 });
+            reportItems.push({ label: 'User Activity', href: '/dashboard/reports/users', icon: Users });
+        }
+
         navItems.push(
-            { label: 'Administration', type: 'label' },
+            { label: 'Analytics', type: 'label' },
             {
                 label: 'Reports',
                 icon: BarChart3,
                 type: 'group',
                 isOpen: isReportsOpen,
                 setOpen: setIsReportsOpen,
-                items: [
-                    { label: 'All Reports', href: '/dashboard/reports', icon: Download },
-                    { label: 'Sales Report', href: '/dashboard/reports/sales', icon: ShoppingCart },
-                    { label: 'Financial Report', href: '/dashboard/reports/financial', icon: IndianRupee },
-                    { label: 'Outlet Performance', href: '/dashboard/reports/outlets', icon: Building2 },
-                    { label: 'User Activity', href: '/dashboard/reports/users', icon: Users },
-                ]
-            },
+                items: reportItems
+            }
+        );
+    }
+
+    // Admin-only Management
+    if (isAdmin) {
+        navItems.push(
+            { label: 'Administration', type: 'label' },
             {
                 label: 'Management',
                 icon: Settings,
@@ -182,13 +195,19 @@ export function Sidebar({ className }: { className?: string }) {
                 </button>
 
                 {/* Brand */}
-                <div className={cn("p-6 border-b transition-all duration-300 overflow-hidden", isCollapsed ? "px-4" : "px-6")}>
-                    <h1 className={cn(
-                        "font-bold text-gray-900 truncate transition-all",
-                        isCollapsed ? "text-center text-xs" : "text-xl"
-                    )}>
-                        {isCollapsed ? "SA" : "Sahakar Accounts"}
-                    </h1>
+                <div className={cn("p-6 border-b dark:border-slate-800 transition-all duration-300 overflow-hidden", isCollapsed ? "px-4" : "px-6")}>
+                    <Link href="/dashboard" className="flex items-center justify-center">
+                        {isCollapsed ? (
+                            <img src="/logo.png" alt="Logo" className="w-10 h-10 min-w-[40px] object-contain rounded-lg" />
+                        ) : (
+                            <div className="flex flex-col items-center">
+                                <img src="/logo.png" alt="Sahakar Logo" className="w-16 h-16 object-contain mb-2 rounded-xl" />
+                                <h1 className="font-bold text-gray-900 dark:text-white truncate text-center text-sm uppercase tracking-tighter">
+                                    Sahakar Accounts
+                                </h1>
+                            </div>
+                        )}
+                    </Link>
                 </div>
 
                 {/* Nav */}

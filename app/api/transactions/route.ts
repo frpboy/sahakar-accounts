@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (dailyRecordId) {
-            const { data: dailyRecord } = await supabase
+            const { data: dailyRecord } = await (supabase as any)
                 .from('daily_records')
                 .select('id,outlet_id')
                 .eq('id', dailyRecordId)
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        let query = supabase
+        let query = (supabase as any)
             .from('transactions')
             .select('id,daily_record_id,type,category,payment_mode,amount,description,created_at')
             .order('created_at', { ascending: false })
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
             createdBy: session.user.id,
         });
 
-        const { data: dailyRecord } = await supabase
+        const { data: dailyRecord } = await (supabase as any)
             .from('daily_records')
             .select('id,outlet_id,status')
             .eq('id', validated.dailyRecordId)
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
             created_by: validated.createdBy || null,
             idempotency_key: idempotencyKey || null,
         };
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
             .from('transactions')
             .insert(insertPayload as unknown as never)
             .select()
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
                     new_data: data as any,
                     severity: 'normal',
                 } as any);
-        } catch {}
+        } catch { }
 
         return NextResponse.json(data, { status: 201 });
     } catch (error: unknown) {

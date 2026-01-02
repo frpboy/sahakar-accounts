@@ -42,14 +42,14 @@ export default function OutletMetadataPage() {
         setLoading(true);
         try {
             if (activeTab === 'categories') {
-                const { data, error } = await supabase
+                const { data, error } = await (supabase as any)
                     .from('outlet_types')
                     .select('*')
                     .order('name');
                 if (error) throw error;
                 setTypes(data || []);
             } else {
-                const { data, error } = await supabase
+                const { data, error } = await (supabase as any)
                     .from('outlets')
                     .select('*')
                     .order('name');
@@ -67,7 +67,7 @@ export default function OutletMetadataPage() {
     const handleDeleteType = async (code: string) => {
         if (!confirm('Are you sure you want to delete this category?')) return;
         try {
-            const { error } = await supabase.from('outlet_types').delete().eq('code', code);
+            const { error } = await (supabase as any).from('outlet_types').delete().eq('code', code);
             if (error) throw error;
             fetchData();
         } catch (err) {
@@ -86,7 +86,7 @@ export default function OutletMetadataPage() {
             e.preventDefault();
             setSubmitLoading(true);
             try {
-                const { error } = await supabase
+                const { error } = await (supabase as any)
                     .from('outlet_types')
                     .upsert(formData); // Upsert handles both create (if code unique) and update
 
@@ -168,8 +168,8 @@ export default function OutletMetadataPage() {
                         <button
                             onClick={() => setActiveTab('categories')}
                             className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'categories'
-                                    ? 'border-b-2 border-blue-600 text-blue-600'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'border-b-2 border-blue-600 text-blue-600'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <Tag className="w-4 h-4" />
@@ -178,8 +178,8 @@ export default function OutletMetadataPage() {
                         <button
                             onClick={() => setActiveTab('outlets')}
                             className={`px-6 py-3 font-medium flex items-center gap-2 ${activeTab === 'outlets'
-                                    ? 'border-b-2 border-blue-600 text-blue-600'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'border-b-2 border-blue-600 text-blue-600'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <Building2 className="w-4 h-4" />

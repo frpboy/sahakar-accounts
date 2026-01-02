@@ -21,6 +21,8 @@ export default function TransactionReportPage() {
     const { data: transactions, isLoading } = useQuery({
         queryKey: ['transactions-report', dateFrom, dateTo, txType],
         queryFn: async () => {
+            const isAdmin = ['superadmin', 'master_admin', 'ho_accountant'].includes(user?.profile?.role || '');
+
             let query: any = supabase
                 .from('transactions')
                 .select('*, outlet:outlets(name), created_by_user:users(full_name)')
@@ -28,8 +30,13 @@ export default function TransactionReportPage() {
                 .lte('created_at', `${dateTo}T23:59:59`)
                 .order('created_at', { ascending: false });
 
+            // Apply account restrictions
+            if (!isAdmin && user?.profile?.outlet_id) {
+                query = query.eq('outlet_id', user.profile.outlet_id);
+            }
+
             if (txType !== 'all') {
-                query = query.eq('transaction_type', txType);
+                query = query.eq('type', txType);
             }
 
             const { data, error } = await query;
@@ -47,8 +54,8 @@ export default function TransactionReportPage() {
         );
     }, [transactions, searchTerm]);
 
-    const totalIncome = (filteredTransactions as any[]).filter(t => t.transaction_type === 'income').reduce((sum, t) => sum + (t.amount || 0), 0);
-    const totalExpense = (filteredTransactions as any[]).filter(t => t.transaction_type === 'expense').reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalIncome = (filteredTransactions as any[]).filter(t => t.type === 'income').reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalExpense = (filteredTransactions as any[]).filter(t => t.type === 'expense').reduce((sum, t) => sum + (t.amount || 0), 0);
 
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950">
@@ -128,7 +135,7 @@ export default function TransactionReportPage() {
                                     <th className="px-6 py-4">Date</th>
                                     <th className="px-6 py-4">Ref ID</th>
                                     <th className="px-6 py-4">Description</th>
-                                    <th className="px-6 py-4">Outlet</th>
+                                    {isAdmin && <th className="px-6 py-4">Outlet</th>}
                                     <th className="px-6 py-4">Category</th>
                                     <th className="px-6 py-4">Mode</th>
                                     <th className="px-6 py-4 text-right">Amount</th>
@@ -154,16 +161,16 @@ export default function TransactionReportPage() {
                                             <td className="px-6 py-4 max-w-xs truncate" title={tx.description}>
                                                 {tx.description}
                                             </td>
-                                            <td className="px-6 py-4 text-gray-500">{tx.outlet?.name || 'N/A'}</td>
+                                            {isAdmin && <td className="px-6 py-4 text-gray-500">{tx.outlet?.name || 'N/A'}</td>}
                                             <td className="px-6 py-4">
                                                 <span className="capitalize px-2 py-1 bg-gray-100 dark:bg-slate-800 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
                                                     {(tx.category || 'general').replace('_', ' ')}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-500 text-xs">{tx.payment_modes?.replace(/,/g, ', ') || '-'}</td>
-                                            <td className={`px-6 py-4 text-right font-bold ${tx.transaction_type === 'income' ? 'text-green-600' : 'text-red-600'
+                                            <td className="px-6 py-4 text-gray-500 text-xs">{tx.payment_mode || '-'}</td>
+                                            <td className={`px-6 py-4 text-right font-bold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'
                                                 }`}>
-                                                {tx.transaction_type === 'income' ? '+' : '-'}₹{tx.amount?.toLocaleString()}
+                                                {tx.type === 'income' ? '+' : '-'}₹{tx.amount?.toLocaleString()}
                                             </td>
                                         </tr>
                                     ))

@@ -13,12 +13,15 @@ import {
 
 export default function AnalyticsPage() {
     const supabase = createClientBrowser();
+    const { user } = useAuth();
 
     // Date Range (Last 30 days by default)
     const [dateRange, setDateRange] = useState('30');
 
+    const isAdmin = ['superadmin', 'master_admin', 'ho_accountant'].includes(user?.profile?.role || '');
+
     // Fetch transactions
-    const { data: transactions } = useQuery({
+    const { data: transactions, isLoading } = useQuery({
         queryKey: ['analytics-data', dateRange],
         queryFn: async () => {
             const endDate = new Date();
@@ -50,15 +53,15 @@ export default function AnalyticsPage() {
                 daily[date] = { date, income: 0, expense: 0 };
             }
 
-            if (t.transaction_type === 'income') {
+            if (t.type === 'income') {
                 daily[date].income += t.amount || 0;
             } else {
                 daily[date].expense += t.amount || 0;
             }
 
             // Payment modes
-            if (t.transaction_type === 'income' && t.payment_modes) {
-                const txModes = t.payment_modes.split(',').map((m: string) => m.trim());
+            if (t.type === 'income' && t.payment_mode) {
+                const txModes = t.payment_mode.split(',').map((m: string) => m.trim());
                 txModes.forEach((m: string) => {
                     modes[m] = (modes[m] || 0) + (t.amount || 0) / txModes.length; // distribute amount if split
                 });
@@ -98,6 +101,25 @@ export default function AnalyticsPage() {
     }, [transactions, dateRange]);
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+    if (!isAdmin && !isLoading) {
+        return (
+            <div className="flex-1 flex flex-col min-h-screen bg-gray-50">
+                <TopBar title="Access Denied" />
+                <div className="flex-1 flex items-center justify-center p-6">
+                    <div className="text-center space-y-4">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mb-2">
+                            <BarChart barchart className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900">HO Exclusive Analytics</h2>
+                        <p className="text-gray-600 max-w-sm mx-auto">
+                            Consolidated business trends and analytics are only accessible to Head Office accounts and Administrators.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950">

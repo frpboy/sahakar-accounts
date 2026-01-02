@@ -53,6 +53,9 @@ export default function DraftsPage() {
                     .insert({
                         outlet_id: user.profile.outlet_id,
                         date: today,
+                        particulars: 'Shift Opening',
+                        amount: 0,
+                        category: 'opening_balance',
                         opening_cash: 0,
                         opening_upi: 0,
                         status: 'open'
@@ -71,7 +74,7 @@ export default function DraftsPage() {
                     daily_record_id: dailyRecordId,
                     outlet_id: draft.outlet_id,
                     entry_number: draft.entry_number,
-                    transaction_type: draft.transaction_type,
+                    type: draft.transaction_type, // transaction_type -> type
                     category: draft.category,
                     description: draft.description,
                     amount: draft.amount,
@@ -158,8 +161,8 @@ export default function DraftsPage() {
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <span className={`px-2 py-1 rounded text-xs font-medium ${draft.transaction_type === 'income'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-red-100 text-red-800'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-red-100 text-red-800'
                                                     }`}>
                                                     {draft.category}
                                                 </span>

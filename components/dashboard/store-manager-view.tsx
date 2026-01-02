@@ -9,6 +9,7 @@ import { PaymentModePie } from '@/components/dashboard/charts/payment-mode-pie';
 import { RecentTransactions } from '@/components/dashboard/widgets/recent-transactions';
 import { QuickActions } from '@/components/dashboard/widgets/quick-actions';
 import { TopStaff } from '@/components/dashboard/widgets/top-staff';
+import { DailySummary } from './daily-summary';
 import {
     IndianRupee,
     Users,
@@ -343,6 +344,9 @@ export function StoreManagerDashboard() {
                 </div>
             </div>
 
+            {/* Daily Tally & Summary */}
+            <DailySummary />
+
             {/* Top Metrics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
                 <MetricCard
@@ -391,6 +395,6 @@ export function StoreManagerDashboard() {
                     <TopStaff data={staffTransactions} />
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

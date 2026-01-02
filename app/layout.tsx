@@ -9,6 +9,10 @@ export const metadata: Metadata = {
     title: 'Sahakar Accounts - Hyperpharmacy Accounting System',
     description: 'Multi-tenant accounting system for hyperpharmacies',
     manifest: "/manifest.json",
+    icons: {
+        icon: "/favicon.png",
+        apple: "/favicon.png",
+    },
     appleWebApp: {
         capable: true,
         statusBarStyle: "default",

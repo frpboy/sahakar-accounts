@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
 
         // If no user found in public.users, but we have a session, this is a sync issue.
         if (profileError && profileError.code === 'PGRST116') {
-             // Fetch from auth metadata as fallback to allow self-healing or better error
-             console.error('[API] User sync mismatch. ID:', session.user.id);
-             return NextResponse.json({ 
-                 error: 'User profile not synchronized', 
-                 code: 'SYNC_ERROR',
-                 details: 'Please contact support or try re-logging in.'
-             }, { status: 404 });
+            // Fetch from auth metadata as fallback to allow self-healing or better error
+            console.error('[API] User sync mismatch. ID:', session.user.id);
+            return NextResponse.json({
+                error: 'User profile not synchronized',
+                code: 'SYNC_ERROR',
+                details: 'Please contact support or try re-logging in.'
+            }, { status: 404 });
         }
 
         if (profileError || !profile) {
@@ -84,16 +84,14 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(existingRecord);
         }
 
-        // Get previous day's closing balance (also in IST)
-        const yesterday = new Date(istTime);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-
+        // Get the latest previous business day's closing balance
         const { data: previousRecord } = await supabase
             .from('daily_records')
             .select('closing_cash, closing_upi')
             .eq('outlet_id', outletId)
-            .eq('date', yesterdayStr)
+            .lt('date', today)
+            .order('date', { ascending: false })
+            .limit(1)
             .maybeSingle();
         const typedPreviousRecord = previousRecord as Pick<
             Database['public']['Tables']['daily_records']['Row'],
@@ -141,17 +139,17 @@ export async function GET(request: NextRequest) {
 
             // Check if it's a missing profile error (foreign key constraint)
             if (getErrorCode(insertError) === '23503') { // foreign_key_violation
-                 console.error('[DailyRecords] Failed to create record: Profile constraint violation', insertError);
-                 
-                 // If the error is on daily_records_outlet_id_fkey, it means the outlet_id is invalid.
-                 // But wait, we verified the outlet_id in step 1?
-                 // Ah, maybe the RLS policy is blocking the INSERT for this user?
-                 // Let's try to verify if the user has permission to insert into daily_records.
+                console.error('[DailyRecords] Failed to create record: Profile constraint violation', insertError);
 
-                 return NextResponse.json(
-                     { error: 'System configuration error: Outlet ID invalid or profile missing', code: 'PROFILE_MISSING' },
-                     { status: 400 }
-                 );
+                // If the error is on daily_records_outlet_id_fkey, it means the outlet_id is invalid.
+                // But wait, we verified the outlet_id in step 1?
+                // Ah, maybe the RLS policy is blocking the INSERT for this user?
+                // Let's try to verify if the user has permission to insert into daily_records.
+
+                return NextResponse.json(
+                    { error: 'System configuration error: Outlet ID invalid or profile missing', code: 'PROFILE_MISSING' },
+                    { status: 400 }
+                );
             }
 
             console.error('Error creating daily record:', insertError);

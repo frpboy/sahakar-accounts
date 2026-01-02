@@ -7,6 +7,7 @@ import { createClientBrowser } from '@/lib/supabase-client';
 import { db } from '@/lib/offline-db';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { DailySummary } from './daily-summary';
 import Link from 'next/link';
 
 export function StaffDashboard() {
@@ -110,6 +111,9 @@ export function StaffDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Daily Summary & Tallying */}
+            <DailySummary />
 
             {/* Action Cards (Top Metrics) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

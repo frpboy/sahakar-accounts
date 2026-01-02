@@ -72,7 +72,8 @@ function LoginForm() {
     return (
         <div className="max-w-md w-full space-y-8">
             <div className="text-center">
-                <h1 className="mt-6 text-3xl font-extrabold text-gray-900">Sahakar Accounts</h1>
+                <img src="/logo.png" alt="Sahakar Accounts" className="mx-auto h-24 w-auto mb-4 object-contain rounded-2xl shadow-sm" />
+                <h1 className="text-3xl font-extrabold text-gray-900">Sahakar Accounts</h1>
                 <p className="mt-2 text-sm text-gray-600">Sign in to your account</p>
 
                 {/* Daily Motivation Card */}
@@ -187,7 +188,8 @@ export default function LoginPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+                <img src="/logo.png" alt="Sahakar Accounts" className="h-20 w-auto mb-8 animate-pulse" />
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
         );

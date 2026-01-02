@@ -8,12 +8,16 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 export default function ReportsPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
+    const { user } = useAuth();
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv' | 'pdf'>('excel');
     const [exportType, setExportType] = useState<'customers' | 'transactions' | 'all'>('customers');
     const [exporting, setExporting] = useState(false);
+
+    const isAdmin = ['superadmin', 'master_admin', 'ho_accountant'].includes(user?.profile?.role || '');
 
     const reportCards = [
         {
@@ -22,7 +26,8 @@ export default function ReportsPage() {
             icon: <ShoppingCart className="w-6 h-6 text-blue-600" />,
             color: 'border-blue-200 bg-blue-50/50',
             href: '/dashboard/reports/sales',
-            dataPoints: ['Revenue Trends', 'Payment Modes', 'Top Products']
+            dataPoints: ['Revenue Trends', 'Payment Modes', 'Top Products'],
+            roles: ['admin', 'ho_accountant', 'outlet_manager']
         },
         {
             title: 'Financial Reports',
@@ -30,7 +35,8 @@ export default function ReportsPage() {
             icon: <IndianRupee className="w-6 h-6 text-green-600" />,
             color: 'border-green-200 bg-green-50/50',
             href: '/dashboard/reports/financial',
-            dataPoints: ['Daily Closing', 'Expense Analysis', 'Audit Logs']
+            dataPoints: ['Daily Closing', 'Expense Analysis', 'Audit Logs'],
+            roles: ['admin', 'ho_accountant', 'outlet_manager']
         },
         {
             title: 'Outlet Performance',
@@ -38,7 +44,8 @@ export default function ReportsPage() {
             icon: <Building2 className="w-6 h-6 text-purple-600" />,
             color: 'border-purple-200 bg-purple-50/50',
             href: '/dashboard/reports/outlets',
-            dataPoints: ['Branch Comparison', 'Staff Performance', 'Target Tracking']
+            dataPoints: ['Branch Comparison', 'Staff Performance', 'Target Tracking'],
+            roles: ['admin', 'ho_accountant']
         },
         {
             title: 'Customer Insights',
@@ -46,7 +53,8 @@ export default function ReportsPage() {
             icon: <Users className="w-6 h-6 text-orange-600" />,
             color: 'border-orange-200 bg-orange-50/50',
             href: '/dashboard/reports/customers',
-            dataPoints: ['Customer Growth', 'Top Spenders', 'Inactive Users']
+            dataPoints: ['Customer Growth', 'Top Spenders', 'Inactive Users'],
+            roles: ['admin', 'ho_accountant', 'outlet_manager']
         },
         {
             title: 'Transaction Report',
@@ -54,7 +62,8 @@ export default function ReportsPage() {
             icon: <List className="w-6 h-6 text-teal-600" />,
             color: 'border-teal-200 bg-teal-50/50',
             href: '/dashboard/reports/transactions',
-            dataPoints: ['Detailed Logs', 'Filter by Type', 'Export Data']
+            dataPoints: ['Detailed Logs', 'Filter by Type', 'Export Data'],
+            roles: ['admin', 'ho_accountant', 'outlet_manager']
         },
         {
             title: 'Trends & Analytics',
@@ -62,7 +71,8 @@ export default function ReportsPage() {
             icon: <TrendingUp className="w-6 h-6 text-indigo-600" />,
             color: 'border-indigo-200 bg-indigo-50/50',
             href: '/dashboard/reports/analytics',
-            dataPoints: ['MoM Growth', 'Retention Rates', 'Forecasting']
+            dataPoints: ['MoM Growth', 'Retention Rates', 'Forecasting'],
+            roles: ['admin', 'ho_accountant']
         },
         {
             title: 'User Activity',
@@ -70,9 +80,14 @@ export default function ReportsPage() {
             icon: <Activity className="w-6 h-6 text-pink-600" />,
             color: 'border-pink-200 bg-pink-50/50',
             href: '/dashboard/reports/users',
-            dataPoints: ['Login History', 'Action Logs', 'Performance']
+            dataPoints: ['Login History', 'Action Logs', 'Performance'],
+            roles: ['admin', 'ho_accountant']
         }
-    ];
+    ].filter(card => {
+        if (isAdmin) return true;
+        const role = user?.profile?.role;
+        return card.roles.includes(role || 'outlet_staff');
+    });
 
     const handleExportAll = async () => {
         setExporting(true);
@@ -81,18 +96,26 @@ export default function ReportsPage() {
             let data: any[] = [];
             let fileName = `Export_${today}`;
 
+            // Helper to apply outlet filter if not HO
+            const applyOutletFilter = (query: any) => {
+                if (!isAdmin && user?.profile?.outlet_id) {
+                    return query.eq('outlet_id', user.profile.outlet_id);
+                }
+                return query;
+            };
+
             if (exportType === 'customers') {
-                const { data: customers } = await (supabase as any).from('customers').select('*').order('name');
+                const { data: customers } = await applyOutletFilter((supabase as any).from('customers').select('*')).order('name');
                 data = customers || [];
                 fileName = `Customers_Report_${today}`;
             } else if (exportType === 'transactions') {
-                const { data: transactions } = await (supabase as any).from('transactions').select('*').order('created_at', { ascending: false });
+                const { data: transactions } = await applyOutletFilter((supabase as any).from('transactions').select('*')).order('created_at', { ascending: false });
                 data = transactions || [];
                 fileName = `Transactions_Report_${today}`;
             } else if (exportType === 'all') {
                 // Multi-sheet export for Excel only usually, but let's handle what we can
-                const { data: customers } = await (supabase as any).from('customers').select('*');
-                const { data: transactions } = await (supabase as any).from('transactions').select('*').limit(5000); // Limit to prevent crash
+                const { data: customers } = await applyOutletFilter((supabase as any).from('customers').select('*'));
+                const { data: transactions } = await applyOutletFilter((supabase as any).from('transactions').select('*')).limit(5000); // Limit to prevent crash
                 const { data: outlets } = await (supabase as any).from('outlets').select('*');
 
                 if (exportFormat === 'excel') {
@@ -134,7 +157,19 @@ export default function ReportsPage() {
                 link.click();
             } else if (exportFormat === 'pdf') {
                 const doc = new jsPDF();
-                doc.text(fileName.replace(/_/g, ' '), 14, 15);
+
+                // Branding Header
+                doc.setFillColor(37, 99, 235); // Blue-600
+                doc.rect(0, 0, 210, 25, 'F');
+
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(18);
+                doc.text("SAHAKAR ACCOUNTS", 14, 12);
+
+                doc.setFontSize(10);
+                doc.text(fileName.replace(/_/g, ' '), 14, 20);
+
+                doc.setTextColor(0, 0, 0); // Reset for table
 
                 // Simple auto-table with keys
                 const keys = Object.keys(data[0]);
