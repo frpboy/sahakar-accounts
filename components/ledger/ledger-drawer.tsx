@@ -2,27 +2,28 @@ import React from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Save, AlertTriangle, History } from 'lucide-react';
+import { Lock, Save, AlertTriangle, History, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-// Contract:
+// Updated Contract
 // LedgerDrawerProps {
 //   entry: LedgerEntry
 //   role: UserRole
 //   canEdit: boolean
 //   lockReason?: string
+//   actionType: 'edit' | 'reverse' | 'view_only'
 //   open: boolean
 //   onClose: () => void
-//   onSave: (data: any) => void
+//   onSave: (data: { reason: string, type: 'reversal' | 'adjustment' }) => void
 // }
 
-export function LedgerDrawer({ entry, role, canEdit, lockReason, open, onClose, onSave }: any) {
+export function LedgerDrawer({ entry, role, canEdit, lockReason, actionType, open, onClose, onSave }: any) {
     if (!entry) return null;
 
-    const [adjustment, setAdjustment] = React.useState({ amount: '', reason: '' });
+    const [reason, setReason] = React.useState('');
 
     return (
         <Sheet open={open} onOpenChange={onClose}>
@@ -31,9 +32,9 @@ export function LedgerDrawer({ entry, role, canEdit, lockReason, open, onClose, 
                     <div className="flex items-center justify-between">
                         <SheetTitle className="text-xl font-bold">Ledger Entry #{entry.id.substring(0, 6)}</SheetTitle>
                         {canEdit ? (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1">
-                                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                                Editable
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 gap-1">
+                                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                                {actionType === 'reverse' ? 'Correction Enabled' : 'Editable'}
                             </Badge>
                         ) : (
                             <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 gap-1">
@@ -85,30 +86,25 @@ export function LedgerDrawer({ entry, role, canEdit, lockReason, open, onClose, 
                         </div>
                     </div>
 
-                    {/* Adjustment Section - Only if Editable */}
+                    {/* Reversal / Adjustment Section */}
                     {canEdit && (
-                        <div className="space-y-4 border-t pt-4">
-                            <h4 className="text-sm font-semibold uppercase text-gray-500 flex items-center gap-2">
-                                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                                Correction / Adjustment
+                        <div className="space-y-4 border-t pt-4 bg-amber-50/50 p-4 rounded border-amber-100">
+                            <h4 className="text-sm font-semibold uppercase text-amber-700 flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4" />
+                                Post Correction (Reversal)
                             </h4>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>New Amount</Label>
-                                    <Input
-                                        type="number"
-                                        placeholder={entry.amount}
-                                        value={adjustment.amount}
-                                        onChange={(e) => setAdjustment(prev => ({ ...prev, amount: e.target.value }))}
-                                    />
-                                </div>
-                            </div>
+                            <p className="text-xs text-amber-600">
+                                This entry is finalized. To correct it, you must post a **Reversal Entry**.
+                                This will nullify the financial impact while preserving the audit trail.
+                            </p>
+
                             <div className="space-y-2">
-                                <Label>Reason for Change (Mandatory)</Label>
+                                <Label>Reason for Reversal (Mandatory)</Label>
                                 <Textarea
-                                    placeholder="Required for audit trail..."
-                                    value={adjustment.reason}
-                                    onChange={(e) => setAdjustment(prev => ({ ...prev, reason: e.target.value }))}
+                                    placeholder="E.g., Wrong amount entered, Duplicate entry..."
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    className="bg-white"
                                 />
                             </div>
                         </div>
@@ -129,9 +125,14 @@ export function LedgerDrawer({ entry, role, canEdit, lockReason, open, onClose, 
 
                 <SheetFooter>
                     {canEdit ? (
-                        <Button onClick={() => onSave(adjustment)} disabled={!adjustment.reason}>
-                            <Save className="w-4 h-4 mr-2" />
-                            Save Adjustment
+                        <Button
+                            variant="destructive"
+                            onClick={() => onSave({ reason, type: 'reversal' })}
+                            disabled={!reason || reason.length < 5}
+                            className="w-full sm:w-auto"
+                        >
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            Post Reversal Entry
                         </Button>
                     ) : (
                         <Button variant="secondary" onClick={onClose}>Close Viewer</Button>

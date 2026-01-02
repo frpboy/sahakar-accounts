@@ -48,42 +48,36 @@ export default function TrialBalancePage() {
             data?.forEach((t: any) => {
                 const amt = Number(t.amount);
 
-                // 1. Impact on Cash/Bank
+                // 1. Impact on Cash/Bank (Assets)
                 if (t.payment_mode === 'Cash') {
-                    if (t.type === 'income') groups['Cash'].debit += amt; // Cash In
-                    else groups['Cash'].credit += amt; // Cash Out
+                    if (t.type === 'income') groups['Cash'].debit += amt;
+                    else groups['Cash'].credit += amt;
                 } else if (['UPI', 'Card', 'Bank Transfer'].includes(t.payment_mode)) {
                     if (t.type === 'income') groups['Bank / UPI'].debit += amt;
                     else groups['Bank / UPI'].credit += amt;
-                } else if (t.payment_mode === 'Credit') {
-                    // Credit Tx
-                    // If Sales -> Debit Customer
                 }
 
-                // 2. Impact on Head (Sales/Purchase/Exp)
+                // 2. Impact on Revenues/Expenses (Equity/P&L)
                 if (t.category === 'sales') {
-                    // Credit Sales Account
                     if (t.type === 'income') groups['Sales Account'].credit += amt;
-
-                    // If mode is Credit, Debit Customer
-                    if (t.payment_mode === 'Credit') {
-                        groups['Customer Receivables'].debit += amt;
-                    }
+                    else groups['Sales Account'].debit += amt; // Sales Return/Reversal
                 } else if (t.category === 'purchase') {
-                    // Debit Purchase Account
                     if (t.type === 'expense') groups['Purchase Account'].debit += amt;
-                } else if (['expense', 'salary', 'rent'].includes(t.category) || t.type === 'expense') {
-                    // Check if not purchase
-                    if (t.category !== 'purchase') {
+                    else groups['Purchase Account'].credit += amt; // Purchase Return
+                } else if (t.category === 'expense' || t.type === 'expense') {
+                    if (!['purchase'].includes(t.category)) {
                         groups['Operating Expenses'].debit += amt;
                     }
+                } else if (t.type === 'income' && t.category !== 'sales') {
+                    // Other income
+                    // This logic needs more robust mapping, but for now:
                 }
 
-                // Credit Received/Given
+                // 3. Impact on Receivables (Assets)
+                if (t.payment_mode === 'Credit') {
+                    if (t.category === 'sales') groups['Customer Receivables'].debit += amt;
+                }
                 if (t.category === 'credit_received') {
-                    // Customer pays us. 
-                    // Cash/Bank Debit (Handled above in 1)
-                    // Customer Credit
                     groups['Customer Receivables'].credit += amt;
                 }
             });

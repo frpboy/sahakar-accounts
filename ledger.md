@@ -2028,3 +2028,405 @@ UI checks alone are useless.
 ❌ Allowing silent corrections
 
 You are already ahead by asking this now.
+
+
+I’ll give you a complete, accounting-grade blueprint for all five items — UI, rules, governance, workflows, edge cases, and audit controls — written so you can actually build it without ambiguity.
+
+I’m not pitching fluff. This is how real accounting systems survive auditors.
+
+1️⃣ Chart of Accounts (CoA) — UI + Governance
+🎯 Purpose
+
+Create a controlled, hierarchical account structure that:
+
+Staff can use
+
+Managers can map
+
+Only Admins can change
+
+No free-for-all. No accidental corruption.
+
+📚 Account Types (Immutable)
+
+These are system-level enums:
+
+Assets
+
+Liabilities
+
+Equity
+
+Income
+
+Expense
+
+⚠️ Type can NEVER change after creation.
+
+🧱 Account Hierarchy (3 Levels)
+Assets
+ └── Current Assets
+     └── Cash in Hand
+     └── Bank - UPI
+     └── Bank - Card
+Income
+ └── Sales
+     └── Pharmacy Sales
+     └── Clinic Consultation
+Expenses
+ └── Operating Expenses
+     └── Rent
+     └── Salary
+     └── Electricity
+
+🖥️ UI Pages
+📌 Sidebar
+Ledger
+ ├── Chart of Accounts
+ ├── Ledger Register
+ ├── Trial Balance
+ ├── P&L
+ └── Month-End Close
+
+📄 Chart of Accounts Page
+
+Table Columns
+
+Account Code (Auto)
+
+Account Name
+
+Type
+
+Parent Account
+
+Status (Active / Disabled)
+
+Locked 🔒 (System)
+
+Actions
+
+➕ Add Account (Admin only)
+
+✏️ Edit Name (Admin only)
+
+🚫 Disable (never delete)
+
+🔐 Governance Rules
+Action	Staff	Manager	HO	Admin
+Create account	❌	❌	❌	✅
+Rename account	❌	❌	❌	✅
+Disable account	❌	❌	❌	✅
+Post to account	✅	✅	✅	❌
+Change type	❌	❌	❌	❌
+⚠️ Hard Rules
+
+Accounts are never deleted
+
+Disabled accounts:
+
+Can be viewed
+
+Cannot be posted to
+
+Parent account must exist
+
+Leaf accounts only allow posting
+
+2️⃣ Month-End Close Workflow
+🎯 Purpose
+
+Freeze accounting periods forever once reviewed.
+
+🧭 Workflow Stages
+OPEN → REVIEW → CLOSED → (LOCKED)
+
+📄 Month-End Close Page
+🧮 Summary Cards
+
+Total Income
+
+Total Expense
+
+Net Profit/Loss
+
+Cash Balance
+
+Credit Outstanding
+
+🧾 Mandatory Checklist
+
+All must be ✅ before closing:
+
+ All business days locked
+
+ Cash reconciled (no variance OR explained)
+
+ Credit balances reviewed
+
+ Trial Balance matches
+
+ No pending reversals
+
+🔐 Close Action
+
+Only HO Accountant / Admin
+
+Requires:
+
+Confirmation
+
+Optional notes
+
+Digital timestamp
+
+🚫 After Close
+
+No edits
+
+No reversals
+
+No unlocks
+
+No adjustments
+
+Month close is final.
+If wrong → adjustment in next month only.
+
+3️⃣ Trial Balance Variance Detector
+🎯 Purpose
+
+Detect broken accounting before auditors do.
+
+📊 Trial Balance Page
+
+Columns
+
+Account
+
+Debit
+
+Credit
+
+Net Balance
+
+Footer
+
+Total Debit: ₹ X
+Total Credit: ₹ Y
+Difference: ₹ Z
+
+🚨 Variance Detection Logic
+
+Triggered when:
+
+Debit ≠ Credit
+
+Difference > ₹0.01
+
+Any account missing contra
+
+🧠 Auto-Diagnostics Panel
+
+Shows:
+
+Orphan transactions
+
+Unbalanced manual entries
+
+Reversal without parent
+
+Transactions posted on locked days
+
+Missing ledger_date
+
+🔔 Alerts
+
+Banner on dashboard
+
+Red badge on Trial Balance
+
+Export blocked if variance exists
+
+🔐 Permissions
+Action	Staff	Manager	HO	Admin
+View	✅	✅	✅	✅
+Export	❌	❌	✅	✅
+Fix variance	❌	❌	❌	❌
+
+Variances are fixed via adjustments, not edits.
+
+4️⃣ Fraud / Anomaly Signals (Ledger Behavior)
+🎯 Purpose
+
+Surface suspicious behavior, not just errors.
+
+🚨 Anomaly Types
+💰 Financial
+
+Cash sale > ₹50,000
+
+Sale > ₹1,00,000
+
+Credit spike day-over-day
+
+Refund without original sale
+
+🧾 Behavioral
+
+Too many manual entries
+
+Frequent reversals by same user
+
+Unlocks after midnight
+
+Adjustments on old dates
+
+⏰ Temporal
+
+Entries outside duty window
+
+Edits near closing time
+
+Reversals post day-lock request
+
+📊 Anomaly Dashboard
+
+Widgets
+
+🔴 Critical anomalies (Today)
+
+🟠 Warnings (7 days)
+
+🔵 Info signals
+
+Table
+
+Type
+
+Severity
+
+Linked Entry
+
+User
+
+Status
+
+Action
+
+🧠 Rules Engine (Configurable)
+
+Admins can set thresholds:
+
+Amount limits
+
+Frequency limits
+
+Time windows
+
+🔐 Governance
+Role	Action
+Staff	View own alerts
+Manager	View outlet alerts
+HO	Review + resolve
+Admin	Configure rules
+5️⃣ External Accountant Export (Tally-Style)
+🎯 Purpose
+
+Let real accountants work without touching your system.
+
+📦 Export Formats
+1️⃣ CSV (Universal)
+
+Ledger Entries
+
+Trial Balance
+
+P&L
+
+Day-wise Cash
+
+2️⃣ Excel (Structured)
+
+Separate sheets:
+
+CoA
+
+Ledger
+
+TB
+
+P&L
+
+Customers
+
+3️⃣ Tally-Compatible Format
+
+Columns
+
+Voucher Date
+
+Voucher Type
+
+Voucher No
+
+Debit Account
+
+Credit Account
+
+Amount
+
+Narration
+
+Reference ID
+
+📄 Export Page
+
+Filters
+
+Date range
+
+Outlet
+
+Account
+
+Voucher type
+
+Options
+
+Include reversals
+
+Include narration
+
+Group by voucher
+
+🔐 Access Control
+Role	Export
+Staff	❌
+Manager	❌
+HO	✅
+Admin	✅
+Auditor	Read-only
+🛡️ Audit Safeguards
+
+Every export logged
+
+File hash stored
+
+Download expiry
+
+Watermark: “For Audit Use Only”
+
+🧠 FINAL SYSTEM PRINCIPLES (NON-NEGOTIABLE)
+
+Nothing is edited — everything is corrected
+
+Time determines authority
+
+Ledger is the only truth
+
+Reports never store numbers
+
+Locks beat permissions
+
+Exports don’t bypass governance

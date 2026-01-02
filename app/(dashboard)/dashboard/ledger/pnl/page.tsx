@@ -47,17 +47,25 @@ export default function PnLPage() {
 
             data?.forEach((t: any) => {
                 const amt = Number(t.amount);
-                if (t.type === 'income') {
-                    res.income.total += amt;
-                    if (t.category === 'sales') res.income.sales += amt;
-                    else res.income.other += amt;
+
+                // Rule: Netting Reversals
+                // A reversal of an 'income' is an 'expense' on that same category.
+                if (t.category === 'sales') {
+                    if (t.type === 'income') res.income.sales += amt;
+                    else if (t.type === 'expense') res.income.sales -= amt; // Sales Return
+                } else if (t.category === 'purchase') {
+                    if (t.type === 'expense') res.expense.purchase += amt;
+                    else if (t.type === 'income') res.expense.purchase -= amt; // Purchase Return
+                } else if (t.type === 'income') {
+                    res.income.other += amt;
                 } else if (t.type === 'expense') {
-                    res.expense.total += amt;
-                    if (t.category === 'purchase') res.expense.purchase += amt;
-                    else res.expense.operating += amt;
+                    res.expense.operating += amt;
                 }
             });
 
+            // Recalculate Totals
+            res.income.total = res.income.sales + res.income.other;
+            res.expense.total = res.expense.purchase + res.expense.operating;
             res.netProfit = res.income.total - res.expense.total;
             setPnl(res);
 

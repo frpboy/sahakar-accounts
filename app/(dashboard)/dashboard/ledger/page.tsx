@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
@@ -10,8 +10,6 @@ import {
     ArrowDownRight,
     AlertTriangle,
     Lock,
-    Unlock,
-    FileText,
     Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,38 +27,68 @@ export default function LedgerDashboardPage() {
         unbalancedDays: 0,
         lockedDays: 0
     });
+    const [calculatedBalances, setCalculatedBalances] = useState({ cash: 0, bank: 0 });
 
     const roleDescription = getEditWindowDescription(user?.profile?.role || '');
 
-    useEffect(() => {
-        loadLedgerStats();
-    }, [user]);
-
-    const loadLedgerStats = async () => {
+    const loadLedgerStats = useCallback(async () => {
         if (!user?.profile.outlet_id) return;
         setLoading(true);
-        // Placeholder logic for stats - in real impl, query aggregate views
-        // For now, fetching simple transaction sums for "This Month"
         try {
-            // Fetch simplified stats
-            // ... implementation pending deeper queries
-            setStats({
-                totalDebit: 0, // Placeholder
-                totalCredit: 0,
-                unbalancedDays: 0,
-                lockedDays: 0
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            const startStr = `${startOfMonth.toISOString().split('T')[0]}T07:00:00`;
+
+            const { data, error } = await (supabase as any)
+                .from('transactions')
+                .select('type, amount, payment_mode')
+                .eq('outlet_id', user.profile.outlet_id)
+                .gte('created_at', startStr);
+
+            if (error) throw error;
+
+            let dr = 0, cr = 0, cash = 0, bank = 0;
+            data?.forEach((t: any) => {
+                const amt = Number(t.amount);
+                if (t.type === 'income') cr += amt;
+                else dr += amt;
+
+                const isIncome = t.type === 'income';
+                if (t.payment_mode === 'Cash') cash += isIncome ? amt : -amt;
+                else if (['UPI', 'Card', 'Bank Transfer'].includes(t.payment_mode)) bank += isIncome ? amt : -amt;
             });
+
+            const { count: lockedCount } = await (supabase as any)
+                .from('day_locks')
+                .select('*', { count: 'exact', head: true })
+                .eq('outlet_id', user.profile.outlet_id)
+                .eq('is_locked', true);
+
+            setStats({
+                totalDebit: dr,
+                totalCredit: cr,
+                unbalancedDays: 0,
+                lockedDays: lockedCount || 0
+            });
+            setCalculatedBalances({ cash, bank });
+
         } catch (e) {
             console.error(e);
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, supabase]);
+
+    useEffect(() => {
+        loadLedgerStats();
+    }, [loadLedgerStats]);
 
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-            <TopBar title="Ledger Dashboard">
-                <div className="flex items-center gap-2">
+            <TopBar title="Ledger Dashboard" />
+
+            <div className="flex-1 overflow-auto p-6 space-y-6">
+                <div className="flex justify-between items-center mb-6">
                     <span className="text-sm text-gray-500 hidden md:inline">
                         Edit Window: <span className="font-semibold text-blue-600">{roleDescription}</span>
                     </span>
@@ -69,37 +97,35 @@ export default function LedgerDashboardPage() {
                         Export Snapshot
                     </Button>
                 </div>
-            </TopBar>
 
-            <div className="flex-1 overflow-auto p-6 space-y-6">
                 {/* KPI Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <MetricCard
-                        title="Total Debits (Month)"
+                        title="Monthly Exp (Dr)"
                         value={`₹${stats.totalDebit.toLocaleString()}`}
-                        icon={ArrowUpRight}
-                        change="0%"
+                        icon={<ArrowUpRight className="w-4 h-4" />}
+                        trendValue={`${stats.lockedDays} Locked Days`}
                         trend="neutral"
                     />
                     <MetricCard
-                        title="Total Credits (Month)"
+                        title="Monthly Rev (Cr)"
                         value={`₹${stats.totalCredit.toLocaleString()}`}
-                        icon={ArrowDownRight}
-                        change="0%"
+                        icon={<ArrowDownRight className="w-4 h-4" />}
+                        trendValue="Synced"
                         trend="neutral"
                     />
                     <MetricCard
-                        title="Cash Balance"
-                        value="₹0" // Needs real fetching
-                        icon={IndianRupee}
-                        change="Calcuated"
-                        trend="up"
+                        title="Cash in Hand"
+                        value={`₹${calculatedBalances.cash.toLocaleString()}`}
+                        icon={<IndianRupee className="w-4 h-4" />}
+                        trendValue="Live Balance"
+                        trend={calculatedBalances.cash >= 0 ? "up" : "down"}
                     />
                     <MetricCard
-                        title="Bank / UPI"
-                        value="₹0"
-                        icon={IndianRupee}
-                        change="Estimated"
+                        title="Bank/UPI Bal"
+                        value={`₹${calculatedBalances.bank.toLocaleString()}`}
+                        icon={<IndianRupee className="w-4 h-4" />}
+                        trendValue="Digital Vault"
                         trend="neutral"
                     />
                 </div>

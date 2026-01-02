@@ -170,6 +170,19 @@ CREATE TABLE public.dashboard_annotations (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT dashboard_annotations_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.day_locks (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  outlet_id uuid NOT NULL,
+  locked_date date NOT NULL,
+  status text DEFAULT 'locked'::text CHECK (status = ANY (ARRAY['locked'::text, 'unlocked'::text])),
+  reason text,
+  locked_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT day_locks_pkey PRIMARY KEY (id),
+  CONSTRAINT day_locks_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT day_locks_locked_by_fkey FOREIGN KEY (locked_by) REFERENCES public.users(id)
+);
 CREATE TABLE public.duty_logs (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL,
@@ -348,10 +361,17 @@ CREATE TABLE public.transactions (
   outlet_id uuid,
   entry_number text,
   customer_phone text,
+  source_type text CHECK (source_type = ANY (ARRAY['sale'::text, 'purchase'::text, 'return'::text, 'manual'::text, 'adjustment'::text, 'system'::text])),
+  source_id uuid,
+  ledger_date date DEFAULT CURRENT_DATE,
+  is_manual boolean DEFAULT false,
+  is_reversal boolean DEFAULT false,
+  parent_transaction_id uuid,
   CONSTRAINT transactions_pkey PRIMARY KEY (id),
   CONSTRAINT transactions_daily_record_id_fkey FOREIGN KEY (daily_record_id) REFERENCES public.daily_records(id),
   CONSTRAINT transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
-  CONSTRAINT transactions_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+  CONSTRAINT transactions_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT transactions_parent_transaction_id_fkey FOREIGN KEY (parent_transaction_id) REFERENCES public.transactions(id)
 );
 CREATE TABLE public.user_outlet_access (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
