@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Building2, Loader2 } from 'lucide-react';
+import { X, Building2, Loader2, Edit } from 'lucide-react';
 import { createClientBrowser } from '@/lib/supabase-client';
 
 interface CreateOutletModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    initialData?: any;
 }
 
 interface OutletType {
@@ -16,7 +17,7 @@ interface OutletType {
     short_code: string;
 }
 
-export function CreateOutletModal({ isOpen, onClose, onSuccess }: CreateOutletModalProps) {
+export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: CreateOutletModalProps) {
     const supabase = createClientBrowser();
     const [formData, setFormData] = useState({
         name: '',
@@ -33,8 +34,28 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess }: CreateOutletMo
     useEffect(() => {
         if (isOpen) {
             fetchTypes();
+            if (initialData) {
+                setFormData({
+                    name: initialData.name || '',
+                    code: initialData.code || '',
+                    location: initialData.location || '', // Use location field, fallback to address if needed
+                    phone: initialData.phone || '',
+                    email: initialData.email || '',
+                    type: initialData.type || '',
+                });
+            } else {
+                setFormData({
+                    name: '',
+                    code: '',
+                    location: '',
+                    phone: '',
+                    email: '',
+                    type: '',
+                });
+            }
+            setError('');
         }
-    }, [isOpen]);
+    }, [isOpen, initialData]);
 
     const fetchTypes = async () => {
         const { data } = await (supabase as any).from('outlet_types').select('*').order('name');
@@ -47,32 +68,37 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess }: CreateOutletMo
         setError('');
 
         try {
-            const res = await fetch('/api/outlets', {
-                method: 'POST',
+            const url = initialData ? `/api/outlets/${initialData.id}` : '/api/outlets';
+            const method = initialData ? 'PATCH' : 'POST';
+
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
             });
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || 'Failed to create outlet');
+                throw new Error(data.error || `Failed to ${initialData ? 'update' : 'create'} outlet`);
             }
 
             // Success
             onSuccess();
             onClose();
 
-            // Reset form
-            setFormData({
-                name: '',
-                code: '',
-                location: '',
-                phone: '',
-                email: '',
-                type: '',
-            });
+            // Reset form only if creating
+            if (!initialData) {
+                setFormData({
+                    name: '',
+                    code: '',
+                    location: '',
+                    phone: '',
+                    email: '',
+                    type: '',
+                });
+            }
         } catch (err: any) {
-            setError(err instanceof Error ? err.message : 'Failed to create outlet');
+            setError(err instanceof Error ? err.message : `Failed to ${initialData ? 'update' : 'create'} outlet`);
         } finally {
             setLoading(false);
         }
@@ -87,7 +113,7 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess }: CreateOutletMo
                 <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
                     <div className="flex items-center gap-2">
                         <Building2 className="w-5 h-5 text-green-600" />
-                        <h2 className="text-xl font-bold text-gray-900">Add New Outlet</h2>
+                        <h2 className="text-xl font-bold text-gray-900">{initialData ? 'Edit Outlet' : 'Add New Outlet'}</h2>
                     </div>
                     <button
                         onClick={onClose}
@@ -199,8 +225,8 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess }: CreateOutletMo
                         />
                     </div>
 
-                    {/* Buttons */}
-                    <div className="flex gap-3 pt-4">
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-4 border-t mt-6">
                         <button
                             type="button"
                             onClick={onClose}
@@ -212,17 +238,17 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess }: CreateOutletMo
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 flex items-center justify-center gap-2"
                         >
                             {loading ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
-                                    Creating...
+                                    {initialData ? 'Saving...' : 'Creating...'}
                                 </>
                             ) : (
                                 <>
-                                    <Building2 className="w-4 h-4" />
-                                    Create Outlet
+                                    {initialData ? <Edit className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+                                    {initialData ? 'Save Changes' : 'Create Outlet'}
                                 </>
                             )}
                         </button>

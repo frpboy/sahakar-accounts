@@ -157,11 +157,11 @@ export function TransactionDrawer({ isOpen, onClose, transaction }: TransactionD
                 {/* Footer Actions */}
                 <div className="p-6 border-t bg-gray-50 flex gap-3">
                     <button
-                        onClick={() => alert('🖨️ Print/Export feature coming soon')}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all"
+                        onClick={() => window.print()}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all print:hidden"
                     >
-                        <Download className="w-4 h-4" />
-                        Print / Export
+                        <Printer className="w-4 h-4" />
+                        Print Receipt
                     </button>
 
                     <button
