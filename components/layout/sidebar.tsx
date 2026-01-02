@@ -21,7 +21,8 @@ import {
     UserCog,
     Building2,
     Download,
-    Settings
+    Settings,
+    AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useApp } from '@/components/providers/app-provider';
@@ -90,9 +91,9 @@ export function Sidebar({ className }: { className?: string }) {
             setOpen: setIsTransactionsOpen,
             items: [
                 { label: 'New Sales', href: '/dashboard/sales', icon: ShoppingCart },
-                { label: 'Sales Return', href: '/dashboard/returns', icon: Undo2 },
+                { label: 'Sales Return', href: '/dashboard/returns/sales', icon: Undo2 },
                 { label: 'Purchase', href: '/dashboard/purchase', icon: Package },
-                { label: 'Purchase Return', href: '/dashboard/returns?type=purchase', icon: Undo2 },
+                { label: 'Purchase Return', href: '/dashboard/returns/purchase', icon: Undo2 },
             ]
         });
         navItems.push(
@@ -145,6 +146,7 @@ export function Sidebar({ className }: { className?: string }) {
                 items: [
                     { label: 'User Management', href: '/dashboard/management/users', icon: UserCog },
                     { label: 'Outlet Management', href: '/dashboard/management/outlets', icon: Building2 },
+                    { label: 'Anomalies', href: '/dashboard/anomalies', icon: AlertTriangle },
                 ]
             }
         );

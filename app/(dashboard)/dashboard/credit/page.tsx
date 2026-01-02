@@ -141,7 +141,10 @@ export default function CreditReceivedPage() {
                         date: today,
                         opening_cash: 0,
                         opening_upi: 0,
-                        status: 'open'
+                        status: 'open',
+                        particulars: 'Day Opening',
+                        amount: 0,
+                        category: 'system'
                     })
                     .select('id')
                     .single();
@@ -162,7 +165,7 @@ export default function CreditReceivedPage() {
                     daily_record_id: dailyRecordId,
                     outlet_id: user.profile.outlet_id,
                     entry_number: entryNumber.trim(),
-                    transaction_type: 'income',
+                    type: 'income',
                     category: 'credit_received',
                     description: `Credit received from ${customerName.trim()} (${customerPhone})`,
                     amount: totalAmount,
@@ -232,7 +235,7 @@ export default function CreditReceivedPage() {
                                         placeholder="10-digit phone"
                                         value={customerPhone}
                                         onChange={(e) => {
-                                            const val = e.target.value;
+                                            const val = e.target.value.replace(/\D/g, '');
                                             setCustomerPhone(val);
                                             if (val.length >= 3) searchCustomers(val);
                                             else { setShowSuggestions(false); setCustomerExists(false); }
@@ -245,26 +248,26 @@ export default function CreditReceivedPage() {
                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
                                         </div>
                                     )}
+                                    {showSuggestions && customerSuggestions.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-md shadow-lg max-h-40 overflow-auto text-sm">
+                                            {customerSuggestions.map((c, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    onClick={() => {
+                                                        setCustomerPhone(c.phone);
+                                                        setCustomerName(c.name);
+                                                        setCustomerExists(true);
+                                                        setShowSuggestions(false);
+                                                    }}
+                                                    className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b dark:border-slate-800 last:border-b-0"
+                                                >
+                                                    <div className="font-medium text-gray-900 dark:text-white">{c.name}</div>
+                                                    <div className="text-xs text-gray-500 dark:text-slate-400">{c.phone}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                {showSuggestions && customerSuggestions.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-md shadow-lg max-h-40 overflow-auto text-sm">
-                                        {customerSuggestions.map((c, idx) => (
-                                            <div
-                                                key={idx}
-                                                onClick={() => {
-                                                    setCustomerPhone(c.phone);
-                                                    setCustomerName(c.name);
-                                                    setCustomerExists(true);
-                                                    setShowSuggestions(false);
-                                                }}
-                                                className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b dark:border-slate-800 last:border-b-0"
-                                            >
-                                                <div className="font-medium text-gray-900 dark:text-white">{c.name}</div>
-                                                <div className="text-xs text-gray-500 dark:text-slate-400">{c.phone}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
@@ -305,6 +308,7 @@ export default function CreditReceivedPage() {
                                     placeholder="0.00"
                                     value={cashAmount}
                                     onChange={(e) => setCashAmount(e.target.value)}
+                                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                                     step="0.01"
                                     min="0"
                                     disabled={isLocked}
@@ -320,6 +324,7 @@ export default function CreditReceivedPage() {
                                     placeholder="0.00"
                                     value={upiAmount}
                                     onChange={(e) => setUpiAmount(e.target.value)}
+                                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                                     step="0.01"
                                     min="0"
                                     disabled={isLocked}

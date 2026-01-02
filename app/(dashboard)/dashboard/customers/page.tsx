@@ -25,7 +25,7 @@ export default function CustomersPage() {
     const [totalRecords, setTotalRecords] = useState(0);
 
     const [loading, setLoading] = useState(false);
-    const [rows, setRows] = useState<Array<{ id: string; name: string; phone?: string | null; customer_code?: string | null; internal_customer_id?: string | null; created_at?: string | null; is_active?: boolean | null }>>([]);
+    const [rows, setRows] = useState<Array<{ id: string; name: string; phone?: string | null; customer_code?: string | null; internal_customer_id?: string | null; created_at?: string | null; is_active?: boolean | null; referred_by?: string | null; }>>([]);
     const [error, setError] = useState<string | null>(null);
     const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
     const [exporting, setExporting] = useState(false);
@@ -74,6 +74,7 @@ export default function CustomersPage() {
                     internal_customer_id: c.internal_customer_id,
                     is_active: c.is_active,
                     created_at: c.created_at,
+                    referred_by: c.referred_by,
                 })));
             } catch (e: any) {
                 if (!mounted) return;
@@ -108,7 +109,7 @@ export default function CustomersPage() {
             let hasMore = true;
 
             while (hasMore) {
-                const { data, error } = await supabase
+                const { data, error } = await (supabase as any)
                     .from('customers')
                     .select('*')
                     .order('name', { ascending: true })

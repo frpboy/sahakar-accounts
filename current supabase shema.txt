@@ -64,14 +64,15 @@ CREATE TABLE public.auditor_access_log (
   ip_address text,
   user_agent text,
   CONSTRAINT auditor_access_log_pkey PRIMARY KEY (id),
-  CONSTRAINT auditor_access_log_auditor_id_fkey FOREIGN KEY (auditor_id) REFERENCES public.users(id),
-  CONSTRAINT auditor_access_log_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+  CONSTRAINT auditor_access_log_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
+  CONSTRAINT auditor_access_log_auditor_id_fkey FOREIGN KEY (auditor_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.auditor_outlets (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid,
   outlet_id uuid,
-  CONSTRAINT auditor_outlets_pkey PRIMARY KEY (id)
+  CONSTRAINT auditor_outlets_pkey PRIMARY KEY (id),
+  CONSTRAINT auditor_outlets_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
 );
 CREATE TABLE public.business_days (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -144,7 +145,6 @@ CREATE TABLE public.daily_records (
   last_synced_at timestamp with time zone,
   sheet_sync_error text,
   CONSTRAINT daily_records_pkey PRIMARY KEY (id),
-  CONSTRAINT daily_entries_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
   CONSTRAINT daily_entries_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
   CONSTRAINT daily_records_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id),
   CONSTRAINT daily_records_locked_by_fkey FOREIGN KEY (locked_by) REFERENCES public.users(id)
@@ -166,6 +166,18 @@ CREATE TABLE public.dashboard_annotations (
   text text NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT dashboard_annotations_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.duty_logs (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  outlet_id uuid,
+  duty_start timestamp with time zone,
+  duty_end timestamp with time zone,
+  date date NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT duty_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT duty_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT duty_logs_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
 );
 CREATE TABLE public.export_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -314,7 +326,7 @@ CREATE TABLE public.transactions (
   daily_record_id uuid,
   type character varying NOT NULL CHECK (type::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])),
   category character varying NOT NULL,
-  payment_mode character varying NOT NULL CHECK (payment_mode::text = ANY (ARRAY['cash'::character varying, 'upi'::character varying]::text[])),
+  payment_modes text NOT NULL CHECK (payment_modes = ANY (ARRAY['cash'::character varying::text, 'upi'::character varying::text])),
   amount numeric NOT NULL CHECK (amount > 0::numeric),
   description text,
   created_by uuid,
@@ -322,9 +334,22 @@ CREATE TABLE public.transactions (
   updated_at timestamp with time zone DEFAULT now(),
   idempotency_key text,
   internal_entry_id text UNIQUE,
+  outlet_id uuid,
+  entry_number text,
+  customer_phone text,
   CONSTRAINT transactions_pkey PRIMARY KEY (id),
   CONSTRAINT transactions_daily_record_id_fkey FOREIGN KEY (daily_record_id) REFERENCES public.daily_records(id),
-  CONSTRAINT transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+  CONSTRAINT transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
+  CONSTRAINT transactions_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
+CREATE TABLE public.user_outlet_access (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  outlet_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_outlet_access_pkey PRIMARY KEY (id),
+  CONSTRAINT user_outlet_access_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT user_outlet_access_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
 );
 CREATE TABLE public.user_outlets (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -347,6 +372,6 @@ CREATE TABLE public.users (
   full_name text,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
-  CONSTRAINT users_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
-  CONSTRAINT users_auditor_access_granted_by_fkey FOREIGN KEY (auditor_access_granted_by) REFERENCES public.users(id)
+  CONSTRAINT users_auditor_access_granted_by_fkey FOREIGN KEY (auditor_access_granted_by) REFERENCES public.users(id),
+  CONSTRAINT users_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
 );

@@ -2,11 +2,12 @@
 
 import React, { useState, useMemo } from 'react';
 import { TopBar } from '@/components/layout/topbar';
-import { Download, FileText, IndianRupee, ShoppingCart, Building2, Users, TrendingUp } from 'lucide-react';
+import { Download, FileText, IndianRupee, ShoppingCart, Building2, Users, TrendingUp, Activity, List } from 'lucide-react';
 import { createClientBrowser } from '@/lib/supabase-client';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Link from 'next/link';
 
 export default function ReportsPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
@@ -14,56 +15,142 @@ export default function ReportsPage() {
     const [exportType, setExportType] = useState<'customers' | 'transactions' | 'all'>('customers');
     const [exporting, setExporting] = useState(false);
 
-    // ... existing reportCards ...
+    const reportCards = [
+        {
+            title: 'Sales Reports',
+            description: 'Analyze revenue, trends, and payment modes',
+            icon: <ShoppingCart className="w-6 h-6 text-blue-600" />,
+            color: 'border-blue-200 bg-blue-50/50',
+            href: '/dashboard/reports/sales',
+            dataPoints: ['Revenue Trends', 'Payment Modes', 'Top Products']
+        },
+        {
+            title: 'Financial Reports',
+            description: 'Track daily closing balances and expenses',
+            icon: <IndianRupee className="w-6 h-6 text-green-600" />,
+            color: 'border-green-200 bg-green-50/50',
+            href: '/dashboard/reports/financial',
+            dataPoints: ['Daily Closing', 'Expense Analysis', 'Audit Logs']
+        },
+        {
+            title: 'Outlet Performance',
+            description: 'Compare performance across different branches',
+            icon: <Building2 className="w-6 h-6 text-purple-600" />,
+            color: 'border-purple-200 bg-purple-50/50',
+            href: '/dashboard/reports/outlets',
+            dataPoints: ['Branch Comparison', 'Staff Performance', 'Target Tracking']
+        },
+        {
+            title: 'Customer Insights',
+            description: 'View customer growth and behavior',
+            icon: <Users className="w-6 h-6 text-orange-600" />,
+            color: 'border-orange-200 bg-orange-50/50',
+            href: '/dashboard/reports/customers',
+            dataPoints: ['Customer Growth', 'Top Spenders', 'Inactive Users']
+        },
+        {
+            title: 'Transaction Report',
+            description: 'Detailed log of all system transactions',
+            icon: <List className="w-6 h-6 text-teal-600" />,
+            color: 'border-teal-200 bg-teal-50/50',
+            href: '/dashboard/reports/transactions',
+            dataPoints: ['Detailed Logs', 'Filter by Type', 'Export Data']
+        },
+        {
+            title: 'Trends & Analytics',
+            description: 'Visual insights into business growth',
+            icon: <TrendingUp className="w-6 h-6 text-indigo-600" />,
+            color: 'border-indigo-200 bg-indigo-50/50',
+            href: '/dashboard/reports/analytics',
+            dataPoints: ['MoM Growth', 'Retention Rates', 'Forecasting']
+        },
+        {
+            title: 'User Activity',
+            description: 'Monitor staff actions and system usage',
+            icon: <Activity className="w-6 h-6 text-pink-600" />,
+            color: 'border-pink-200 bg-pink-50/50',
+            href: '/dashboard/reports/users',
+            dataPoints: ['Login History', 'Action Logs', 'Performance']
+        }
+    ];
 
     const handleExportAll = async () => {
         setExporting(true);
         try {
-            if (exportType === 'customers' || exportType === 'all') {
-                // Export Customers
-                const { data: customers } = await supabase
-                    .from('customers')
-                    .select('*')
-                    .order('name');
+            const today = new Date().toISOString().split('T')[0];
+            let data: any[] = [];
+            let fileName = `Export_${today}`;
 
-                if (customers) {
-                    if (exportFormat === 'excel') {
-                        const ws = XLSX.utils.json_to_sheet(customers);
-                        const wb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(wb, ws, "Customers");
-                        XLSX.writeFile(wb, `Customers_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
-                    } else if (exportFormat === 'pdf') {
-                        const doc = new jsPDF();
-                        doc.text("Customer Report", 14, 15);
-                        autoTable(doc, {
-                            head: [["ID", "Name", "Phone", "Balance", "Status"]],
-                            body: customers.map((c: any) => [
-                                c.internal_customer_id || c.customer_code,
-                                c.name,
-                                c.phone,
-                                c.outstanding_balance,
-                                c.is_active ? 'Active' : 'Inactive'
-                            ]),
-                            startY: 20
-                        });
-                        doc.save(`Customers_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-                    } else {
-                        // CSV logic (can use XLSX for CSV too)
-                        const ws = XLSX.utils.json_to_sheet(customers);
-                        const csv = XLSX.utils.sheet_to_csv(ws);
-                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                        const link = document.createElement("a");
-                        link.href = URL.createObjectURL(blob);
-                        link.download = `Customers_Report_${new Date().toISOString().split('T')[0]}.csv`;
-                        link.click();
-                    }
+            if (exportType === 'customers') {
+                const { data: customers } = await (supabase as any).from('customers').select('*').order('name');
+                data = customers || [];
+                fileName = `Customers_Report_${today}`;
+            } else if (exportType === 'transactions') {
+                const { data: transactions } = await (supabase as any).from('transactions').select('*').order('created_at', { ascending: false });
+                data = transactions || [];
+                fileName = `Transactions_Report_${today}`;
+            } else if (exportType === 'all') {
+                // Multi-sheet export for Excel only usually, but let's handle what we can
+                const { data: customers } = await (supabase as any).from('customers').select('*');
+                const { data: transactions } = await (supabase as any).from('transactions').select('*').limit(5000); // Limit to prevent crash
+                const { data: outlets } = await (supabase as any).from('outlets').select('*');
+
+                if (exportFormat === 'excel') {
+                    const wb = XLSX.utils.book_new();
+                    if (customers) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(customers), "Customers");
+                    if (transactions) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(transactions), "Transactions");
+                    if (outlets) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(outlets), "Outlets");
+                    XLSX.writeFile(wb, `Full_Database_Export_${today}.xlsx`);
+                    setExporting(false);
+                    return;
+                } else {
+                    // Fallback for CSV/PDF in 'All' -> Just export transactions as it's the main one
+                    alert("For 'All Data', please use Excel format to get multiple sheets. Exporting Transactions only for now.");
+                    const { data: txns } = await (supabase as any).from('transactions').select('*').order('created_at', { ascending: false });
+                    data = txns || [];
+                    fileName = `Full_Export_Transactions_${today}`;
                 }
             }
 
-            // TODO: Add logic for 'transactions' and 'all' if needed, for now 'customers' is the request
-            if (exportType === 'all') {
-                // Placeholder for full export
-                alert('Full database export coming soon. Customer data exported.');
+            if (!data || data.length === 0) {
+                alert('No data found to export.');
+                setExporting(false);
+                return;
+            }
+
+            // Generate File
+            if (exportFormat === 'excel') {
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Data");
+                XLSX.writeFile(wb, `${fileName}.xlsx`);
+            } else if (exportFormat === 'csv') {
+                const ws = XLSX.utils.json_to_sheet(data);
+                const csv = XLSX.utils.sheet_to_csv(ws);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `${fileName}.csv`;
+                link.click();
+            } else if (exportFormat === 'pdf') {
+                const doc = new jsPDF();
+                doc.text(fileName.replace(/_/g, ' '), 14, 15);
+
+                // Simple auto-table with keys
+                const keys = Object.keys(data[0]);
+                const body = data.map((row: any) => keys.map(k => {
+                    const val = row[k];
+                    if (typeof val === 'object' && val !== null) return JSON.stringify(val);
+                    return val;
+                }));
+
+                autoTable(doc, {
+                    head: [keys],
+                    body: body,
+                    startY: 20,
+                    styles: { fontSize: 8, cellWidth: 'wrap' }
+                });
+                doc.save(`${fileName}.pdf`);
             }
 
         } catch (error) {
@@ -102,21 +189,12 @@ export default function ReportsPage() {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <select
-                                        value={exportFormat}
-                                        onChange={(e) => setExportFormat(e.target.value as any)}
-                                        className="px-3 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="excel">Excel (.xlsx)</option>
-                                        <option value="csv">CSV (.csv)</option>
-                                        <option value="pdf">PDF (.pdf)</option>
-                                    </select>
-                                    <select
                                         value={exportType}
                                         onChange={(e) => setExportType(e.target.value as any)}
                                         className="px-3 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 mr-2"
                                     >
                                         <option value="customers">Customers Data</option>
-                                        <option value="transactions">Transactions (Coming Soon)</option>
+                                        <option value="transactions">Transactions</option>
                                         <option value="all">All Data</option>
                                     </select>
                                     <select
@@ -144,7 +222,7 @@ export default function ReportsPage() {
                     {/* Report Cards Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {reportCards.map((report, idx) => (
-                            <a
+                            <Link
                                 key={idx}
                                 href={report.href}
                                 className={`block p-6 rounded-lg border-2 hover:shadow-lg transition-all ${report.color} hover:scale-105`}
@@ -178,7 +256,7 @@ export default function ReportsPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
                                 </div>
-                            </a>
+                            </Link>
                         ))}
                     </div>
 
@@ -187,12 +265,12 @@ export default function ReportsPage() {
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Statistics</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-blue-600">156</div>
+                                <div className="text-2xl font-bold text-blue-600">{reportCards.length}</div>
                                 <div className="text-sm text-gray-600">Total Reports</div>
                             </div>
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-green-600">23</div>
-                                <div className="text-sm text-gray-600">This Month</div>
+                                <div className="text-sm text-gray-600">Active Screens</div>
                             </div>
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-purple-600">4</div>

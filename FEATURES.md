@@ -15,7 +15,13 @@
 
 ## 🎯 System Overview
 
-**Sahakar Accounts** is a comprehensive multi-tenant accounting system designed for hyperpharmacy operations with 4 outlets. The system supports role-based access control, real-time dashboards, offline capabilities, and comprehensive financial tracking.
+**Sahakar Accounts** is a comprehensive accounting and management system for a hyperpharmacy chain. It manages 4 outlets + 1 Head Office (HO), handling daily sales, expenses, returns, and inventory management. The system is designed for **mobile-first usage** for staff/managers and **desktop usage** for HO accountants.
+
+### Key Highlights (v2.2.0)
+- **7 Core Reports** fully implemented with Analytics & Trends.
+- **Mandatory Notes** for all Sales/Purchase returns.
+- **Full Data Export** (Excel/CSV/PDF) for robust backup and analysis.
+- **Role-Based Dashboards** for Staff, Managers, and Accountants.
 
 **Tech Stack:**
 - Frontend: Next.js 16, React, TypeScript, TailwindCSS
@@ -246,6 +252,16 @@ Auto-fills:
 - Multiple payment modes
 - Expense category tracking
 
+### 5.3 Returns Logic
+- **Sales Return**:
+    - Reduces daily `cash`/`upi` collection or adds to `credit`.
+    - Requires original Bill Number for lookup.
+    - **Mandatory Reason**: Staff must enter a reason for every return.
+    - **UI**: Step-by-step wizard (Lookup -> Verify -> Reason -> Refund Mode).
+- **Purchase Return**:
+    - Treated as 'Income' (Cash in) or reduces 'Expense'.
+    - **Mandatory Reason**: Must specify why stock is being returned to supplier.
+
 ### 4. **Credit Received**
 - Customer payment collection
 - Links to original credit sale
@@ -332,41 +348,6 @@ CREATE TABLE duty_logs (
 
 ## 📈 Reports & Analytics
 
-### Reports Landing Page ⭐ NEW
-**6 Categorized Report Cards**
-
-1. **Sales Report**
-   - Daily sales, product-wise breakdown
-   - Customer purchase history
-   - Link: `/dashboard/reports/sales`
-
-2. **Financial Report**
-   - Income vs Expenses
-   - Payment mode breakdown
-   - Credit outstanding analysis
-   - Link: `/dashboard/reports/financial`
-
-3. **Outlet Performance**
-   - Revenue by outlet
-   - Staff productivity comparison
-   - Monthly targets tracking
-   - Link: `/dashboard/reports/outlets`
-
-4. **User Activity**
-   - User-wise transactions
-   - Login activity logs
-   - Audit trail
-   - Link: `/dashboard/reports/users`
-
-5. **Transaction Report**
-   - All transactions with filters
-   - Sales, purchases, returns, credits
-   - Link: `/dashboard/reports/transactions`
-
-6. **Trends & Analytics**
-   - Month-over-month growth
-   - Customer retention metrics
-   - Revenue forecasts
    - Link: `/dashboard/reports/analytics`
 
 ### Export Functionality ⭐ NEW
@@ -641,6 +622,6 @@ Supabase auto-generated API docs available in Supabase dashboard
 
 ---
 
-**Last Updated:** 03:05 02/01/26
-**Version:** 2.1.0
+**Last Updated:** 15:55 02/01/26
+**Version:** 2.1.1
 **System Status:** ✅ Production Ready

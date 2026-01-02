@@ -37,7 +37,7 @@ export default function CustomerReportsPage() {
         if (!user) return;
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('customers')
                 .select('*')
                 .order('name', { ascending: true });
@@ -279,8 +279,8 @@ export default function CustomerReportsPage() {
                                             <td className="px-4 py-3 text-gray-500 dark:text-gray-400 uppercase text-xs">{c.referred_by || '-'}</td>
                                             <td className="px-4 py-3">
                                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.is_active
-                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                                                     }`}>
                                                     {c.is_active ? 'Active' : 'Inactive'}
                                                 </span>

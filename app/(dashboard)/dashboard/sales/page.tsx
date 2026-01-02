@@ -57,7 +57,16 @@ export default function NewSalesPage() {
             // Re-calculate auto-distributed fields if total changes
             setPaymentAmounts(prev => {
                 const updated = { ...prev };
-                const distributable = paymentModes.filter(m => autoCalculated.has(m) || !prev[m] || parseFloat(prev[m]) === 0);
+                let distributable = paymentModes.filter(m => autoCalculated.has(m) || !prev[m] || parseFloat(prev[m]) === 0);
+
+                // If all fields are manual but total changed, we must re-distribute.
+                // Strategy: Keep strict manual fields? No, user changed Total, implying re-calc needed.
+                // If NO auto fields, treat ALL fields as auto-distributable to match the new total evenly.
+                // Alternatively, we could just pick one victim, but for "Sales Value" change, usually implies a reset or scale.
+                // Let's go with: If no auto fields, ALL become auto.
+                if (distributable.length === 0) {
+                    distributable = [...paymentModes];
+                }
 
                 if (distributable.length > 0) {
                     const manualSum = paymentModes.reduce((sum, m) => {
@@ -73,6 +82,19 @@ export default function NewSalesPage() {
                         updated[m] = perMode;
                         nextAutoCalculated.add(m);
                     });
+
+                    // Rounding fix for the last item
+                    let currentTotal = paymentModes.reduce((sum, m) => sum + (parseFloat(updated[m]) || 0), 0);
+                    let diff = total - currentTotal;
+
+                    if (Math.abs(diff) > 0.001 && distributable.length > 0) {
+                        const lastItem = distributable[distributable.length - 1];
+                        const newVal = (parseFloat(updated[lastItem]) + diff).toFixed(2);
+                        if (parseFloat(newVal) >= 0) {
+                            updated[lastItem] = newVal;
+                        }
+                    }
+
                     setAutoCalculated(nextAutoCalculated);
                 }
                 return updated;
@@ -217,17 +239,27 @@ export default function NewSalesPage() {
         setPaymentAmounts(prev => {
             const updated = { ...prev, [mode]: value };
 
+            if (paymentModes.length < 2) return updated;
+
             // Distribute remaining among all other "auto" fields
             // Eligible for auto: 
             // 1. Modes already in autoCalculated (except current)
             // 2. Modes that are currently empty (0 or '')
-            const distributableModes = paymentModes.filter(m => {
+            let distributableModes = paymentModes.filter(m => {
                 if (m === mode) return false;
                 return autoCalculated.has(m) || !prev[m] || parseFloat(prev[m]) === 0;
             });
 
+            // If no auto fields found, pick the last available mode (that isn't current) as the victim
+            if (distributableModes.length === 0) {
+                const otherModes = paymentModes.filter(m => m !== mode);
+                if (otherModes.length > 0) {
+                    distributableModes = [otherModes[otherModes.length - 1]];
+                }
+            }
+
             if (distributableModes.length > 0) {
-                // Calculate total of non-distributable (manual) fields
+                // Calculate total of non-victim (manual) fields
                 const manualSum = paymentModes.reduce((sum, m) => {
                     if (m === mode) return sum + enteredAmount;
                     if (distributableModes.includes(m)) return sum;
@@ -235,15 +267,42 @@ export default function NewSalesPage() {
                 }, 0);
 
                 const remaining = Math.max(0, totalSales - manualSum);
+                // If remaining is 0, we can still set victims to 0
+                // Divide remaining equally among victims
                 const perMode = (remaining / distributableModes.length).toFixed(2);
+
+                // Handle rounding issues for the last victim
+                // Not strictly necessary for 2 decimals but good to be precise
 
                 const nextAutoCalculated = new Set(autoCalculated);
                 nextAutoCalculated.delete(mode);
 
-                distributableModes.forEach(m => {
+                distributableModes.forEach((m, idx) => {
+                    // For the very last item, assign exactly the remainder to avoid 0.01 issues
+                    if (idx === distributableModes.length - 1) {
+                        const currentDistributedSum = distributableModes.slice(0, idx).reduce((s, dm) => s + parseFloat(updated[dm] || '0'), 0);
+                        // This logic is tricky inside a loop. 
+                        // Simplification: just assign perMode, maybe strict diff on last.
+                        // Let's stick to perMode for now, but usually one takes the rounding hit.
+                    }
+
                     updated[m] = perMode;
                     nextAutoCalculated.add(m);
                 });
+
+                // Refined rounding fix:
+                // Recalculate sum of all manual + newly distributed
+                // If absolute diff < 0.05, adjust the last distributable
+                let currentTotal = paymentModes.reduce((sum, m) => sum + (parseFloat(updated[m]) || 0), 0);
+                let diff = totalSales - currentTotal;
+
+                if (Math.abs(diff) > 0.001 && distributableModes.length > 0) {
+                    const lastVictim = distributableModes[distributableModes.length - 1];
+                    const newVal = (parseFloat(updated[lastVictim]) + diff).toFixed(2);
+                    if (parseFloat(newVal) >= 0) {
+                        updated[lastVictim] = newVal;
+                    }
+                }
 
                 setAutoCalculated(nextAutoCalculated);
             }
@@ -418,7 +477,10 @@ export default function NewSalesPage() {
                         date: today,
                         opening_cash: 0,
                         opening_upi: 0,
-                        status: 'open'
+                        status: 'open',
+                        particulars: 'Day Opening',
+                        amount: 0,
+                        category: 'system'
                     })
                     .select('id')
                     .single();
@@ -439,7 +501,7 @@ export default function NewSalesPage() {
                     daily_record_id: dailyRecordId,
                     outlet_id: profile.outlet_id,
                     entry_number: billNumber.trim(),
-                    transaction_type: 'income',
+                    type: 'income',
                     category: 'sales',
                     description: `Sale to ${customerName.trim()} (${customerPhone})`,
                     amount: amount,
@@ -537,12 +599,12 @@ export default function NewSalesPage() {
                             <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
                                 Customer Phone Number <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
+                            <div className="relative max-w-sm">
                                 <input
                                     type="text"
                                     placeholder="Enter 10-digit phone number"
                                     value={customerPhone}
-                                    onChange={(e) => setCustomerPhone(e.target.value)}
+                                    onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
                                     maxLength={10}
                                     disabled={isLocked}
                                     className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
@@ -552,28 +614,28 @@ export default function NewSalesPage() {
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
                                     </div>
                                 )}
-                            </div>
 
-                            {/* Autocomplete Suggestions */}
-                            {showSuggestions && customerSuggestions.length > 0 && (
-                                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-md shadow-lg max-h-40 overflow-auto">
-                                    {customerSuggestions.map((customer, idx) => (
-                                        <div
-                                            key={idx}
-                                            onClick={() => selectCustomer(customer)}
-                                            className="px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b dark:border-slate-800 last:border-b-0"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{customer.name}</div>
-                                                    <div className="text-xs text-gray-500 dark:text-slate-400">{customer.phone}</div>
+                                {/* Autocomplete Suggestions */}
+                                {showSuggestions && customerSuggestions.length > 0 && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-md shadow-lg max-h-40 overflow-auto">
+                                        {customerSuggestions.map((customer, idx) => (
+                                            <div
+                                                key={idx}
+                                                onClick={() => selectCustomer(customer)}
+                                                className="px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b dark:border-slate-800 last:border-b-0"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{customer.name}</div>
+                                                        <div className="text-xs text-gray-500 dark:text-slate-400">{customer.phone}</div>
+                                                    </div>
+                                                    <User className="w-3 h-3 text-gray-400 dark:text-slate-500" />
                                                 </div>
-                                                <User className="w-3 h-3 text-gray-400 dark:text-slate-500" />
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
 
                             {customerExists && customerName && (
                                 <div className="mt-2 flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded border dark:border-green-900/30">
@@ -590,7 +652,7 @@ export default function NewSalesPage() {
 
                         {/* Customer Name Field */}
                         {customerPhone.length === 10 && (
-                            <div className="mt-4">
+                            <div className="mt-4 max-w-sm">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">
                                     Customer Name <span className="text-red-500">*</span>
                                 </label>
@@ -627,7 +689,7 @@ export default function NewSalesPage() {
                                     type="text"
                                     placeholder="e.g., 458723"
                                     value={billNumber}
-                                    onChange={(e) => setBillNumber(e.target.value)}
+                                    onChange={(e) => setBillNumber(e.target.value.replace(/\D/g, ''))}
                                     disabled={isLocked}
                                     className="w-full px-3 py-2 border dark:border-slate-800 rounded-md bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed transition-colors"
                                 />
@@ -652,7 +714,16 @@ export default function NewSalesPage() {
                                     type="number"
                                     placeholder="0.00"
                                     value={salesValue}
-                                    onChange={(e) => setSalesValue(e.target.value)}
+                                    onChange={(e) => {
+                                        // Remove leading zeros
+                                        const val = e.target.value;
+                                        if (val.length > 1 && val.startsWith('0') && val[1] !== '.') {
+                                            setSalesValue(val.replace(/^0+/, ''));
+                                        } else {
+                                            setSalesValue(val);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                                     step="0.01"
                                     min="0"
                                     disabled={isLocked}
@@ -701,6 +772,7 @@ export default function NewSalesPage() {
                                                     placeholder="0.00"
                                                     value={paymentAmounts[mode] || ''}
                                                     onChange={(e) => handlePaymentAmountChange(mode, e.target.value)}
+                                                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                                                     step="0.01"
                                                     min="0"
                                                     disabled={isLocked}

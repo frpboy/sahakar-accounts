@@ -105,7 +105,10 @@ export default function PurchasePage() {
                         date: today,
                         opening_cash: 0,
                         opening_upi: 0,
-                        status: 'open'
+                        status: 'open',
+                        particulars: 'Day Opening',
+                        amount: 0,
+                        category: 'system'
                     })
                     .select('id')
                     .single();
@@ -127,7 +130,7 @@ export default function PurchasePage() {
                     daily_record_id: dailyRecordId,
                     outlet_id: user.profile.outlet_id,
                     entry_number: voucherNumber.trim(),
-                    transaction_type: 'expense',
+                    type: 'expense',
                     category: 'purchase',
                     description: `Purchase: ${particulars.trim()} (Invoice: ${invoiceNumber})`,
                     amount: totalAmount,

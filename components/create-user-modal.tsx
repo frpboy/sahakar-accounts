@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, UserPlus, Loader2 } from 'lucide-react';
 
-interface CreateUserModalProps {
-import { X, UserPlus, Loader2 } from 'lucide-react';
 
 interface CreateUserModalProps {
     isOpen: boolean;
