@@ -36,16 +36,22 @@ export async function PATCH(
         if (body.location) updateData.location = body.location;
         if (body.type) updateData.type = body.type;
 
-        const { data, error } = await supabase
+        const adminForUpdate = createAdminClient();
+        const { data, error } = await adminForUpdate
             .from('outlets')
             .update(updateData)
             .eq('id', id)
-            .select()
-            .single();
+            .select();
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
+
+        if (!data || data.length === 0) {
+            return NextResponse.json({ error: 'Outlet not found or permission denied' }, { status: 404 });
+        }
+
+        const updatedOutlet = data[0];
 
         // Audit Log
         try {
@@ -62,7 +68,7 @@ export async function PATCH(
             console.error('Audit log failed', e);
         }
 
-        return NextResponse.json(data);
+        return NextResponse.json(updatedOutlet);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
