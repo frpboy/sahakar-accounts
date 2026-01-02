@@ -30,9 +30,10 @@ function AnalyticsContent() {
     const { data: transactions, isLoading } = useQuery({
         queryKey: ['analytics-data', dateRange, outletIdParam],
         queryFn: async () => {
-            const endDate = new Date();
+            const endDate = new Date(); // Now
             const startDate = new Date();
             startDate.setDate(endDate.getDate() - parseInt(dateRange));
+            startDate.setHours(7, 0, 0, 0); // Start at 7 AM
 
             let query = supabase
                 .from('transactions')
@@ -80,11 +81,18 @@ function AnalyticsContent() {
 
     // Process Data for Charts
     const processedData = React.useMemo(() => {
+        const defaultTotal = { amount: 0, count: 0 };
         if (!transactions) return {
             dailyStats: [],
             modeStats: [],
             outletStats: [],
-            totals: { sales: 0, sales_return: 0, purchase: 0, purchase_return: 0, credit_received: 0 }
+            totals: {
+                sales: { ...defaultTotal },
+                sales_return: { ...defaultTotal },
+                purchase: { ...defaultTotal },
+                purchase_return: { ...defaultTotal },
+                credit_received: { ...defaultTotal }
+            }
         };
 
         const daily: Record<string, { date: string, income: number, expense: number }> = {};
@@ -97,15 +105,17 @@ function AnalyticsContent() {
         });
 
         const totals = {
-            sales: 0,
-            sales_return: 0,
-            purchase: 0,
-            purchase_return: 0,
-            credit_received: 0
+            sales: { amount: 0, count: 0 },
+            sales_return: { amount: 0, count: 0 },
+            purchase: { amount: 0, count: 0 },
+            purchase_return: { amount: 0, count: 0 },
+            credit_received: { amount: 0, count: 0 }
         };
 
         (transactions as any[]).forEach((t: any) => {
-            const date = new Date(t.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            const dateObj = new Date(t.created_at);
+            dateObj.setHours(dateObj.getHours() - 7); // Adjust for 7AM business day start
+            const date = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 
             if (!daily[date]) {
                 daily[date] = { date, income: 0, expense: 0 };
@@ -120,11 +130,11 @@ function AnalyticsContent() {
             }
 
             // Category Totals
-            if (t.category === 'sales') totals.sales += amount;
-            else if (t.category === 'sales_return') totals.sales_return += amount;
-            else if (t.category === 'purchase') totals.purchase += amount;
-            else if (t.category === 'purchase_return') totals.purchase_return += amount;
-            else if (t.category === 'credit_received') totals.credit_received += amount;
+            if (t.category === 'sales') { totals.sales.amount += amount; totals.sales.count += 1; }
+            else if (t.category === 'sales_return') { totals.sales_return.amount += amount; totals.sales_return.count += 1; }
+            else if (t.category === 'purchase') { totals.purchase.amount += amount; totals.purchase.count += 1; }
+            else if (t.category === 'purchase_return') { totals.purchase_return.amount += amount; totals.purchase_return.count += 1; }
+            else if (t.category === 'credit_received') { totals.credit_received.amount += amount; totals.credit_received.count += 1; }
 
             // Outlet Stats
             if (t.category === 'sales' && t.type === 'income' && t.outlet_id) {
@@ -219,27 +229,33 @@ function AnalyticsContent() {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
                         <p className="text-xs text-gray-500 mb-1">New Sales</p>
-                        <p className="text-xl font-bold text-gray-900 dark:text-white">₹{processedData.totals.sales.toLocaleString()}</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-white">₹{processedData.totals.sales.amount.toLocaleString()}</p>
+                        <p className="text-xs text-gray-400 mt-1">{processedData.totals.sales.count} entries</p>
                     </div>
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
                         <p className="text-xs text-gray-500 mb-1">Sales Return</p>
-                        <p className="text-xl font-bold text-red-600">₹{processedData.totals.sales_return.toLocaleString()}</p>
+                        <p className="text-xl font-bold text-red-600">₹{processedData.totals.sales_return.amount.toLocaleString()}</p>
+                        <p className="text-xs text-gray-400 mt-1">{processedData.totals.sales_return.count} entries</p>
                     </div>
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
                         <p className="text-xs text-gray-500 mb-1">Purchase</p>
-                        <p className="text-xl font-bold text-gray-900 dark:text-white">₹{processedData.totals.purchase.toLocaleString()}</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-white">₹{processedData.totals.purchase.amount.toLocaleString()}</p>
+                        <p className="text-xs text-gray-400 mt-1">{processedData.totals.purchase.count} entries</p>
                     </div>
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
                         <p className="text-xs text-gray-500 mb-1">Purchase Return</p>
-                        <p className="text-xl font-bold text-green-600">₹{processedData.totals.purchase_return.toLocaleString()}</p>
+                        <p className="text-xl font-bold text-green-600">₹{processedData.totals.purchase_return.amount.toLocaleString()}</p>
+                        <p className="text-xs text-gray-400 mt-1">{processedData.totals.purchase_return.count} entries</p>
                     </div>
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
                         <p className="text-xs text-gray-500 mb-1">Credit Received</p>
-                        <p className="text-xl font-bold text-blue-600">₹{processedData.totals.credit_received.toLocaleString()}</p>
+                        <p className="text-xl font-bold text-blue-600">₹{processedData.totals.credit_received.amount.toLocaleString()}</p>
+                        <p className="text-xs text-gray-400 mt-1">{processedData.totals.credit_received.count} entries</p>
                     </div>
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
                         <p className="text-xs text-gray-500 mb-1">New Customers</p>
                         <p className="text-xl font-bold text-purple-600">{newCustomers || 0}</p>
+                        <p className="text-xs text-gray-400 mt-1">Registrations</p>
                     </div>
                 </div>
 
@@ -321,34 +337,24 @@ function AnalyticsContent() {
                 </div>
 
                 {/* Outlet Performance Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                     <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border dark:border-slate-800 shadow-sm">
-                        <h3 className="font-bold text-gray-900 dark:text-white mb-6">Outlet Revenue Comparison</h3>
-                        <div className="h-[300px] w-full">
+                        <h3 className="font-bold text-gray-900 dark:text-white mb-6">Outlet Performance Comparison</h3>
+                        <div className="h-[400px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={processedData.outletStats} layout="vertical">
+                                <BarChart data={processedData.outletStats} layout="vertical" margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
-                                    <XAxis type="number" stroke="#888" fontSize={12} tickFormatter={(value) => '₹' + value} />
-                                    <YAxis dataKey="name" type="category" width={100} stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={{ fill: 'transparent' }} />
-                                    <Bar dataKey="revenue" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Revenue" barSize={20}>
-                                        {/* Label List? */}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
 
-                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border dark:border-slate-800 shadow-sm">
-                        <h3 className="font-bold text-gray-900 dark:text-white mb-6">Outlet Transaction Volume</h3>
-                        <div className="h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={processedData.outletStats} layout="vertical">
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
-                                    <XAxis type="number" stroke="#888" fontSize={12} />
-                                    <YAxis dataKey="name" type="category" width={100} stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <XAxis type="number" xAxisId="revenue" orientation="top" stroke="#3b82f6" fontSize={12} tickFormatter={(value) => '₹' + value} />
+                                    <XAxis type="number" xAxisId="count" orientation="bottom" stroke="#10b981" fontSize={12} />
+
+                                    <YAxis dataKey="name" type="category" width={150} stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+
                                     <Tooltip cursor={{ fill: 'transparent' }} />
-                                    <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} name="Transactions" barSize={20} />
+                                    <Legend verticalAlign="top" height={36} />
+
+                                    <Bar dataKey="revenue" xAxisId="revenue" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Revenue" barSize={20} />
+                                    <Bar dataKey="count" xAxisId="count" fill="#10b981" radius={[0, 4, 4, 0]} name="Transactions" barSize={20} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>

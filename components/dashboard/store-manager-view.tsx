@@ -64,9 +64,34 @@ export function StoreManagerDashboard() {
         else setIsRefreshing(true);
 
         const outletId = user.profile.outlet_id;
-        const today = new Date().toISOString().split('T')[0];
-        const yesterdayDate = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-        const monthStart = new Date().toISOString().substring(0, 7) + '-01';
+        const outletId = user.profile.outlet_id;
+
+        // Business Day Logic: Today 7AM to Next Day 2AM
+        const now = new Date();
+        // If now is before 7AM, we are still in yesterday's business day?
+        // User said: "morning 7 am to next day 2 am"
+        // If it is 1 AM on Jan 3rd, is it Jan 2nd Business Day? Yes.
+
+        const currentHour = now.getHours();
+        const businessDate = new Date(now);
+        if (currentHour < 7) {
+            businessDate.setDate(businessDate.getDate() - 1);
+        }
+
+        const todayStart = new Date(businessDate);
+        todayStart.setHours(7, 0, 0, 0);
+
+        const todayEnd = new Date(todayStart);
+        todayEnd.setDate(todayEnd.getDate() + 1);
+        todayEnd.setHours(2, 0, 0, 0);
+
+        const todayIso = todayStart.toISOString(); // For queries
+
+        const yesterdayStart = new Date(todayStart);
+        yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+        const yesterdayIso = yesterdayStart.toISOString();
+
+        const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1, 7, 0, 0).toISOString();
 
         try {
             const sb = supabase as any;
@@ -90,8 +115,8 @@ export function StoreManagerDashboard() {
                 .eq('outlet_id', outletId)
                 .eq('type', 'income')
                 .eq('category', 'sales')
-                .gte('created_at', yesterdayDate)
-                .lt('created_at', today);
+                .gte('created_at', yesterdayIso)
+                .lt('created_at', todayIso);
 
             const yesterdayTotal = yesterdaySales?.reduce((sum: number, t: any) => sum + Number(t.amount), 0) || 0;
             setYesterdayRevenue(yesterdayTotal);
