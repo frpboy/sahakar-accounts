@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { TopBar } from '@/components/layout/topbar';
-import { Plus, X, Search } from 'lucide-react';
+import { Plus, X, Search, History as HistoryIcon } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { generateCustomerId } from '@/lib/customer-id-generator';
@@ -255,6 +255,9 @@ export default function CustomersPage() {
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                     Created Date
                                 </th>
+                                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                                    History
+                                </th>
                                 {canEdit && <th scope="col" className="relative px-6 py-3">
                                     <span className="sr-only">Edit</span>
                                 </th>}
@@ -298,6 +301,15 @@ export default function CustomersPage() {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                                         {customer.created_at ? new Date(customer.created_at).toLocaleDateString('en-IN') : '-'}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                        <button
+                                            onClick={() => window.location.href = `/dashboard/ledger/customers?search=${customer.phone || customer.name}`}
+                                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded-full hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+                                            title="View Transaction History"
+                                        >
+                                            <HistoryIcon className="w-4 h-4" />
+                                        </button>
                                     </td>
                                     {canEdit && (
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

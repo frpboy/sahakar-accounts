@@ -31,6 +31,7 @@ function SalesPageContent() {
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [customerExists, setCustomerExists] = useState(false);
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
     const [customerSuggestions, setCustomerSuggestions] = useState<Array<{ phone: string; name: string; id: string }>>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [billNumber, setBillNumber] = useState('');
@@ -54,6 +55,7 @@ function SalesPageContent() {
             if (customerPhone.length < 10) {
                 setCustomerName('');
                 setCustomerExists(false);
+                setSelectedCustomerId(null);
             }
         }
     }, [customerPhone]);
@@ -217,10 +219,12 @@ function SalesPageContent() {
                     if (exactMatch) {
                         setCustomerName(exactMatch.name);
                         setCustomerExists(true);
+                        setSelectedCustomerId(exactMatch.id);
                         setShowSuggestions(false);
                     } else {
                         setCustomerExists(false);
                         setCustomerName('');
+                        setSelectedCustomerId(null);
                     }
                 }
             } else {
@@ -236,10 +240,11 @@ function SalesPageContent() {
         }
     };
 
-    const selectCustomer = (customer: { phone: string; name: string }) => {
+    const selectCustomer = (customer: { phone: string; name: string; id: string }) => {
         setCustomerPhone(customer.phone);
         setCustomerName(customer.name);
         setCustomerExists(true);
+        setSelectedCustomerId(customer.id);
         setShowSuggestions(false);
         setCustomerSuggestions([]);
     };
@@ -474,6 +479,8 @@ function SalesPageContent() {
             }
 
             // Step 1: Create customer if new
+            let finalCustomerId = selectedCustomerId;
+
             if (!customerExists) {
                 console.log('📝 Creating new customer...');
 
@@ -501,8 +508,16 @@ function SalesPageContent() {
                     if (!customerError.message.includes('duplicate')) {
                         throw customerError;
                     }
+                    // If duplicate, try to find it
+                    const { data: existing } = await (supabase as any)
+                        .from('customers')
+                        .select('id')
+                        .eq('phone', customerPhone.trim())
+                        .single();
+                    finalCustomerId = existing?.id;
                 } else {
                     console.log('✅ New customer created:', newCust);
+                    finalCustomerId = newCust.id;
                 }
             } else {
                 console.log('👤 Using existing customer');
@@ -568,6 +583,7 @@ function SalesPageContent() {
                     amount: amount,
                     payment_modes: paymentModes.join(','),
                     customer_phone: customerPhone.trim(),
+                    customer_id: finalCustomerId,
                     created_by: user.id
                 })
                 .select()

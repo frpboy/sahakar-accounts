@@ -123,10 +123,11 @@ export default function DailyEntryPage() {
                 .from('daily_records')
                 .update({
                     status: 'submitted',
-                    closing_cash: actual,
+                    closing_cash: expected, // Ledger value
+                    physical_cash: actual,  // Physical count
+                    cash_variance: variance, // Evaluated difference
                     submitted_at: new Date().toISOString(),
                     submitted_by: user?.id,
-                    // variance: variance // Assume column exists or logic handles it
                 })
                 .eq('id', activeRecord.id);
 

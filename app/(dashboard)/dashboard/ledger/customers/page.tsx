@@ -10,13 +10,17 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LedgerTable } from '@/components/ledger/ledger-table';
+import { useSearchParams } from 'next/navigation';
 
 export default function CustomerLedgerPage() {
+    const searchParams = useSearchParams();
+    const initialSearch = searchParams.get('search') || '';
+
     const { user } = useAuth();
     const supabase = useMemo(() => createClientBrowser(), []);
     const [loading, setLoading] = useState(true);
     const [customers, setCustomers] = useState<any[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState(initialSearch);
 
     // For Drill-down
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -29,7 +33,14 @@ export default function CustomerLedgerPage() {
             // Rule 11: Deriving from Single Source (transactions)
             const { data: txs, error } = await (supabase as any)
                 .from('transactions')
-                .select('customer_id, type, category, amount, payment_mode, profiles:customer_id(full_name, phone_number)')
+                .select(`
+                    customer_id, 
+                    type, 
+                    category, 
+                    amount, 
+                    payment_modes, 
+                    customers(name, phone)
+                `)
                 .eq('outlet_id', user.profile.outlet_id)
                 .not('customer_id', 'is', null);
 
@@ -41,17 +52,18 @@ export default function CustomerLedgerPage() {
                 if (!balanceMap.has(cid)) {
                     balanceMap.set(cid, {
                         id: cid,
-                        name: t.profiles?.full_name || 'Guest Customer',
-                        phone: t.profiles?.phone_number || '-',
+                        name: t.customers?.name || 'Guest Customer',
+                        phone: t.customers?.phone || '-',
                         debit: 0,
                         credit: 0
                     });
                 }
                 const record = balanceMap.get(cid);
                 const amt = Number(t.amount);
+                const isCreditSale = t.type === 'income' && t.payment_modes?.includes('Credit');
 
                 // Debit = Customer owes (mostly Sales on Credit)
-                if (t.type === 'income' && t.payment_mode === 'Credit') {
+                if (isCreditSale) {
                     record.debit += amt;
                 }
                 // Credit = Customer paid (Credit Received)
@@ -60,11 +72,7 @@ export default function CustomerLedgerPage() {
                 }
                 // Net out reversals/returns if they exist
                 else if (t.is_reversal) {
-                    // Logic depends on what was reversed.
-                    // If we reversed a Credit Sale, decrease Debit.
-                    // If we reversed a Payment, decrease Credit.
-                    // For simplicity in this view, we look at the 'type'
-                    if (t.type === 'expense' && t.payment_mode === 'Credit') record.debit -= amt;
+                    if (t.type === 'expense' && t.payment_modes?.includes('Credit')) record.debit -= amt;
                     else if (t.type === 'income' && t.category === 'credit_received') record.credit -= amt;
                 }
             });

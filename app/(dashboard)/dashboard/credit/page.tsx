@@ -26,6 +26,7 @@ function CreditPageContent() {
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [customerExists, setCustomerExists] = useState(false);
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
     const [customerSuggestions, setCustomerSuggestions] = useState<Array<{ phone: string; name: string; id: string }>>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [fetchingCustomer, setFetchingCustomer] = useState(false);
@@ -135,7 +136,10 @@ function CreditPageContent() {
                     if (exactMatch) {
                         setCustomerName(exactMatch.name);
                         setCustomerExists(true);
+                        setSelectedCustomerId(exactMatch.id);
                         setShowSuggestions(false);
+                    } else {
+                        setSelectedCustomerId(null);
                     }
                 }
             }
@@ -246,6 +250,9 @@ function CreditPageContent() {
             if (cash > 0) paymentModes.push('Cash');
             if (upi > 0) paymentModes.push('UPI');
 
+            // Step 1: Handle Customer ID
+            let finalCustomerId = selectedCustomerId;
+
             // Create transaction
             const { data, error } = await (supabase as any)
                 .from('transactions')
@@ -259,6 +266,7 @@ function CreditPageContent() {
                     amount: totalAmount,
                     payment_modes: paymentModes.join(','),
                     customer_phone: customerPhone.trim(),
+                    customer_id: finalCustomerId,
                     created_by: user.id
                 })
                 .select()
@@ -349,6 +357,7 @@ function CreditPageContent() {
                                                             setCustomerPhone(c.phone);
                                                             setCustomerName(c.name);
                                                             setCustomerExists(true);
+                                                            setSelectedCustomerId(c.id);
                                                             setShowSuggestions(false);
                                                         }}
                                                         className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b dark:border-slate-800 last:border-b-0 flex justify-between items-center group"

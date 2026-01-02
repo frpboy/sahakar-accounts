@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Lock, Edit2, ChevronRight } from 'lucide-react';
+import { Lock, Edit2, ChevronRight, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { canEditTransaction } from '@/lib/ledger-logic';
 
@@ -48,7 +48,14 @@ export function LedgerTable({ entries, role, isDayLocked, onRowClick }: any) {
                                     <div className="text-xs opacity-50">{format(new Date(t.created_at), 'HH:mm')}</div>
                                 </td>
                                 <td className="px-4 py-3">
-                                    <div className="font-medium text-gray-900 dark:text-white">{t.description || t.category}</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="font-medium text-gray-900 dark:text-white">{t.description || t.category}</div>
+                                        {t.source_type === 'manual' && (
+                                            <span className="bg-orange-100 text-orange-700 text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 uppercase tracking-tighter">
+                                                <ShieldAlert className="w-2.5 h-2.5" /> Manual
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="text-xs opacity-50 capitalize">{t.category.replace('_', ' ')}</div>
                                 </td>
                                 <td className="px-4 py-3 font-mono text-xs">
