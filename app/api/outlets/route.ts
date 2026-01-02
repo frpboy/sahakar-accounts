@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
         const body = (await request.json()) as CreateOutletBody;
 
-        const { name, code, location, phone, email } = body;
+        const { name, code, location, phone, email, type } = body;
 
         if (!name || !code) {
             return NextResponse.json({ error: 'Name and code required' }, { status: 400 });
@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
             location,
             phone,
             email,
+            type: type || 'hyper_pharmacy', // Default if not provided
         };
         // Use admin client to bypass RLS for outlet creation
         const admin = createAdminClient();

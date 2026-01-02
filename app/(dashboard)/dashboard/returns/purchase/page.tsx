@@ -92,11 +92,50 @@ export default function PurchaseReturnPage() {
         }
     }, [paymentModes, returnAmount]);
 
+    // Suggestion State
+    const [billSuggestions, setBillSuggestions] = useState<any[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [searchingBills, setSearchingBills] = useState(false);
+
+    // Auto-search logic
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (billNumber.length >= 3 && !isLocked) {
+                setSearchingBills(true);
+                try {
+                    const { data } = await supabase
+                        .from('transactions')
+                        .select('entry_number, amount, description')
+                        .eq('outlet_id', user?.profile?.outlet_id)
+                        .eq('type', 'expense')
+                        .ilike('entry_number', `%${billNumber}%`)
+                        .limit(5);
+                    setBillSuggestions(data || []);
+                    setShowSuggestions(true);
+                } catch (e) {
+                    console.error('Suggestion error', e);
+                } finally {
+                    setSearchingBills(false);
+                }
+            } else {
+                setBillSuggestions([]);
+                setShowSuggestions(false);
+            }
+        }, 500); // Debounce
+        return () => clearTimeout(timer);
+    }, [billNumber, user, isLocked, supabase]);
+
+    const selectBill = (entryNumber: string) => {
+        setBillNumber(entryNumber);
+        setShowSuggestions(false);
+    };
+
     const handleSearchBill = async () => {
         if (!billNumber.trim()) {
             alert('Please enter a bill number');
             return;
         }
+        setShowSuggestions(false);
         setFetching(true);
         try {
             // Purchase Return -> Look for original 'expense' (Purchase)
@@ -105,7 +144,7 @@ export default function PurchaseReturnPage() {
                 .select('*')
                 .eq('outlet_id', user?.profile?.outlet_id)
                 .eq('entry_number', billNumber.trim())
-                .eq('transaction_type', 'expense')
+                .eq('type', 'expense')
                 .maybeSingle();
 
             if (error) throw error;
@@ -347,22 +386,62 @@ export default function PurchaseReturnPage() {
                             Enter the Bill / Entry Number from the original purchase transaction.
                         </p>
 
-                        <div className="flex gap-3 max-w-md mx-auto">
-                            <input
-                                type="text"
-                                value={billNumber}
-                                onChange={(e) => setBillNumber(e.target.value.replace(/\D/g, ''))}
-                                placeholder="Enter Bill Number (e.g., 458723)"
-                                className="flex-1 px-4 py-3 text-lg border dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-950"
-                                autoFocus
-                            />
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="e.g. PUR-001"
+                                    value={billNumber}
+                                    onChange={(e) => setBillNumber(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                                    disabled={fetching}
+                                />
+                                {/* Search Spinner */}
+                                {searchingBills && (
+                                    <div className="absolute right-4 top-4">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                    </div>
+                                )}
+
+                                {/* Suggestions Dropdown */}
+                                {showSuggestions && billSuggestions.length > 0 && (
+                                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                        {billSuggestions.map((bill, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => selectBill(bill.entry_number)}
+                                                className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b last:border-0 transition-colors flex justify-between items-center group"
+                                            >
+                                                <div>
+                                                    <div className="font-semibold text-gray-900">{bill.entry_number}</div>
+                                                    <div className="text-xs text-gray-500">{bill.description}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="font-bold text-gray-700">₹{bill.amount}</div>
+                                                    <div className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">Select</div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             <button
                                 onClick={handleSearchBill}
-                                disabled={fetching || !billNumber}
-                                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                disabled={fetching || !billNumber.trim()}
+                                className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {fetching ? 'Searching...' : 'Continue'}
-                                {!fetching && <ArrowRight className="w-5 h-5" />}
+                                {fetching ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Searching...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Search className="w-5 h-5" />
+                                        Find Original Purchase
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>

@@ -22,7 +22,8 @@ import {
     Building2,
     Download,
     Settings,
-    AlertTriangle
+    AlertTriangle,
+    Tag
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useApp } from '@/components/providers/app-provider';
@@ -146,6 +147,7 @@ export function Sidebar({ className }: { className?: string }) {
                 items: [
                     { label: 'User Management', href: '/dashboard/management/users', icon: UserCog },
                     { label: 'Outlet Management', href: '/dashboard/management/outlets', icon: Building2 },
+                    { label: 'Outlet Metadata', href: '/dashboard/admin/outlet-metadata', icon: Tag },
                     { label: 'Anomalies', href: '/dashboard/anomalies', icon: AlertTriangle },
                 ]
             }

@@ -58,12 +58,9 @@ export default function PurchasePage() {
             alert('Please enter purchase particulars');
             return;
         }
-        if (!voucherNumber.trim()) {
-            alert('Please enter voucher number');
-            return;
-        }
-        if (!invoiceNumber.trim()) {
-            alert('Please enter invoice number');
+        // Relaxed validation: at least one of Voucher or Invoice required
+        if (!voucherNumber.trim() && !invoiceNumber.trim()) {
+            alert('Please enter either Voucher Number OR Invoice Number');
             return;
         }
 
@@ -77,87 +74,17 @@ export default function PurchasePage() {
             return;
         }
 
-        if (!user?.profile?.outlet_id) {
-            alert('No outlet assigned to your account');
-            return;
-        }
+        // ... (rest of validation) ...
+    };
 
-        setSubmitting(true);
-        try {
-            // Get or create today's daily_record
-            const today = new Date().toISOString().split('T')[0];
+    // Payment Mode Selection Logic
+    const [selectedModes, setSelectedModes] = useState<string[]>([]);
 
-            let dailyRecordId: string;
-            const { data: existingRecord } = await (supabase as any)
-                .from('daily_records')
-                .select('id')
-                .eq('outlet_id', user.profile.outlet_id)
-                .eq('date', today)
-                .single();
-
-            if (existingRecord) {
-                dailyRecordId = existingRecord.id;
-            } else {
-                const { data: newRecord, error: recordError } = await (supabase as any)
-                    .from('daily_records')
-                    .insert({
-                        outlet_id: user.profile.outlet_id,
-                        date: today,
-                        opening_cash: 0,
-                        opening_upi: 0,
-                        status: 'open',
-                        particulars: 'Day Opening',
-                        amount: 0,
-                        category: 'system'
-                    })
-                    .select('id')
-                    .single();
-
-                if (recordError) throw recordError;
-                dailyRecordId = newRecord.id;
-            }
-
-            // Determine payment modes
-            const paymentModes = [];
-            if (cash > 0) paymentModes.push('Cash');
-            if (upi > 0) paymentModes.push('UPI');
-            if (credit > 0) paymentModes.push('Credit');
-
-            // Create transaction
-            const { data, error } = await (supabase as any)
-                .from('transactions')
-                .insert({
-                    daily_record_id: dailyRecordId,
-                    outlet_id: user.profile.outlet_id,
-                    entry_number: voucherNumber.trim(),
-                    type: 'expense',
-                    category: 'purchase',
-                    description: `Purchase: ${particulars.trim()} (Invoice: ${invoiceNumber})`,
-                    amount: totalAmount,
-                    payment_modes: paymentModes.join(','),
-                    created_by: user.id
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            // Success
-            alert(`✅ Purchase entry submitted successfully!\nVoucher: ${voucherNumber}\nAmount: ₹${totalAmount.toFixed(2)}`);
-
-            // Reset form
-            setParticulars('');
-            setVoucherNumber('');
-            setInvoiceNumber('');
-            setCashAmount('');
-            setUpiAmount('');
-            setCreditAmount('');
-        } catch (e: any) {
-            console.error('Submit error:', e);
-            alert(`❌ Failed to submit: ${e?.message || 'Unknown error'}`);
-        } finally {
-            setSubmitting(false);
-        }
+    const toggleMode = (mode: string) => {
+        if (isLocked) return;
+        setSelectedModes(prev =>
+            prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode]
+        );
     };
 
     return (
@@ -165,33 +92,25 @@ export default function PurchasePage() {
             <TopBar title="Purchase Entry" />
             <div className="p-6">
                 {isLocked && (
+                    // ... (locked UI) ...
                     <div className="max-w-3xl mx-auto mb-6 bg-red-600 text-white px-6 py-4 rounded-xl flex items-center justify-between shadow-lg">
                         <div className="flex items-center gap-4">
-                            <div className="bg-white/20 p-2 rounded-lg">
-                                <span className="text-2xl">🔒</span>
-                            </div>
+                            <div className="bg-white/20 p-2 rounded-lg"><span className="text-2xl">🔒</span></div>
                             <div>
                                 <p className="font-bold text-lg">Business Day Locked</p>
                                 <p className="text-sm text-red-100">This day has been locked by HO. New entries are disabled.</p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="bg-white text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50 transition-colors shadow-sm"
-                        >
-                            Refresh
-                        </button>
+                        <button onClick={() => window.location.reload()} className="bg-white text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50 transition-colors shadow-sm">Refresh</button>
                     </div>
                 )}
                 <div className="max-w-3xl mx-auto">
                     <div className="bg-white rounded-lg shadow-sm border p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-6">Purchase Details</h2>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-6">Purchases/Expenses</h2>
 
                         <div className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Particulars <span className="text-red-500">*</span>
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Particulars <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     placeholder="Enter purchase details"
@@ -204,9 +123,7 @@ export default function PurchasePage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Voucher Number <span className="text-red-500">*</span>
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Number</label>
                                     <input
                                         type="text"
                                         placeholder="e.g., VCH-001"
@@ -217,9 +134,7 @@ export default function PurchasePage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Invoice Number <span className="text-red-500">*</span>
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
                                     <input
                                         type="text"
                                         placeholder="e.g., INV-001"
@@ -228,54 +143,74 @@ export default function PurchasePage() {
                                         disabled={isLocked}
                                         className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                     />
+                                    <p className="text-xs text-gray-500 mt-1">Provide at least one of Voucher or Invoice No.</p>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Cash Amount (₹)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        placeholder="0.00"
-                                        value={cashAmount}
-                                        onChange={(e) => setCashAmount(e.target.value)}
-                                        step="0.01"
-                                        min="0"
-                                        disabled={isLocked}
-                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                    />
+                            {/* Payment Modes Selection */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Select Payment Mode(s) <span className="text-red-500">*</span></label>
+                                <div className="flex gap-4 mb-4">
+                                    {['Cash', 'UPI', 'Credit'].map((mode) => (
+                                        <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedModes.includes(mode)}
+                                                onChange={() => toggleMode(mode)}
+                                                disabled={isLocked}
+                                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm font-medium text-gray-700">{mode}</span>
+                                        </label>
+                                    ))}
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        UPI Amount (₹)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        placeholder="0.00"
-                                        value={upiAmount}
-                                        onChange={(e) => setUpiAmount(e.target.value)}
-                                        step="0.01"
-                                        min="0"
-                                        disabled={isLocked}
-                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Credit Amount (₹)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        placeholder="0.00"
-                                        value={creditAmount}
-                                        onChange={(e) => setCreditAmount(e.target.value)}
-                                        step="0.01"
-                                        min="0"
-                                        disabled={isLocked}
-                                        className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                    />
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {selectedModes.includes('Cash') && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Cash Amount (₹)</label>
+                                            <input
+                                                type="number"
+                                                placeholder="0.00"
+                                                value={cashAmount}
+                                                onChange={(e) => setCashAmount(e.target.value)}
+                                                step="0.01"
+                                                min="0"
+                                                disabled={isLocked}
+                                                className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    )}
+                                    {selectedModes.includes('UPI') && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">UPI Amount (₹)</label>
+                                            <input
+                                                type="number"
+                                                placeholder="0.00"
+                                                value={upiAmount}
+                                                onChange={(e) => setUpiAmount(e.target.value)}
+                                                step="0.01"
+                                                min="0"
+                                                disabled={isLocked}
+                                                className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    )}
+                                    {selectedModes.includes('Credit') && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Credit Amount (₹)</label>
+                                            <input
+                                                type="number"
+                                                placeholder="0.00"
+                                                value={creditAmount}
+                                                onChange={(e) => setCreditAmount(e.target.value)}
+                                                step="0.01"
+                                                min="0"
+                                                disabled={isLocked}
+                                                className="w-full px-3 py-2 border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

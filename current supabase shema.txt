@@ -267,6 +267,14 @@ CREATE TABLE public.outlet_counters (
   CONSTRAINT outlet_counters_pkey PRIMARY KEY (outlet_id),
   CONSTRAINT outlet_counters_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
 );
+CREATE TABLE public.outlet_types (
+  code text NOT NULL,
+  name text NOT NULL,
+  short_code text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT outlet_types_pkey PRIMARY KEY (code)
+);
 CREATE TABLE public.outlets (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   name text NOT NULL,
@@ -326,7 +334,7 @@ CREATE TABLE public.transactions (
   daily_record_id uuid,
   type character varying NOT NULL CHECK (type::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])),
   category character varying NOT NULL,
-  payment_modes text NOT NULL CHECK (payment_modes = ANY (ARRAY['cash'::character varying::text, 'upi'::character varying::text])),
+  payment_modes text NOT NULL,
   amount numeric NOT NULL CHECK (amount > 0::numeric),
   description text,
   created_by uuid,

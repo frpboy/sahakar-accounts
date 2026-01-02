@@ -35,6 +35,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
    PROVIDER
 ====================================================== */
 
+import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
+
 export function AppProvider({ children }: { children: ReactNode }) {
     const [isOffline, setIsOffline] = useState(false);
     const [demoRole, setDemoRole] = useState<UserRole>('outlet_staff');

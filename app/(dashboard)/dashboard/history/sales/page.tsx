@@ -33,7 +33,7 @@ export default function SalesHistoryPage() {
                         description,
                         status,
                         daily_records(status),
-                        profiles(full_name)
+                        users(full_name)
                     `)
                     .eq('outlet_id', user.profile.outlet_id)
                     .eq('category', 'sales')
