@@ -26,7 +26,10 @@ import {
     Tag,
     TrendingUp,
     Calculator,
-    Scale
+    Scale,
+    CreditCard,
+    BookOpen,
+    Lock
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useApp } from '@/components/providers/app-provider';
@@ -153,32 +156,43 @@ export function Sidebar({ className }: { className?: string }) {
                 items: reportItems
             }
         );
-
-        // Ledger Module (Admins + Managers + HO + Staff? Spec says Staff has 24h edit window, implies access)
-        // Spec: "Sidebar Button 📘 Ledger"
-        // Let's make it a group for easy access to sub-pages
-        navItems.push({
-            label: 'Ledger',
-            icon: Calculator, // Placeholder, maybe Book?
-            type: 'group',
-            isOpen: isAccountingOpen, // Reuse state or rename? adhering to "isAccountingOpen" for now to save edits
-            setOpen: setIsAccountingOpen,
-            items: [
-                { label: 'Overview', href: '/dashboard/ledger', icon: LayoutDashboard },
-                { label: 'Register', href: '/dashboard/ledger/register', icon: FileText },
-                { label: 'Day Book', href: '/dashboard/ledger/day-book', icon: History },
-                { label: 'Cash Book', href: '/dashboard/ledger/cash-book', icon: IndianRupee },
-                { label: 'Bank / UPI', href: '/dashboard/ledger/bank-book', icon: CreditCard }, // Need import
-                { label: 'Customers', href: '/dashboard/ledger/customers', icon: Users },
-                { label: 'Expenses', href: '/dashboard/ledger/expenses', icon: Tag }, // Tag or similar
-                // Phase L-B Items (Trial Balance, P&L, BS) - Add later or now? 
-                // Spec says Phase L-B. I will omit for now or comment out.
-                // { label: 'Trial Balance', href: '/dashboard/ledger/trial-balance', icon: Scale },
-                // { label: 'P & L', href: '/dashboard/ledger/pnl', icon: TrendingUp },
-                // { label: 'Balance Sheet', href: '/dashboard/ledger/balance-sheet', icon: Building2 }
-            ]
-        });
     }
+
+    // Ledger Module (Visible to all except maybe pure auditors if they have their own view)
+    // We filter sub-items inside the group based on role
+    const ledgerItems = [
+        { label: 'Overview', href: '/dashboard/ledger', icon: LayoutDashboard },
+        { label: 'Register', href: '/dashboard/ledger/register', icon: FileText },
+        { label: 'Day Book', href: '/dashboard/ledger/day-book', icon: History },
+        { label: 'Cash Book', href: '/dashboard/ledger/cash-book', icon: IndianRupee },
+        { label: 'Bank / UPI', href: '/dashboard/ledger/bank-book', icon: CreditCard },
+        { label: 'Customers', href: '/dashboard/ledger/customers', icon: Users },
+        { label: 'Expenses', href: '/dashboard/ledger/expenses', icon: Tag },
+    ];
+
+    if (isAdmin || isManager || isAuditor) {
+        ledgerItems.push({ label: 'Chart of Accounts', href: '/dashboard/ledger/accounts', icon: BookOpen });
+        ledgerItems.push({ label: 'Trial Balance', href: '/dashboard/ledger/trial-balance', icon: Scale });
+        ledgerItems.push({ label: 'Balance Sheet', href: '/dashboard/ledger/balance-sheet', icon: Landmark });
+    }
+
+    if (isAdmin || isManager) {
+        ledgerItems.push({ label: 'Profit & Loss', href: '/dashboard/ledger/pnl', icon: TrendingUp });
+        ledgerItems.push({ label: 'Month-End Close', href: '/dashboard/ledger/close', icon: Lock });
+    }
+
+    if (isAdmin || isManager || isAuditor) {
+        ledgerItems.push({ label: 'Audit Export', href: '/dashboard/ledger/export', icon: Download });
+    }
+
+    navItems.push({
+        label: 'Ledger',
+        icon: Calculator,
+        type: 'group',
+        isOpen: isAccountingOpen,
+        setOpen: setIsAccountingOpen,
+        items: ledgerItems
+    });
 
     // Admin-only Management
     if (isAdmin) {
@@ -194,7 +208,7 @@ export function Sidebar({ className }: { className?: string }) {
                     { label: 'User Management', href: '/dashboard/management/users', icon: UserCog },
                     { label: 'Outlet Management', href: '/dashboard/management/outlets', icon: Building2 },
                     { label: 'Outlet Metadata', href: '/dashboard/admin/outlet-metadata', icon: Tag },
-                    { label: 'Anomalies', href: '/dashboard/anomalies', icon: AlertTriangle },
+                    { label: 'Fraud Signals', href: '/dashboard/ledger/anomalies', icon: AlertTriangle },
                 ]
             }
         );

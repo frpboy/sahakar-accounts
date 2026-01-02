@@ -15,9 +15,11 @@ create table if not exists public.day_locks (
 alter table public.day_locks enable row level security;
 
 -- Policies
+DROP POLICY IF EXISTS "Managers can view locks" ON public.day_locks;
 create policy "Managers can view locks" on public.day_locks
     for select using (true);
 
+DROP POLICY IF EXISTS "Managers/Admins can manage locks" ON public.day_locks;
 create policy "Managers/Admins can manage locks" on public.day_locks
     for all using (
         exists (

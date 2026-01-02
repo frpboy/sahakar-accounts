@@ -19,8 +19,8 @@ WITH CHECK (
         -- Rule 6: Block Insert if Day is Locked
         SELECT 1 FROM public.day_locks 
         WHERE outlet_id = transactions.outlet_id 
-        AND date = transactions.ledger_date
-        AND is_locked = true
+        AND locked_date = transactions.ledger_date
+        AND status = 'locked'
     )
 );
 

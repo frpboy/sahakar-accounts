@@ -9,7 +9,8 @@ async function migrate() {
         process.env.SUPABASE_SERVICE_ROLE_KEY // Use service role to manage RLS
     );
 
-    const sqlPath = path.join(__dirname, '../supabase/migrations/20260103_ledger_rls_security.sql');
+    const sqlFile = process.argv[2] || 'supabase/migrations/20260103_coa_hierarchy.sql';
+    const sqlPath = path.join(__dirname, '..', sqlFile);
     const sql = fs.readFileSync(sqlPath, 'utf8');
 
     console.log('Applying RLS Security Migration...');

@@ -1,6 +1,17 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.accounting_periods (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  month date NOT NULL UNIQUE,
+  status text DEFAULT 'OPEN'::text CHECK (status = ANY (ARRAY['OPEN'::text, 'CLOSED'::text, 'REOPENED'::text])),
+  closed_by uuid,
+  closed_at timestamp with time zone,
+  reopen_reason text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT accounting_periods_pkey PRIMARY KEY (id),
+  CONSTRAINT accounting_periods_closed_by_fkey FOREIGN KEY (closed_by) REFERENCES public.users(id)
+);
 CREATE TABLE public.anomalies (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   outlet_id uuid,
@@ -212,6 +223,24 @@ CREATE TABLE public.export_logs (
   CONSTRAINT export_logs_pkey PRIMARY KEY (id),
   CONSTRAINT export_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
+CREATE TABLE public.ledger_accounts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  code text NOT NULL UNIQUE,
+  name text NOT NULL,
+  type USER-DEFINED NOT NULL,
+  parent_id uuid,
+  status text DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'disabled'::text])),
+  is_system boolean DEFAULT false,
+  is_locked boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  outlet_id uuid,
+  level integer DEFAULT 1,
+  is_leaf boolean DEFAULT true,
+  CONSTRAINT ledger_accounts_pkey PRIMARY KEY (id),
+  CONSTRAINT ledger_accounts_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.ledger_accounts(id),
+  CONSTRAINT ledger_accounts_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id)
+);
 CREATE TABLE public.monthly_closure_snapshots (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   outlet_id uuid NOT NULL,
@@ -367,11 +396,13 @@ CREATE TABLE public.transactions (
   is_manual boolean DEFAULT false,
   is_reversal boolean DEFAULT false,
   parent_transaction_id uuid,
+  ledger_account_id uuid,
   CONSTRAINT transactions_pkey PRIMARY KEY (id),
   CONSTRAINT transactions_daily_record_id_fkey FOREIGN KEY (daily_record_id) REFERENCES public.daily_records(id),
   CONSTRAINT transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
   CONSTRAINT transactions_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
-  CONSTRAINT transactions_parent_transaction_id_fkey FOREIGN KEY (parent_transaction_id) REFERENCES public.transactions(id)
+  CONSTRAINT transactions_parent_transaction_id_fkey FOREIGN KEY (parent_transaction_id) REFERENCES public.transactions(id),
+  CONSTRAINT transactions_ledger_account_id_fkey FOREIGN KEY (ledger_account_id) REFERENCES public.ledger_accounts(id)
 );
 CREATE TABLE public.user_outlet_access (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),

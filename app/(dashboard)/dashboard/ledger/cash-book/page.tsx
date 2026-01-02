@@ -4,14 +4,14 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
+import { IndianRupee, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LedgerTable } from '@/components/ledger/ledger-table';
+import { LedgerDrawer } from '@/components/ledger/ledger-drawer';
 import { getTransactionPermission } from '@/lib/ledger-logic';
 import { useLedgerLocks } from '@/hooks/use-ledger-locks';
 import { postReversal } from '@/lib/ledger-actions';
-import { LedgerTable } from '@/components/ledger/ledger-table';
-import { LedgerDrawer } from '@/components/ledger/ledger-drawer';
-import { BalanceCard } from '@/components/ledger/balance-card';
 import { toast } from 'sonner';
 
 export default function CashBookPage() {
@@ -22,114 +22,106 @@ export default function CashBookPage() {
     const [selectedEntry, setSelectedEntry] = useState<any>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-    const [dateRange, setDateRange] = useState({
-        from: new Date().toISOString().substring(0, 7) + '-01',
-        to: new Date().toISOString().split('T')[0]
-    });
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-    const { data: locks } = useLedgerLocks(user?.profile?.outlet_id, dateRange.from, dateRange.to);
+    const { data: locks } = useLedgerLocks(user?.profile?.outlet_id, date, date);
 
-    const loadCashBook = useCallback(async () => {
+    const loadCashLog = useCallback(async () => {
         if (!user?.profile.outlet_id) return;
         setLoading(true);
         try {
-            const toDateObj = new Date(dateRange.to);
-            toDateObj.setDate(toDateObj.getDate() + 1);
-            const toDateNext = toDateObj.toISOString().split('T')[0];
+            const nextDate = new Date(date);
+            nextDate.setDate(nextDate.getDate() + 1);
+            const nextDateStr = nextDate.toISOString().split('T')[0];
 
+            // Filter for transactions containing 'Cash' in payment_modes
+            // and where type is income/expense (which is all of them usually)
             const { data, error } = await (supabase as any)
                 .from('transactions')
                 .select('*, users(name)')
                 .eq('outlet_id', user.profile.outlet_id)
-                .eq('payment_mode', 'Cash')
-                .gte('created_at', `${dateRange.from}T07:00:00`)
-                .lte('created_at', `${toDateNext}T02:00:00`)
-                .order('created_at', { ascending: false });
+                .ilike('payment_modes', '%Cash%')
+                .gte('created_at', `${date}T07:00:00`)
+                .lte('created_at', `${nextDateStr}T02:00:00`)
+                .order('created_at', { ascending: true });
 
             if (error) throw error;
             setTransactions(data || []);
-
         } catch (e) {
             console.error(e);
         } finally {
             setLoading(false);
         }
-    }, [user, dateRange, supabase]);
+    }, [user, date, supabase]);
 
     useEffect(() => {
-        loadCashBook();
-    }, [loadCashBook]);
-
-    const stats = useMemo(() => {
-        let cash = 0;
-        transactions.forEach(t => {
-            const amt = Number(t.amount);
-            cash += t.type === 'income' ? amt : -amt;
-        });
-        return { closing: cash, cash, bank: 0, credit: 0 };
-    }, [transactions]);
+        loadCashLog();
+    }, [loadCashLog]);
 
     const handleRowClick = (entry: any) => {
         setSelectedEntry(entry);
         setIsDrawerOpen(true);
     };
 
-    const handlePostCorrection = async (data: { reason: string, type: 'reversal' | 'adjustment' }) => {
-        if (!selectedEntry || !user) return;
-        const loadingId = toast.loading("Processing reversal...");
-        try {
-            await postReversal(selectedEntry, data.reason, user.id);
-            toast.success("Reversal Entry Posted Successfully", { id: loadingId });
-            setIsDrawerOpen(false);
-            loadCashBook();
-        } catch (e: any) {
-            toast.error(e.message || "Failed to post reversal", { id: loadingId });
-        }
-    };
+    const perm = getTransactionPermission(
+        selectedEntry?.ledger_date || selectedEntry?.created_at || date,
+        user?.profile?.role || '',
+        locks ? !!locks[date] : false
+    );
 
-    const getEntryPermission = (entry: any) => {
-        if (!entry) return { allowed: false, reason: '', actionType: 'view_only' as const };
-        const dateKey = entry.ledger_date || entry.created_at.split('T')[0];
-        const isDayLocked = locks ? !!locks[dateKey] : false;
-        return getTransactionPermission(entry.ledger_date || entry.created_at, user?.profile?.role || '', isDayLocked);
-    };
-
-    const { allowed, reason, actionType } = getEntryPermission(selectedEntry);
+    const stats = useMemo(() => {
+        let inflow = 0;
+        let outflow = 0;
+        transactions.forEach(t => {
+            if (t.type === 'income') inflow += Number(t.amount);
+            else outflow += Number(t.amount);
+        });
+        return { inflow, outflow, balance: inflow - outflow };
+    }, [transactions]);
 
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
             <TopBar title="Cash Book" />
 
-            <div className="p-6 overflow-auto">
-                <BalanceCard
-                    closingBalance={stats.closing}
-                    cash={stats.cash}
-                    bank={0}
-                    credit={0}
-                    lastLockedDate={null}
-                />
+            <div className="p-4 border-b bg-white dark:bg-gray-800 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                    <IndianRupee className="w-5 h-5 text-green-600" />
+                    <Input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-40"
+                    />
+                    <Button onClick={loadCashLog} variant="secondary" size="sm">Refresh</Button>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                    <div className="flex flex-col items-end">
+                        <span className="text-gray-500 text-xs">Closing Balance</span>
+                        <span className="font-bold text-green-700">₹{stats.balance.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
 
-                <div className="flex items-center gap-2 mb-4">
-                    <Input
-                        type="date"
-                        value={dateRange.from}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
-                        className="w-40"
-                    />
-                    <span className="text-gray-500">to</span>
-                    <Input
-                        type="date"
-                        value={dateRange.to}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
-                        className="w-40"
-                    />
-                    <Button onClick={loadCashBook} variant="secondary">View Cash Log</Button>
+            <div className="flex-1 overflow-auto p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
+                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Cash In (Debits)</div>
+                        <div className="text-xl font-bold text-green-600">₹{stats.inflow.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
+                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Cash Out (Credits)</div>
+                        <div className="text-xl font-bold text-red-600">₹{stats.outflow.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
+                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Net Flow</div>
+                        <div className="text-xl font-bold text-blue-600">₹{stats.balance.toLocaleString()}</div>
+                    </div>
                 </div>
 
                 <LedgerTable
                     entries={transactions}
                     role={user?.profile?.role}
-                    isDayLocked={false}
+                    isDayLocked={locks ? !!locks[date] : false}
                     onRowClick={handleRowClick}
                 />
             </div>
@@ -137,12 +129,11 @@ export default function CashBookPage() {
             <LedgerDrawer
                 entry={selectedEntry}
                 role={user?.profile?.role}
-                canEdit={allowed}
-                lockReason={reason}
-                actionType={actionType}
+                canEdit={perm.allowed}
+                lockReason={perm.reason}
+                actionType={perm.actionType}
                 open={isDrawerOpen}
                 onClose={() => setIsDrawerOpen(false)}
-                onSave={handlePostCorrection}
             />
         </div>
     );
