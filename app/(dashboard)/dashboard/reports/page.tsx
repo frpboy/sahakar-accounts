@@ -182,7 +182,7 @@ export default function ReportsPage() {
                     return;
                 } else {
                     // Fallback for CSV/PDF in 'All' -> Just export transactions as it's the main one
-                    alert("For 'All Data', please use Excel format to get multiple sheets. Exporting Transactions only for now.");
+                    alert("Multi-sheet export requires Excel format. Proceeding with Transactions export.");
                     const { data: txns } = await (supabase as any).from('transactions').select('*').order('created_at', { ascending: false });
                     data = txns || [];
                     fileName = `Full_Export_Transactions_${today}`;

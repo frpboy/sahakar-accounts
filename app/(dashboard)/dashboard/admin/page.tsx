@@ -237,15 +237,15 @@ export default function AdminDashboard() {
                                     <p className="text-xs mt-2 text-gray-700">{seedMessage}</p>
                                 )}
                             </button>
-                            <button
-                                onClick={() => alert('⚙️ Global Settings feature coming soon!')}
-                                className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                            <a
+                                href="/dashboard/admin/settings"
+                                className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors block"
                             >
                                 <h3 className="font-medium text-gray-900 flex items-center gap-2">
                                     <Settings className="w-4 h-4" /> Configure Settings
                                 </h3>
-                                <p className="text-sm text-gray-600">Update outlet details</p>
-                            </button>
+                                <p className="text-sm text-gray-600">Update profile and system details</p>
+                            </a>
                             <div className="p-3 border border-gray-200 rounded-lg bg-yellow-50 text-yellow-800">
                                 Google Sheets integration has been discontinued.
                             </div>

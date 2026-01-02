@@ -17,7 +17,7 @@ interface CashFlowData {
 export default function CashFlowReportPage() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
-    // Mock data - replace with actual API call
+
     const { data: cashFlowData, isLoading } = useQuery<CashFlowData[]>({
         queryKey: ['cash-flow', selectedMonth],
         queryFn: async () => {
