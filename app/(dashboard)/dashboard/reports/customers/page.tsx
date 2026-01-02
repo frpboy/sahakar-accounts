@@ -42,18 +42,29 @@ export default function CustomerReportsPage() {
 
             let query = (supabase as any)
                 .from('customers')
-                .select('*, profiles!added_by(outlet_id)')
+                .select('*')
                 .order('name', { ascending: true });
-
-            if (!isAdmin && user.profile.outlet_id) {
-                // Filter by outlet_id via the joined profiles table
-                query = query.filter('profiles.outlet_id', 'eq', user.profile.outlet_id);
-            }
 
             const { data, error } = await query;
 
             if (error) throw error;
-            setCustomers(data || []);
+
+            // For non-admin users, filter by their outlet
+            let filteredData = data || [];
+            if (!isAdmin && user.profile.outlet_id) {
+                // Need to check which customers belong to this outlet
+                // by checking the added_by user's outlet
+                const userOutletId = user.profile.outlet_id;
+                const { data: outletUsers } = await (supabase as any)
+                    .from('profiles')
+                    .select('id')
+                    .eq('outlet_id', userOutletId);
+
+                const outletUserIds = new Set((outletUsers || []).map((u: any) => u.id));
+                filteredData = filteredData.filter((c: any) => outletUserIds.has(c.added_by));
+            }
+
+            setCustomers(filteredData);
         } catch (error) {
             console.error('Failed to load customers:', error);
         } finally {

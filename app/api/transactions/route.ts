@@ -178,6 +178,59 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Cannot modify non-draft record' }, { status: 409 });
         }
 
+        // Generate Custom Internal ID
+        // Format: [CategoryShort]-[LocationShort]-[5Digits]
+        // Example: HP-TIR-00001
+        let internalId = null;
+        try {
+            const { data: outletData } = await (supabase as any)
+                .from('outlets')
+                .select('type, location, code')
+                .eq('id', dailyRecordOutletId)
+                .single();
+
+            if (outletData) {
+                let catShort = 'GN'; // Generic fallback
+                if (outletData.type === 'hyper_pharmacy') catShort = 'HP';
+                else if (outletData.type === 'smart_clinic') catShort = 'SC';
+
+                // Use first 3 letters of location, or code if location missing
+                let locShort = 'LOC';
+                if (outletData.location) {
+                    locShort = outletData.location.substring(0, 3).toUpperCase();
+                } else if (outletData.code) {
+                    locShort = outletData.code.substring(0, 3).toUpperCase();
+                }
+
+                const prefix = `${catShort}-${locShort}`;
+
+                // Find last transaction with this prefix to determine next number
+                // We use use a conservative match to find the max number
+                const { data: lastTx } = await (supabase as any)
+                    .from('transactions')
+                    .select('internal_entry_id')
+                    .ilike('internal_entry_id', `${prefix}-%`)
+                    .order('internal_entry_id', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                let nextNum = 1;
+                if (lastTx && lastTx.internal_entry_id) {
+                    const parts = lastTx.internal_entry_id.split('-');
+                    const lastNumStr = parts[parts.length - 1];
+                    const lastNum = parseInt(lastNumStr, 10);
+                    if (!isNaN(lastNum)) {
+                        nextNum = lastNum + 1;
+                    }
+                }
+
+                internalId = `${prefix}-${String(nextNum).padStart(5, '0')}`;
+            }
+        } catch (idErr) {
+            console.error('Failed to generate internal ID:', idErr);
+            // Fallback to let DB handle it or leave null if DB has default
+        }
+
         // Insert transaction
         const insertPayload: Database['public']['Tables']['transactions']['Insert'] = {
             daily_record_id: validated.dailyRecordId,
@@ -188,7 +241,8 @@ export async function POST(request: NextRequest) {
             description: validated.description || null,
             created_by: validated.createdBy || null,
             idempotency_key: idempotencyKey || null,
-        };
+            internal_entry_id: internalId,
+        } as any;
         const { data, error } = await (supabase as any)
             .from('transactions')
             .insert(insertPayload as unknown as never)

@@ -54,17 +54,23 @@ export default function AnalyticsPage() {
                 daily[date] = { date, income: 0, expense: 0 };
             }
 
+            const amount = typeof t.amount === 'string' ? parseFloat(t.amount) : Number(t.amount || 0);
+
             if (t.type === 'income') {
-                daily[date].income += t.amount || 0;
+                daily[date].income += amount;
             } else {
-                daily[date].expense += t.amount || 0;
+                daily[date].expense += amount;
             }
 
             // Payment modes
             if (t.type === 'income' && t.payment_mode) {
-                const txModes = t.payment_mode.split(',').map((m: string) => m.trim());
+                const txModes = t.payment_mode.split(',').map((m: string) => {
+                    const clean = m.trim().toLowerCase();
+                    return clean.charAt(0).toUpperCase() + clean.slice(1);
+                });
                 txModes.forEach((m: string) => {
-                    modes[m] = (modes[m] || 0) + (t.amount || 0) / txModes.length; // distribute amount if split
+                    const amt = typeof t.amount === 'string' ? parseFloat(t.amount) : Number(t.amount || 0);
+                    modes[m] = (modes[m] || 0) + amt / txModes.length;
                 });
             }
         });

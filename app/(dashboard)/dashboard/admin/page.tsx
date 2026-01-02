@@ -46,8 +46,8 @@ function MonthlyRevenueKPI() {
 }
 
 function LiveIndicators() {
-    const { status: usersRt } = useRealtimeUsers(() => {});
-    const { status: outletsRt } = useRealtimeOutlets(() => {});
+    const { status: usersRt } = useRealtimeUsers(() => { });
+    const { status: outletsRt } = useRealtimeOutlets(() => { });
     return (
         <div className="flex gap-2">
             <span className={`px-2 py-1 rounded-full ${usersRt === 'online' ? 'bg-green-100 text-green-800' : usersRt === 'error' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>Users: {usersRt}</span>
@@ -57,7 +57,7 @@ function LiveIndicators() {
 }
 
 function LiveApprovalsIndicator() {
-    const { status } = useRealtimeApprovals(() => {});
+    const { status } = useRealtimeApprovals(() => { });
     return (
         <span className={`px-2 py-1 rounded-full text-xs ${status === 'online' ? 'bg-green-100 text-green-800' : status === 'error' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>Live: {status}</span>
     );
@@ -237,7 +237,10 @@ export default function AdminDashboard() {
                                     <p className="text-xs mt-2 text-gray-700">{seedMessage}</p>
                                 )}
                             </button>
-                            <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            <button
+                                onClick={() => alert('⚙️ Global Settings feature coming soon!')}
+                                className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
                                 <h3 className="font-medium text-gray-900 flex items-center gap-2">
                                     <Settings className="w-4 h-4" /> Configure Settings
                                 </h3>

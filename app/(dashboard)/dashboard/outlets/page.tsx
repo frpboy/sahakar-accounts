@@ -111,48 +111,16 @@ export default function OutletsPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <p className="text-sm text-gray-600">{outlet.address || 'Not specified'}</p>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                {new Date(outlet.created_at).toLocaleDateString('en-IN')}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center gap-2">
-                                                    <button className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded">
-                                                        Edit
-                                                    </button>
-                                                    <button className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-50 rounded">
-                                                        View Stats
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <div className="p-8 text-center">
-                                <div className="text-6xl mb-4">🏪</div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No outlets found</h3>
-                                <p className="text-gray-600 mb-4">Get started by adding your first outlet</p>
-                                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                    + Add First Outlet
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Create Outlet Modal */}
-                <CreateOutletModal
-                    isOpen={showCreateOutlet}
-                    onClose={() => setShowCreateOutlet(false)}
-                    onSuccess={() => {
-                        setShowCreateOutlet(false);
-                        refetch();
-                    }}
-                />
-            </div>
-        </ProtectedRoute>
-    );
+                                                {/* Create Outlet Modal */}
+                                                <CreateOutletModal
+                                                    isOpen={showCreateOutlet}
+                                                    onClose={() => setShowCreateOutlet(false)}
+                                                    onSuccess={() => {
+                                                        setShowCreateOutlet(false);
+                                                        refetch();
+                                                    }}
+                                                />
+                                            </div>
+                                        </ProtectedRoute>
+                                    );
 }

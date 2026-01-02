@@ -216,7 +216,10 @@ export default function OutletPerformancePage() {
                                 </div>
                             </div>
                             <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800/20 border-t dark:border-slate-800">
-                                <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors uppercase">
+                                <button
+                                    onClick={() => alert('📊 Detailed outlet report coming soon!')}
+                                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors uppercase"
+                                >
                                     View Detailed Report →
                                 </button>
                             </div>

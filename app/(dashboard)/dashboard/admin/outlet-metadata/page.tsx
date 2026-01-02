@@ -284,11 +284,12 @@ export default function OutletMetadataPage() {
                                                     <td className="px-4 py-3 text-right">
                                                         {/* Edit functionality for outlets is complex, just show placeholder or link */}
                                                         <span className="text-gray-400 text-xs text-italic">Managed via Outlets page</span>
-                                                        {/*
-                                                        <button className="p-1 hover:bg-gray-200 rounded text-blue-600">
+                                                        <button
+                                                            onClick={() => alert(`✏️ Editing metadata for ${outlet.location} coming soon`)}
+                                                            className="p-1 hover:bg-gray-200 rounded text-blue-600"
+                                                        >
                                                             <Edit className="w-4 h-4" />
                                                         </button>
-                                                        */}
                                                     </td>
                                                 </tr>
                                             ))

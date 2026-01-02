@@ -3,34 +3,53 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, UserPlus, Loader2 } from 'lucide-react';
+import { createClientBrowser } from '@/lib/supabase-client';
 
 
-interface CreateUserModalProps {
+interface UserModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    initialData?: any; // User object for editing
 }
 
-export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalProps) {
-    const [formData, setFormData] = useState({
-        email: '',
-        fullName: '',
-        role: 'outlet_staff',
-        phone: '',
-        outletId: '',
-    });
+export function CreateUserModal({ isOpen, onClose, onSuccess, initialData }: UserModalProps) {
+    const supabase = createClientBrowser();
+    const [email, setEmail] = useState('');
+    const [fullName, setFullName] = useState('');
+    const [role, setRole] = useState('outlet_staff');
+    const [phone, setPhone] = useState('');
+    const [outletId, setOutletId] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [approvalId, setApprovalId] = useState<string>('');
+    const [approvalId, setApprovalId] = useState<string | null>(null);
+    const [formData, setFormData] = useState<any>({}); // kept for compatibility if needed, but we use individual states mostly
     const router = useRouter();
-    const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
+    const [outlets, setOutlets] = useState<any[]>([]);
 
     useEffect(() => {
         if (isOpen) {
+            // Reset or Populate
+            if (initialData) {
+                setEmail(initialData.email || '');
+                setFullName(initialData.name || '');
+                setRole(initialData.role || 'outlet_staff');
+                setPhone(initialData.phone || '');
+                setOutletId(initialData.outlet_id || '');
+            } else {
+                setEmail('');
+                setFullName('');
+                setRole('outlet_staff');
+                setPhone('');
+                setOutletId('');
+            }
+            setError('');
+            setSuccess('');
+            setApprovalId(null);
             fetchOutlets();
         }
-    }, [isOpen]);
+    }, [isOpen, initialData]);
 
     const fetchOutlets = async () => {
         try {
@@ -48,36 +67,60 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
         e.preventDefault();
         setLoading(true);
         setError('');
+        setSuccess('');
+        setApprovalId(null);
 
         try {
-            const res = await fetch('/api/users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
+            const url = initialData ? `/api/users/${initialData.id}` : '/api/users';
+            const method = initialData ? 'PATCH' : 'POST';
 
-            if (!res.ok && res.status !== 202) {
-                const data = await res.json();
-                throw new Error(data.error || 'Failed to create user');
+            const payload: any = {
+                fullName,
+                role,
+                outletId: outletId || null,
+                phone: phone || null, // Include phone in payload
+            };
+
+            // Only send email on create, or if we support email updates (backend currently doesn't for PATCH in our simplified version)
+            if (!initialData) {
+                payload.email = email;
+            }
+            // For patch, we map fullName to name
+            if (initialData) {
+                payload.name = fullName;
             }
 
-            if (res.status === 202) {
-                const data = await res.json();
-                setApprovalId(data.approvalId);
-                setSuccess(`Pending approval created (ID: ${data.approvalId})`);
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || `Failed to ${initialData ? 'update' : 'create'} user`);
+            }
+
+            const result = await res.json();
+            setSuccess(result.message || `User ${initialData ? 'updated' : 'created'} successfully!`);
+
+            if (result.approvalId) {
+                setApprovalId(result.approvalId);
             } else {
                 onSuccess();
-                onClose();
+                if (initialData) {
+                    onClose();
+                } else {
+                    // Reset form only on create
+                    setEmail('');
+                    setFullName('');
+                    setRole('outlet_staff');
+                    setPhone('');
+                    setOutletId('');
+                    // Close on create too? Usually yes or keep open for multiple. Let's close for now as per previous behavior.
+                    onClose();
+                }
             }
-
-            // Reset form
-            setFormData({
-                email: '',
-                fullName: '',
-                role: 'outlet_staff',
-                phone: '',
-                outletId: '',
-            });
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to create user');
         } finally {
@@ -88,19 +131,14 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b">
-                    <div className="flex items-center gap-2">
-                        <UserPlus className="w-5 h-5 text-blue-600" />
-                        <h2 className="text-xl font-bold text-gray-900">Create New User</h2>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                        <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+            <div className="relative p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800 dark:border-gray-700 transform transition-all duration-300 ease-out scale-100 opacity-100">
+                <div className="flex justify-between items-center pb-3 border-b dark:border-gray-700">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {initialData ? 'Edit User' : 'Create New User'}
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
 
@@ -114,17 +152,6 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                     {success && (
                         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                             <p className="text-sm text-green-800">{success}</p>
-                            {approvalId && (
-                                <div className="mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => router.push(`/dashboard/admin?approvalId=${approvalId}#approvals`)}
-                                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-                                    >
-                                        Approve
-                                    </button>
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -136,10 +163,11 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                         <input
                             type="email"
                             required
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!!initialData ? 'bg-gray-100 opacity-75 cursor-not-allowed' : ''}`}
                             placeholder="user@example.com"
+                            disabled={!!initialData}
                         />
                     </div>
 
@@ -151,8 +179,8 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                         <input
                             type="text"
                             required
-                            value={formData.fullName}
-                            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="John Doe"
                         />
@@ -165,8 +193,8 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                         </label>
                         <select
                             required
-                            value={formData.role}
-                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                            value={role}
+                            onChange={(e) => setRole(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="outlet_staff">Outlet Staff</option>
@@ -185,37 +213,39 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                         </label>
                         <input
                             type="tel"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="+91 98765 43210"
                         />
                     </div>
 
                     {/* Outlet Selection */}
-                    {(formData.role === 'outlet_staff' || formData.role === 'outlet_manager') && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Assign Outlet *
-                            </label>
-                            <select
-                                required
-                                value={formData.outletId}
-                                onChange={(e) => setFormData({ ...formData, outletId: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value="" disabled>Select an outlet...</option>
-                                {outlets.map((outlet) => (
-                                    <option key={outlet.id} value={outlet.id}>
-                                        {outlet.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <p className="text-xs text-gray-500 mt-1">
-                                User will be restricted to this outlet
-                            </p>
-                        </div>
-                    )}
+                    {
+                        (role === 'outlet_staff' || role === 'outlet_manager') && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Assign Outlet *
+                                </label>
+                                <select
+                                    required
+                                    value={outletId}
+                                    onChange={(e) => setOutletId(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value="" disabled>Select an outlet...</option>
+                                    {outlets.map((outlet) => (
+                                        <option key={outlet.id} value={outlet.id}>
+                                            {outlet.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    User will be restricted to this outlet
+                                </p>
+                            </div>
+                        )
+                    }
 
                     {/* Info Box */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -239,17 +269,17 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-blue-600 text-white border-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
                         >
                             {loading ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
-                                    Creating...
+                                    {initialData ? 'Saving...' : 'Creating...'}
                                 </>
                             ) : (
                                 <>
                                     <UserPlus className="w-4 h-4" />
-                                    Create User
+                                    {initialData ? 'Save Changes' : 'Create User'}
                                 </>
                             )}
                         </button>

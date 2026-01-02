@@ -45,7 +45,7 @@ export default function SalesHistoryPage() {
 
                 let query = (supabase as any)
                     .from('transactions')
-                    .select('*')
+                    .select('*, users(name, full_name, email), outlets(name)')
                     .eq('category', 'sales')
                     .order('created_at', { ascending: false })
                     .limit(100);

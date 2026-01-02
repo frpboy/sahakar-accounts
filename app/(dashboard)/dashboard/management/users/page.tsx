@@ -13,7 +13,8 @@ export default function UserManagementPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [showAddModal, setShowAddModal] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
 
     useEffect(() => {
         loadUsers();
@@ -59,7 +60,7 @@ export default function UserManagementPage() {
                                 </p>
                             </div>
                             <button
-                                onClick={() => setShowAddModal(true)}
+                                onClick={() => setIsCreateModalOpen(true)}
                                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                             >
                                 <Plus className="h-4 w-4" />
@@ -138,10 +139,35 @@ export default function UserManagementPage() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button className="text-blue-600 hover:text-blue-900 mr-3">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedUser(u);
+                                                            setIsCreateModalOpen(true);
+                                                        }}
+                                                        className="text-blue-600 hover:text-blue-900 mr-3"
+                                                        title="Edit user"
+                                                    >
                                                         <Edit className="h-4 w-4" />
                                                     </button>
-                                                    <button className="text-red-600 hover:text-red-900">
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (confirm(`Are you sure you want to delete user ${u.name || u.email}?`)) {
+                                                                try {
+                                                                    const res = await fetch(`/api/users/${u.id}`, { method: 'DELETE' });
+                                                                    if (res.ok) {
+                                                                        alert('✅ User deleted successfully');
+                                                                        loadUsers();
+                                                                    } else {
+                                                                        alert('❌ Failed to delete user');
+                                                                    }
+                                                                } catch (err) {
+                                                                    alert('❌ Error deleting user');
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="text-red-600 hover:text-red-900"
+                                                        title="Delete user"
+                                                    >
                                                         <Trash2 className="h-4 w-4" />
                                                     </button>
                                                 </td>
@@ -181,13 +207,19 @@ export default function UserManagementPage() {
                 </div>
             </div>
 
+            {/* Create User Modal */}
             <CreateUserModal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
+                isOpen={isCreateModalOpen}
+                onClose={() => {
+                    setIsCreateModalOpen(false);
+                    setSelectedUser(null);
+                }}
                 onSuccess={() => {
                     loadUsers();
-                    setShowAddModal(false);
+                    setIsCreateModalOpen(false);
+                    setSelectedUser(null);
                 }}
+                initialData={selectedUser}
             />
         </div>
     );

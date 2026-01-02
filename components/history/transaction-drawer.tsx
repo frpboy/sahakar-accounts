@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, Calendar, Hash, Tag, CreditCard, User, Building2, Lock, Unlock, Printer, Trash2, Clock, MapPin } from 'lucide-react';
+import { X, Calendar, Hash, Tag, CreditCard, User, Building2, Lock, Unlock, Printer, Download, Trash2, Clock, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -156,15 +156,40 @@ export function TransactionDrawer({ isOpen, onClose, transaction }: TransactionD
 
                 {/* Footer Actions */}
                 <div className="p-6 border-t bg-gray-50 flex gap-3">
-                    <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all">
-                        <Printer className="w-4 h-4" />
-                        Print Confirmation
+                    <button
+                        onClick={() => alert('🖨️ Print/Export feature coming soon')}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all"
+                    >
+                        <Download className="w-4 h-4" />
+                        Print / Export
                     </button>
-                    {!isLocked && (
-                        <button className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 border border-red-100 transition-all">
-                            <Trash2 className="w-5 h-5" />
-                        </button>
-                    )}
+
+                    <button
+                        onClick={async () => {
+                            if (confirm('Are you sure you want to delete this transaction? This cannot be undone.')) {
+                                try {
+                                    const res = await fetch(`/api/transactions/${transaction.id}`, {
+                                        method: 'DELETE',
+                                    });
+                                    if (!res.ok) {
+                                        const err = await res.json();
+                                        alert(`Failed to delete: ${err.error}`);
+                                        return;
+                                    }
+                                    alert('✅ Transaction deleted successfully');
+                                    onClose();
+                                    // Trigger refresh if possible, or user manually refreshes
+                                    window.location.reload();
+                                } catch (error) {
+                                    alert('Error deleting transaction');
+                                }
+                            }
+                        }}
+                        className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 border border-red-100 transition-all"
+                        title="Delete Transaction"
+                    >
+                        <Trash2 className="w-5 h-5" />
+                    </button>
                 </div>
             </div>
         </div>

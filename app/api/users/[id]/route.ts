@@ -7,6 +7,7 @@ type PatchUserBody = {
     role?: string | null;
     outlet_id?: string | null;
     outletId?: string | null;
+    name?: string | null;
 };
 
 function getErrorMessage(error: unknown): string {
@@ -54,8 +55,13 @@ export async function PATCH(
         const body = (await request.json()) as PatchUserBody;
         const role = body.role ?? undefined;
         const outletId = (body.outlet_id ?? body.outletId) ?? undefined;
+        const name = body.name ?? undefined;
 
         const updateData: Record<string, unknown> = {};
+
+        if (name !== undefined) {
+            updateData.name = name;
+        }
 
         if (role !== undefined) {
             if (role !== null && !ALLOWED_ROLES.has(role)) {
@@ -216,7 +222,7 @@ export async function DELETE(
         if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
 
         // Also remove auth user
-        await admin.auth.admin.deleteUser((await context.params).id).catch(() => {});
+        await admin.auth.admin.deleteUser((await context.params).id).catch(() => { });
 
         await admin
             .from('audit_logs')

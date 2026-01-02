@@ -47,7 +47,7 @@ export default function SalesReportPage() {
             // 2. Query transactions
             let query = (supabase as any)
                 .from('transactions')
-                .select('*, users(name), outlets(name)')
+                .select('*, users(name), outlets(name), profiles!customer_id(full_name)')
                 .eq('type', 'income')
                 .eq('category', 'sales')
                 .gte('created_at', `${dateRange.from}T00:00:00`)
@@ -97,7 +97,7 @@ export default function SalesReportPage() {
             'Time': new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             'Outlet': t.outlets?.name || 'Unknown',
             'Bill No': t.bill_number || '-',
-            'Customer': t.customer_name || 'Walk-in',
+            'Customer': t.profiles?.full_name || t.customer_name || 'Walk-in',
             'Amount': t.amount,
             'Payment Mode': t.payment_mode,
             'Staff': t.users?.name || 'System'
@@ -116,7 +116,7 @@ export default function SalesReportPage() {
             new Date(t.created_at).toLocaleDateString(),
             t.outlets?.name || '-',
             t.bill_number || '-',
-            t.customer_name || 'Walk-in',
+            t.profiles?.full_name || t.customer_name || 'Walk-in',
             `Rs. ${Number(t.amount).toLocaleString()}`,
             t.payment_mode,
             t.users?.name || '-'
@@ -148,7 +148,9 @@ export default function SalesReportPage() {
             accessor: (t: any) => (
                 <div className="flex flex-col">
                     <span className="font-semibold text-blue-600">{t.bill_number || 'N/A'}</span>
-                    <span className="text-xs text-gray-600">{t.customer_name || 'Walk-in'}</span>
+                    <span className="text-gray-500 text-xs">
+                        {t.profiles?.full_name || t.customer_name || 'Walk-in'}
+                    </span>
                 </div>
             )
         },
