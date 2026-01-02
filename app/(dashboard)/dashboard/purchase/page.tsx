@@ -50,6 +50,25 @@ export default function PurchasePage() {
         checkLock();
     }, [user, supabase]);
 
+    // Auto-generate Voucher Number on mount
+    useEffect(() => {
+        if (!voucherNumber && user?.profile?.outlet_id) {
+            // Generate format: OUTLET-VCH-YYYYMMDD-HHMMSS
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            // Get outlet prefix from localStorage or default
+            const outletPrefix = localStorage.getItem('outlet_prefix') || 'SAH';
+            const generatedVoucher = `${outletPrefix}-VCH-${year}${month}${day}-${hours}${minutes}${seconds}`;
+            setVoucherNumber(generatedVoucher);
+        }
+    }, [user, voucherNumber]);
+
     const handleSubmit = async () => {
         if (isLocked) {
             alert('❌ This business day is locked. New entries are not allowed.');

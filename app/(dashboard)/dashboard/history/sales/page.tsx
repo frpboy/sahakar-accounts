@@ -21,7 +21,7 @@ export default function SalesHistoryPage() {
 
     useEffect(() => {
         async function loadHistory() {
-            if (!user?.profile?.outlet_id) return;
+            if (!user) return;
             setLoading(true);
             try {
                 // Fetch Duty Logs for the current user (last 30 days)
@@ -40,27 +40,20 @@ export default function SalesHistoryPage() {
                 });
                 setDutyLogs(logMap);
 
+                // Check if user is admin/HO
+                const isAdmin = ['superadmin', 'master_admin', 'ho_accountant'].includes(user.profile?.role || '');
+
                 let query = (supabase as any)
                     .from('transactions')
-                    .select(`
-                        id,
-                        created_at,
-                        internal_entry_id,
-                        entry_number,
-                        customer_phone,
-                        amount,
-                        payment_modes,
-                        category,
-                        description,
-                        status,
-                        created_by,
-                        daily_records(status, date),
-                        users(full_name)
-                    `)
-                    .eq('outlet_id', user.profile.outlet_id)
+                    .select('*')
                     .eq('category', 'sales')
                     .order('created_at', { ascending: false })
                     .limit(100);
+
+                // For non-admin users, filter by outlet
+                if (!isAdmin && user.profile.outlet_id) {
+                    query = query.eq('outlet_id', user.profile.outlet_id);
+                }
 
                 // Add customer filter if provided in URL
                 if (customerPhone) {
@@ -68,7 +61,11 @@ export default function SalesHistoryPage() {
                 }
 
                 const { data, error } = await query;
-                if (error) throw error;
+                if (error) {
+                    console.error('Sales History Query Error:', error);
+                    throw error;
+                }
+                console.log('Sales History Data:', data);
                 setTransactions(data || []);
             } catch (e: any) {
                 setError(e.message);

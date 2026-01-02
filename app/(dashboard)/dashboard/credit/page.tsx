@@ -63,6 +63,25 @@ function CreditPageContent() {
         }
         checkLock();
     }, [user, supabase]);
+
+    // Auto-generate Entry Number on mount (if not editing)
+    React.useEffect(() => {
+        if (!entryNumber && !editId && user?.profile?.outlet_id) {
+            // Generate format: OUTLET-CR-YYYYMMDD-HHMMSS  
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            // Get outlet prefix from localStorage or default
+            const outletPrefix = localStorage.getItem('outlet_prefix') || 'SAH';
+            const generatedEntry = `${outletPrefix}-CR-${year}${month}${day}-${hours}${minutes}${seconds}`;
+            setEntryNumber(generatedEntry);
+        }
+    }, [user, entryNumber, editId]);
     // Load transaction if editing
     React.useEffect(() => {
         async function loadTransaction() {

@@ -53,10 +53,21 @@ export function AdminDashboard() {
 
                 const perf: OutletPerf[] = [];
                 let revenueSum = 0;
+
+                // Get this month's start date
+                const monthStart = `${yyyy}-${mm}-01`;
+
                 for (const o of (outlets || [])) {
-                    const r = await fetch(`/api/reports/cash-flow?outletId=${encodeURIComponent(o.id)}&month=${monthStr}`, { cache: 'no-store' });
-                    const cf = r.ok ? await r.json() : [];
-                    const outletTotal = (cf || []).reduce((s: number, d: any) => s + Number(d.cash_in || 0) + Number(d.upi_in || 0), 0);
+                    // Query transactions directly for real-time data
+                    const { data: salesData } = await (supabase as any)
+                        .from('transactions')
+                        .select('amount')
+                        .eq('outlet_id', o.id)
+                        .eq('type', 'income')
+                        .eq('category', 'sales')
+                        .gte('created_at', monthStart);
+
+                    const outletTotal = (salesData || []).reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
                     perf.push({ name: o.name, sales: outletTotal });
                     revenueSum += outletTotal;
                 }
