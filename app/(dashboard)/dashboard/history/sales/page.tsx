@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
@@ -9,6 +10,9 @@ import { HistoryTable } from '@/components/history/history-table';
 export default function SalesHistoryPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
     const { user } = useAuth();
+    const searchParams = useSearchParams();
+    const customerPhone = searchParams.get('customer');
+
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [transactions, setTransactions] = useState<any[]>([]);
@@ -36,7 +40,7 @@ export default function SalesHistoryPage() {
                 });
                 setDutyLogs(logMap);
 
-                const { data, error } = await (supabase as any)
+                let query = (supabase as any)
                     .from('transactions')
                     .select(`
                         id,
@@ -58,6 +62,12 @@ export default function SalesHistoryPage() {
                     .order('created_at', { ascending: false })
                     .limit(100);
 
+                // Add customer filter if provided in URL
+                if (customerPhone) {
+                    query = query.eq('customer_phone', customerPhone);
+                }
+
+                const { data, error } = await query;
                 if (error) throw error;
                 setTransactions(data || []);
             } catch (e: any) {

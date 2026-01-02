@@ -5,6 +5,7 @@ import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { useQuery } from '@tanstack/react-query';
+import { BarChart3 } from 'lucide-react';
 import {
     LineChart, Line, AreaChart, Area, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -109,7 +110,7 @@ export default function AnalyticsPage() {
                 <div className="flex-1 flex items-center justify-center p-6">
                     <div className="text-center space-y-4">
                         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mb-2">
-                            <BarChart barchart className="w-8 h-8" />
+                            <BarChart3 className="w-8 h-8" />
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900">HO Exclusive Analytics</h2>
                         <p className="text-gray-600 max-w-sm mx-auto">

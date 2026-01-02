@@ -18,7 +18,7 @@ export default function UserActivityPage() {
     const { data: users, isLoading: usersLoading } = useQuery({
         queryKey: ['users-list'],
         queryFn: async () => {
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('profiles')
                 .select('id, email, full_name, role, last_login_at, is_active')
                 .order('full_name');

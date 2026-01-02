@@ -5,11 +5,13 @@ import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Filter, Search } from 'lucide-react';
+import { Download, Filter, Search, BarChart3 } from 'lucide-react';
 
 export default function TransactionReportPage() {
     const supabase = createClientBrowser();
     const { user } = useAuth();
+
+    const isAdmin = ['superadmin', 'master_admin', 'ho_accountant'].includes(user?.profile?.role || '');
 
     // Filters
     const [dateFrom, setDateFrom] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
@@ -21,7 +23,6 @@ export default function TransactionReportPage() {
     const { data: transactions, isLoading } = useQuery({
         queryKey: ['transactions-report', dateFrom, dateTo, txType],
         queryFn: async () => {
-            const isAdmin = ['superadmin', 'master_admin', 'ho_accountant'].includes(user?.profile?.role || '');
 
             let query: any = supabase
                 .from('transactions')
