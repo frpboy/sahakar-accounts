@@ -38,6 +38,7 @@ export default function LedgerRegisterPage() {
         bank: 0,
         credit: 0
     });
+    const [absoluteLastLocked, setAbsoluteLastLocked] = useState<string | null>(null);
 
     const loadRegister = useCallback(async () => {
         if (!user?.profile.outlet_id) return;
@@ -86,9 +87,23 @@ export default function LedgerRegisterPage() {
         }
     }, [user, dateRange, supabase]);
 
+    const fetchLocks = useCallback(async () => {
+        if (!user?.profile.outlet_id) return;
+        const { data } = await (supabase as any)
+            .from('day_locks')
+            .select('date')
+            .eq('outlet_id', user.profile.outlet_id)
+            .eq('is_locked', true)
+            .order('date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (data) setAbsoluteLastLocked(data.date);
+    }, [supabase, user]);
+
     useEffect(() => {
         loadRegister();
-    }, [loadRegister]);
+        fetchLocks();
+    }, [loadRegister, fetchLocks]);
 
     const handleRowClick = (entry: any) => {
         setSelectedEntry(entry);
@@ -142,7 +157,7 @@ export default function LedgerRegisterPage() {
                     cash={stats.cash}
                     bank={stats.bank}
                     credit={stats.credit}
-                    lastLockedDate={lastLockedDate}
+                    lastLockedDate={absoluteLastLocked as any}
                 />
 
                 <div className="flex items-center gap-2 mb-4">

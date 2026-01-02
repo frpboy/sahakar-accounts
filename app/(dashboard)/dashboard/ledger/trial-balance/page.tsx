@@ -37,12 +37,23 @@ export default function TrialBalancePage() {
             txs?.forEach((t: any) => {
                 const acc = t.ledger_accounts;
                 if (!acc) return;
+
                 if (!map.has(acc.code)) {
-                    map.set(acc.code, { name: acc.name, code: acc.code, debit: 0, credit: 0 });
+                    map.set(acc.code, { name: acc.name, code: acc.code, type: acc.type, debit: 0, credit: 0 });
                 }
                 const entry = map.get(acc.code);
-                if (t.type === 'expense') entry.debit += Number(t.amount);
-                else entry.credit += Number(t.amount);
+                const amt = Number(t.amount);
+                const isIncrease = t.type === 'income';
+
+                // Dr/Cr Logic based on Account Type
+                if (acc.type === 'Asset' || acc.type === 'Expense') {
+                    if (isIncrease) entry.debit += amt;
+                    else entry.credit += amt;
+                } else {
+                    // Liability, Equity, Income
+                    if (isIncrease) entry.credit += amt;
+                    else entry.debit += amt;
+                }
             });
 
             setBalances(Array.from(map.values()));

@@ -71,7 +71,10 @@ export function BalanceCard({
                 </div>
                 <p className="text-xs text-gray-400 uppercase font-bold">Last Locked Day</p>
                 <p className="text-lg font-bold text-gray-800 dark:text-white mt-1">
-                    {new Date(lastLockedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {lastLockedDate
+                        ? new Date(lastLockedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : 'Never Locked'
+                    }
                 </p>
             </div>
         </div>

@@ -3347,3 +3347,119 @@ Locks beat permissions
 
 Exports don’t bypass governance
 
+⚠️ Things You MUST Double-Check (Non-Negotiable)
+
+These are common places even good systems leak.
+
+🔍 1. Trial Balance Zero-Variance Rule
+
+Confirm this is hard-enforced, not visual only:
+
+TB total Dr == Cr must be 0
+
+Any variance:
+
+Blocks month close
+
+Shows exact offending transaction IDs
+
+If variance can be “ignored”, that’s a future audit failure.
+
+🔍 2. Manual Journal Governance
+
+Make sure all manual entries enforce:
+
+Mandatory narration
+
+Mandatory source_type = manual
+
+Separate permission from normal transactions
+
+Visible “Manual Entry Risk” banner
+
+Manual journals are where fraud hides.
+
+🔍 3. Reversal Dating Rule
+
+Reversals must:
+
+Post on current open date
+
+NOT back-date into locked periods
+
+Reference original transaction date clearly
+
+Back-dated reversals = silent tampering.
+
+🔍 4. Cash Reconciliation Authority
+
+Confirm:
+
+Staff can declare variance
+
+Manager must accept variance
+
+Variance logged, never auto-adjusted
+
+Never auto-fix cash mismatches. Ever.
+
+🧠 What’s Still Missing (Optional but Strongly Recommended)
+
+These aren’t required for “ledger correctness”, but they elevate the system.
+
+🧾 1️⃣ Account Usage Heatmap
+
+On CoA page:
+
+Show how often an account is used
+
+Warn before locking frequently used accounts
+
+Prevents operational breakage.
+
+🧾 2️⃣ Ledger Aging Views
+
+Especially for:
+
+Customer Ledger
+
+Supplier Ledger
+
+Add:
+
+0–30
+
+31–60
+
+61–90
+
+90+
+
+This is basic accounting hygiene.
+
+🧾 3️⃣ Month-End Close Checklist Lock
+
+Don’t just “close” a month.
+Force checklist completion:
+
+All days locked ✔
+
+TB balanced ✔
+
+Cash variance acknowledged ✔
+
+Credit aging reviewed ✔
+
+Checkboxes + signatures = governance.
+
+🧾 4️⃣ Hash Chain (Advanced, Optional)
+
+If you want real audit flex:
+
+Hash each transaction
+
+Chain hashes by date
+
+Detect tampering mathematically
+
+Not required now, but it future-proofs you.
