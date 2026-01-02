@@ -622,6 +622,169 @@ Supabase auto-generated API docs available in Supabase dashboard
 
 ---
 
-**Last Updated:** 15:55 02/01/26
-**Version:** 2.1.1
+**Last Updated:** 21:00 02/01/26
+**Version:** 2.3.0
 **System Status:** ✅ Production Ready
+
+---
+
+## 🆕 Phase 8: Granular Reports & Access Management ✅ COMPLETED
+
+### Reports Access Control
+
+#### Admin / HO Accountant (Full Access)
+✅ **All 7 Reports Available:**
+1. Sales Report - Multi-outlet view
+2. Financial Report - Consolidated data
+3. Customer Insights - All customers
+4. Transaction Report - All transactions
+5. Outlet Performance - Comparison tool
+6. Trends & Analytics - Business intelligence
+7. User Activity - System audit logs
+
+✅ **Features:**
+- Multi-outlet dropdown selector
+- Export data from all outlets
+- Consolidated views and comparisons
+- Performance analytics
+
+#### Store Manager (Restricted Access)
+✅ **4 Reports Available:**
+1. Sales Report - Own outlet only
+2. Financial Report - Own outlet only
+3. Customer Insights - Own customers only
+4. Transaction Report - Own outlet only
+
+❌ **Hidden Reports:**
+- Outlet Performance (HO comparison)
+- Trends & Analytics (consolidated BI)
+- User Activity (audit logs)
+
+✅ **Data Isolation:**
+- All queries auto-filtered by `outlet_id`
+- Export limited to own outlet
+- Outlet dropdown hidden
+- Outlet column hidden in tables
+- Route-level protection prevents URL bypass
+
+### Reports Enhancements
+
+✅ **Customer Sales History Integration**
+- History button (📜 icon) on each customer row
+- Links to `/dashboard/history/sales?customer=PHONE`
+- Automatic filtering by customer phone
+- View full purchase history per customer
+
+✅ **Access Denied Pages**
+- HO-exclusive reports show clear denial message
+- Prevents unauthorized access via direct URLs
+- Professional error UI with icon
+
+✅ **Field Standardization**
+- `transaction_type` → `type`
+- `payment_modes` → `payment_mode`
+- Consistent across all report pages
+
+### Implementation Details
+
+**Modified Files:**
+- `components/layout/sidebar.tsx` - Role-based report visibility
+- `app/(dashboard)/dashboard/reports/page.tsx` - Role filtering
+- `app/(dashboard)/dashboard/reports/sales/page.tsx` - Outlet filtering
+- `app/(dashboard)/dashboard/reports/financial/page.tsx` - Outlet filtering
+- `app/(dashboard)/dashboard/reports/customers/page.tsx` - Customer filtering + history button
+- `app/(dashboard)/dashboard/reports/transactions/page.tsx` - Outlet filtering
+- `app/(dashboard)/dashboard/reports/outlets/page.tsx` - Access control
+- `app/(dashboard)/dashboard/reports/analytics/page.tsx` - Access control + field fixes
+- `app/(dashboard)/dashboard/reports/users/page.tsx` - Access control + profiles table
+- `app/(dashboard)/dashboard/history/sales/page.tsx` - Customer filtering via URL params
+
+---
+
+## 📱 PWA Enhancements ✅ COMPLETED
+
+### Professional Icons & Splash Screens
+
+✅ **Icon Set (10 sizes)**
+- 48x48, 72x72, 96x96, 128x128, 144x144
+- 152x152, 192x192, 256x256, 384x384, 512x512
+- All using exact Sahakar Accounts branding
+
+✅ **Splash Screens (45 devices)**
+- **iPhones:** SE through iPhone 17 Pro Max
+- **iPads:** Mini through 13" iPad Pro M4
+- Portrait and landscape orientations
+- Professional logo-centered design
+
+✅ **Manifest Configuration**
+- Updated `manifest.json` with all icons
+- Version 2.0.0 for cache busting
+- Proper purpose flags (any/maskable)
+- Apple splash screen meta tags in layout
+
+✅ **Browser Support**
+- Chrome/Edge (Windows desktop PWA)
+- Safari (iOS/iPadOS)
+- Proper favicon for all browsers
+- Install prompt with logo
+
+**Files:**
+- `public/icon-*.png` (10 files)
+- `public/iPhone_*.png` + `public/iPad_*.png` (45 files)
+- `public/manifest.json` - Updated
+- `app/layout.tsx` - 45 Apple splash meta tags
+- `public/favicon.png`, `public/favicon.ico`
+
+---
+
+## 🚀 Phase 9: Reports & Analytics Expansion (PLANNED)
+
+### New Reports to Add
+
+#### 1. **Staff Performance Report** 📊
+- Route: `/dashboard/reports/staff-performance`
+- Access: All roles (outlet-filtered for managers)
+- Features: Transaction count, revenue per staff, performance metrics
+
+#### 2. **Credit Report (Outstanding Balances)** 💳
+- Route: `/dashboard/reports/credit`
+- Access: All roles (outlet-filtered)
+- Features: Outstanding balances, aging analysis, overdue tracking
+
+#### 3. **Daily Summary Report (Tally-Focused)** 📝
+- Route: `/dashboard/reports/daily-summary`
+- Access: All roles (outlet-filtered)
+- Features: Opening balance, tally, variance tracking, calendar view
+
+#### 4. **Month-End Close Report** 📅
+- Route: `/dashboard/reports/month-end`
+- Access: Admin/HO only
+- Features: MTD summary, reconciliation status, approval workflow
+
+#### 5. **Credit Limit Monitoring** ⚠️
+- Route: `/dashboard/reports/credit-monitoring`
+- Access: All roles (outlet-filtered)
+- Features: Credit utilization alerts, limit breach detection
+
+#### 6. **Payment Mode Analysis** 💰
+- Route: `/dashboard/reports/payment-modes`
+- Access: All roles (outlet-filtered)
+- Features: Mode breakdown, trends, settlement tracking
+
+### Dashboard Enhancements
+
+✅ **Summary Metrics (Planned)**
+- Real-time KPI cards on Reports main page
+- Outlet-specific for managers
+- Consolidated for HO/Admin
+
+✅ **Sidebar Updates (Planned)**
+- Add "Trends & Analytics" to sidebar (HO only)
+- Alphabetize report links
+- Group by access level
+
+### Status
+- Phase 9 implementation plan created
+- Awaiting user approval to begin
+
+---

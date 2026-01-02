@@ -23,7 +23,8 @@ import {
     Download,
     Settings,
     AlertTriangle,
-    Tag
+    Tag,
+    TrendingUp
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useApp } from '@/components/providers/app-provider';
@@ -131,6 +132,7 @@ export function Sidebar({ className }: { className?: string }) {
         // Only HO sees Outlet Performance (comparisons)
         if (isAdmin) {
             reportItems.push({ label: 'Outlet Performance', href: '/dashboard/reports/outlets', icon: Building2 });
+            reportItems.push({ label: 'Trends & Analytics', href: '/dashboard/reports/analytics', icon: TrendingUp });
             reportItems.push({ label: 'User Activity', href: '/dashboard/reports/users', icon: Users });
         }
 

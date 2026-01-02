@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { TopBar } from '@/components/layout/topbar';
-import { Download, FileText, IndianRupee, ShoppingCart, Building2, Users, TrendingUp, Activity, List } from 'lucide-react';
+import { Download, FileText, IndianRupee, ShoppingCart, Building2, Users, TrendingUp, Activity, List, AlertTriangle } from 'lucide-react';
 import { createClientBrowser } from '@/lib/supabase-client';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -48,6 +48,15 @@ export default function ReportsPage() {
             roles: ['admin', 'ho_accountant']
         },
         {
+            title: 'Daily Summary',
+            description: 'Opening, closing, tally and variance tracking',
+            icon: <FileText className="w-6 h-6 text-emerald-600" />,
+            color: 'border-emerald-200 bg-emerald-50/50',
+            href: '/dashboard/reports/daily-summary',
+            dataPoints: ['Daily Tally', 'Variance Analysis', 'Historical View'],
+            roles: ['admin', 'ho_accountant', 'outlet_manager']
+        },
+        {
             title: 'Customer Insights',
             description: 'View customer growth and behavior',
             icon: <Users className="w-6 h-6 text-orange-600" />,
@@ -72,6 +81,51 @@ export default function ReportsPage() {
             color: 'border-indigo-200 bg-indigo-50/50',
             href: '/dashboard/reports/analytics',
             dataPoints: ['MoM Growth', 'Retention Rates', 'Forecasting'],
+            roles: ['admin', 'ho_accountant']
+        },
+        {
+            title: 'Credit Report',
+            description: 'Track outstanding balances and credit utilization',
+            icon: <IndianRupee className="w-6 h-6 text-rose-600" />,
+            color: 'border-rose-200 bg-rose-50/50',
+            href: '/dashboard/reports/credit',
+            dataPoints: ['Outstanding', 'Utilization %', 'Overdue Tracking'],
+            roles: ['admin', 'ho_accountant', 'outlet_manager']
+        },
+        {
+            title: 'Payment Mode Analysis',
+            description: 'Breakdown and trends by payment method',
+            icon: <IndianRupee className="w-6 h-6 text-cyan-600" />,
+            color: 'border-cyan-200 bg-cyan-50/50',
+            href: '/dashboard/reports/payment-modes',
+            dataPoints: ['Cash vs Digital', 'Mode Trends', 'Settlement Tracking'],
+            roles: ['admin', 'ho_accountant', 'outlet_manager']
+        },
+        {
+            title: 'Staff Performance',
+            description: 'Track staff productivity and rankings',
+            icon: <Users className="w-6 h-6 text-violet-600" />,
+            color: 'border-violet-200 bg-violet-50/50',
+            href: '/dashboard/reports/staff-performance',
+            dataPoints: ['Revenue per Staff', 'Transaction Count', 'Top Performers'],
+            roles: ['admin', 'ho_accountant', 'outlet_manager']
+        },
+        {
+            title: 'Credit Limit Monitoring',
+            description: 'Monitor credit utilization and alerts',
+            icon: <AlertTriangle className="w-6 h-6 text-amber-600" />,
+            color: 'border-amber-200 bg-amber-50/50',
+            href: '/dashboard/reports/credit-monitoring',
+            dataPoints: ['Utilization Alerts', 'Limit Breaches', 'Warning Customers'],
+            roles: ['admin', 'ho_accountant', 'outlet_manager']
+        },
+        {
+            title: 'Month-End Close',
+            description: 'Reconciliation and approval workflow',
+            icon: <FileText className="w-6 h-6 text-slate-600" />,
+            color: 'border-slate-200 bg-slate-50/50',
+            href: '/dashboard/reports/month-end',
+            dataPoints: ['MTD Summary', 'Pending Reconciliations', 'Approval Status'],
             roles: ['admin', 'ho_accountant']
         },
         {

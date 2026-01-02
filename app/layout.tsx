@@ -10,8 +10,16 @@ export const metadata: Metadata = {
     description: 'Multi-tenant accounting system for hyperpharmacies',
     manifest: "/manifest.json",
     icons: {
-        icon: "/favicon.png",
-        apple: "/favicon.png",
+        icon: [
+            { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+            { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+        ],
+        apple: [
+            { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+        ],
+        shortcut: [
+            { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+        ],
     },
     appleWebApp: {
         capable: true,
