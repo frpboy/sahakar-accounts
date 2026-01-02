@@ -151,8 +151,8 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
                                 type="text"
                                 placeholder="Enter full name"
                                 value={customerName}
-                                onChange={(e) => setCustomerName(e.target.value)}
-                                className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                onChange={(e) => setCustomerName(e.target.value.toUpperCase())}
+                                className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm uppercase"
                             />
                         </div>
                         <div>
@@ -160,10 +160,11 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
                                 Phone Number <span className="text-red-500">*</span>
                             </label>
                             <input
-                                type="text"
+                                type="tel"
+                                inputMode="numeric"
                                 placeholder="10-digit phone number"
                                 value={customerPhone}
-                                onChange={(e) => setCustomerPhone(e.target.value)}
+                                onChange={(e) => setCustomerPhone(e.target.value.replace(/[^0-9]/g, ''))}
                                 className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             />
                         </div>
@@ -212,7 +213,7 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
                                 <input
                                     type="text"
                                     value={referredBy}
-                                    onChange={(e) => setReferredBy(e.target.value)}
+                                    onChange={(e) => setReferredBy(e.target.value.toUpperCase())}
                                     placeholder="Search staff..."
                                     className="w-full pl-9 pr-4 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm uppercase"
                                 />
@@ -252,8 +253,8 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
                             placeholder="Enter full address"
                             rows={2}
                             value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            onChange={(e) => setAddress(e.target.value.toUpperCase())}
+                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm uppercase"
                         />
                     </div>
 
@@ -290,8 +291,8 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
                             placeholder="Any internal notes..."
                             rows={2}
                             value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            onChange={(e) => setNotes(e.target.value.toUpperCase())}
+                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm uppercase"
                         />
                     </div>
 

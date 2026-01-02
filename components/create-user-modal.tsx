@@ -131,7 +131,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess, initialData }: Use
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex justify-center items-center">
             <div className="relative p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800 dark:border-gray-700 transform transition-all duration-300 ease-out scale-100 opacity-100">
                 <div className="flex justify-between items-center pb-3 border-b dark:border-gray-700">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -180,9 +180,9 @@ export function CreateUserModal({ isOpen, onClose, onSuccess, initialData }: Use
                             type="text"
                             required
                             value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="John Doe"
+                            onChange={(e) => setFullName(e.target.value.toUpperCase())}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+                            placeholder="JOHN DOE"
                         />
                     </div>
 
@@ -213,10 +213,11 @@ export function CreateUserModal({ isOpen, onClose, onSuccess, initialData }: Use
                         </label>
                         <input
                             type="tel"
+                            inputMode="numeric"
                             value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
+                            onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="+91 98765 43210"
+                            placeholder="9876543210"
                         />
                     </div>
 

@@ -14,6 +14,7 @@ export default function OutletManagementPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [selectedOutlet, setSelectedOutlet] = useState<any>(null);
 
     useEffect(() => {
         loadOutlets();
@@ -96,7 +97,14 @@ export default function OutletManagementPage() {
                                             <Building2 className="h-8 w-8 text-blue-600" />
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <button className="p-2 hover:bg-gray-100 rounded-md">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedOutlet(outlet);
+                                                    setShowAddModal(true);
+                                                }}
+                                                className="p-2 hover:bg-gray-100 rounded-md"
+                                                title="Edit Outlet"
+                                            >
                                                 <Edit className="h-4 w-4 text-blue-600" />
                                             </button>
                                             <button className="p-2 hover:bg-gray-100 rounded-md">
@@ -148,13 +156,13 @@ export default function OutletManagementPage() {
                         </div>
                         <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
                             <div className="text-2xl font-bold text-green-600">
-                                {outlets.filter(o => o.outlet_type === 'hyper_pharmacy' || !o.outlet_type).length}
+                                {outlets.filter(o => ['hyper_pharmacy', 'HP'].includes(o.outlet_type) || !o.outlet_type).length}
                             </div>
                             <div className="text-sm text-gray-600">Hyper Pharmacies</div>
                         </div>
                         <div className="bg-white rounded-lg shadow-sm border p-4 text-center">
                             <div className="text-2xl font-bold text-purple-600">
-                                {outlets.filter(o => o.outlet_type === 'smart_clinic').length}
+                                {outlets.filter(o => ['smart_clinic', 'SC'].includes(o.outlet_type)).length}
                             </div>
                             <div className="text-sm text-gray-600">Smart Clinics</div>
                         </div>
@@ -168,11 +176,16 @@ export default function OutletManagementPage() {
 
             <CreateOutletModal
                 isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
+                onClose={() => {
+                    setShowAddModal(false);
+                    setSelectedOutlet(null);
+                }}
                 onSuccess={() => {
                     loadOutlets();
                     setShowAddModal(false);
+                    setSelectedOutlet(null);
                 }}
+                initialData={selectedOutlet}
             />
         </div >
     );

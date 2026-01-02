@@ -35,6 +35,7 @@ export async function PATCH(
         if (body.address) updateData.address = body.address;
         if (body.location) updateData.location = body.location;
         if (body.type) updateData.type = body.type;
+        if (body.is_active !== undefined) updateData.is_active = body.is_active;
 
         const adminForUpdate = createAdminClient();
         const { data, error } = await adminForUpdate

@@ -211,9 +211,9 @@ export default function PurchasePage() {
                                         type="text"
                                         placeholder="Enter purchase details"
                                         value={particulars}
-                                        onChange={(e) => setParticulars(e.target.value)}
+                                        onChange={(e) => setParticulars(e.target.value.toUpperCase())}
                                         disabled={isLocked}
-                                        className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed"
+                                        className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed uppercase"
                                     />
                                 </div>
 
@@ -224,9 +224,9 @@ export default function PurchasePage() {
                                             type="text"
                                             placeholder="e.g., VCH-001"
                                             value={voucherNumber}
-                                            onChange={(e) => setVoucherNumber(e.target.value)}
+                                            onChange={(e) => setVoucherNumber(e.target.value.toUpperCase())}
                                             disabled={isLocked}
-                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed"
+                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed uppercase"
                                         />
                                     </div>
                                     <div>
@@ -235,9 +235,9 @@ export default function PurchasePage() {
                                             type="text"
                                             placeholder="e.g., INV-001"
                                             value={invoiceNumber}
-                                            onChange={(e) => setInvoiceNumber(e.target.value)}
+                                            onChange={(e) => setInvoiceNumber(e.target.value.toUpperCase())}
                                             disabled={isLocked}
-                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed"
+                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed uppercase"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">Provide at least one of Voucher or Invoice No.</p>
                                     </div>

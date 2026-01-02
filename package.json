@@ -53,7 +53,7 @@
     "psql": "^0.0.1",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.1",
-    "react-dom": "^19.2.3",
+    "react-dom": "^18.3.1",
     "react-hook-form": "^7.69.0",
     "react-is": "^19.2.3",
     "react-router-dom": "^7.3.0",

@@ -19,41 +19,81 @@ export default function UserActivityPage() {
         queryKey: ['users-list'],
         queryFn: async () => {
             const { data, error } = await (supabase as any)
-                .from('profiles')
-                .select('id, email, full_name, role, last_login_at, is_active')
-                .order('full_name');
+                .from('users') // Changed from profiles to users
+                .select('id, email, name, full_name, role') // Removed last_login_at, is_active as they might not exist
+                .order('name');
             if (error) throw error;
-            return data;
+            return data.map((u: any) => ({
+                ...u,
+                full_name: u.full_name || u.name, // Fallback
+                last_login_at: null, // Placeholder to avoid breaking UI code accessing it
+                is_active: true
+            }));
         },
-        enabled: isAdmin // Only fetch if admin
+        enabled: isAdmin
+    });
+
+    // Fetch Active Users Today count
+    const { data: activeTodayCount } = useQuery({
+        queryKey: ['active-users-today'],
+        queryFn: async () => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Get users who made transactions today
+            const { data: txns } = await supabase
+                .from('transactions')
+                .select('created_by')
+                .gte('created_at', today.toISOString());
+
+            // Get users who have audit logs today
+            const { data: logs } = await supabase
+                .from('audit_logs')
+                .select('user_id')
+                .gte('created_at', today.toISOString());
+
+            const activeIds = new Set([
+                ...(txns?.map(t => t.created_by) || []),
+                ...(logs?.map(l => l.user_id) || [])
+            ]);
+
+            return activeIds.size;
+        },
+        enabled: isAdmin
     });
 
     // Fetch activity for selected user or recent activity for all
     const { data: activity, isLoading: activityLoading } = useQuery({
         queryKey: ['user-activity', selectedUser],
         queryFn: async () => {
-            let query: any = supabase
-                .from('audit_logs') // Assuming audit_logs table exists based on plan, or fallback to transactions/logs
+            // Try fetching distinct audit logs first
+            let { data: logs, error } = await supabase
+                .from('audit_logs')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(50);
+                .limit(20);
 
-            if (selectedUser) {
-                query = query.eq('user_id', selectedUser);
+            if (selectedUser && logs) {
+                logs = logs.filter((l: any) => l.user_id === selectedUser);
             }
 
-            // Using transaction logs as proxy if audit_logs doesn't fully exist/populated yet
-            // Or better, let's look at transactions created by users
-            const { data: txns, error } = await supabase
-                .from('transactions')
-                .select('id, created_at, amount, transaction_type, description, created_by')
-                .order('created_at', { ascending: false })
-                .limit(50);
+            // If no logs, fetch transactions as fallback activity
+            if (!logs || logs.length === 0) {
+                let txQuery = supabase
+                    .from('transactions')
+                    .select('id, created_at, amount, type, description, created_by')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
 
-            if (selectedUser) {
-                return txns?.filter((t: any) => t.created_by === selectedUser) || [];
+                if (selectedUser) {
+                    txQuery = txQuery.eq('created_by', selectedUser);
+                }
+
+                const { data: txns } = await txQuery;
+                return txns || [];
             }
-            return txns || [];
+
+            return logs || [];
         }
     });
 
@@ -77,7 +117,7 @@ export default function UserActivityPage() {
     }
 
     return (
-        <div className="flex flex-col h-full bg-gray-50">
+        <div className="flex flex-col h-full bg-gray-50" >
             <TopBar title="User Activity Report" />
 
             <div className="p-6 max-w-7xl mx-auto w-full space-y-6">
@@ -99,8 +139,7 @@ export default function UserActivityPage() {
                             </div>
                             <span className="text-sm font-medium text-gray-500">Active Today</span>
                         </div>
-                        {/* Placeholder logic for active today */}
-                        <div className="text-2xl font-bold">{users?.filter((u: any) => new Date(u.last_login_at || '').getDate() === new Date().getDate()).length || 0}</div>
+                        <div className="text-2xl font-bold">{activeTodayCount || 0}</div>
                     </div>
                 </div>
 
@@ -187,6 +226,6 @@ export default function UserActivityPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

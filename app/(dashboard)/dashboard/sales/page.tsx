@@ -604,6 +604,17 @@ function SalesPageContent() {
                 }
             }
 
+            // Create Audit Log
+            await (supabase as any).from('audit_logs').insert({
+                user_id: user.id,
+                action: editId ? 'UPDATE_SALE' : 'CREATE_SALE',
+                entity: 'transactions',
+                entity_id: transData.id,
+                severity: 'normal',
+                reason: `Sale ${editId ? 'updated' : 'created'} for ₹${amount}`,
+                created_at: new Date().toISOString()
+            });
+
             // Success
             const customerLabel = customerExists ? 'Existing customer' : 'New customer added';
             const internalIdMsg = transData.internal_entry_id ? `\nSahakar ID: ${transData.internal_entry_id}` : '';
@@ -722,9 +733,9 @@ function SalesPageContent() {
                                         type="text"
                                         placeholder={customerExists ? "Auto-filled from database" : "Enter customer name"}
                                         value={customerName}
-                                        onChange={(e) => !customerExists && setCustomerName(e.target.value)}
+                                        onChange={(e) => !customerExists && setCustomerName(e.target.value.toUpperCase())}
                                         disabled={customerExists || isLocked}
-                                        className={`w-full px-3 py-2 border dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 transition-colors ${customerExists
+                                        className={`w-full px-3 py-2 border dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 transition-colors uppercase ${customerExists
                                             ? 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-400 cursor-not-allowed'
                                             : isLocked ? 'bg-gray-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:ring-blue-500'
                                             }`}

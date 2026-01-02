@@ -11,10 +11,15 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AnalyticsPage() {
+import { Suspense } from 'react';
+
+function AnalyticsContent() {
     const supabase = createClientBrowser();
     const { user } = useAuth();
+    const searchParams = useSearchParams();
+    const outletIdParam = searchParams.get('outletId');
 
     // Date Range (Last 30 days by default)
     const [dateRange, setDateRange] = useState('30');
@@ -23,29 +28,81 @@ export default function AnalyticsPage() {
 
     // Fetch transactions
     const { data: transactions, isLoading } = useQuery({
-        queryKey: ['analytics-data', dateRange],
+        queryKey: ['analytics-data', dateRange, outletIdParam],
         queryFn: async () => {
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(endDate.getDate() - parseInt(dateRange));
 
-            const { data, error } = await supabase
+            let query = supabase
                 .from('transactions')
-                .select('*')
+                .select('amount, type, category, created_at, payment_modes, outlet_id')
                 .gte('created_at', startDate.toISOString())
                 .lte('created_at', endDate.toISOString());
 
+            if (outletIdParam) {
+                query = query.eq('outlet_id', outletIdParam);
+            }
+
+            const { data, error } = await query;
             if (error) throw error;
             return data;
         }
     });
 
+    // Fetch new customers count
+    const { data: newCustomers } = useQuery({
+        queryKey: ['new-customers', dateRange, outletIdParam],
+        queryFn: async () => {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - parseInt(dateRange));
+
+            const { count, error } = await supabase
+                .from('customers')
+                .select('*', { count: 'exact', head: true })
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString());
+
+            if (error) throw error;
+            return count || 0;
+        }
+    });
+
+    // Fetch outlets
+    const { data: outlets } = useQuery({
+        queryKey: ['outlets-list'],
+        queryFn: async () => {
+            const { data } = await supabase.from('outlets').select('id, name');
+            return data || [];
+        }
+    });
+
     // Process Data for Charts
     const processedData = React.useMemo(() => {
-        if (!transactions) return { dailyStats: [], modeStats: [] };
+        if (!transactions) return {
+            dailyStats: [],
+            modeStats: [],
+            outletStats: [],
+            totals: { sales: 0, sales_return: 0, purchase: 0, purchase_return: 0, credit_received: 0 }
+        };
 
         const daily: Record<string, { date: string, income: number, expense: number }> = {};
         const modes: Record<string, number> = {};
+
+        // Outlet Map
+        const outletMap: Record<string, { name: string, revenue: number, count: number }> = {};
+        outlets?.forEach((o: any) => {
+            outletMap[o.id] = { name: o.name, revenue: 0, count: 0 };
+        });
+
+        const totals = {
+            sales: 0,
+            sales_return: 0,
+            purchase: 0,
+            purchase_return: 0,
+            credit_received: 0
+        };
 
         (transactions as any[]).forEach((t: any) => {
             const date = new Date(t.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
@@ -62,9 +119,24 @@ export default function AnalyticsPage() {
                 daily[date].expense += amount;
             }
 
+            // Category Totals
+            if (t.category === 'sales') totals.sales += amount;
+            else if (t.category === 'sales_return') totals.sales_return += amount;
+            else if (t.category === 'purchase') totals.purchase += amount;
+            else if (t.category === 'purchase_return') totals.purchase_return += amount;
+            else if (t.category === 'credit_received') totals.credit_received += amount;
+
+            // Outlet Stats
+            if (t.category === 'sales' && t.type === 'income' && t.outlet_id) {
+                if (outletMap[t.outlet_id]) {
+                    outletMap[t.outlet_id].revenue += amount;
+                    outletMap[t.outlet_id].count += 1;
+                }
+            }
+
             // Payment modes
-            if (t.type === 'income' && t.payment_mode) {
-                const txModes = t.payment_mode.split(',').map((m: string) => {
+            if (t.type === 'income' && t.payment_modes) {
+                const txModes = t.payment_modes.split(',').map((m: string) => {
                     const clean = m.trim().toLowerCase();
                     return clean.charAt(0).toUpperCase() + clean.slice(1);
                 });
@@ -76,15 +148,6 @@ export default function AnalyticsPage() {
         });
 
         // Convert to arrays
-        const dailyStats = Object.values(daily).sort((a, b) =>
-            new Date(a.date).getTime() - new Date(b.date).getTime() // Rough sort, might need better date parsing if 'day month' format
-        );
-        // Correct sorting by date object
-        // Re-parsing date for sort might be tricky with just '02 Jan', so let's rely on the original iteration order if possible or better keys.
-        // Let's use ISO key for sorting then display label
-
-        // Revised sort approach:
-        // We'll iterate by date range to ensure all days are present (even empty ones) and sorted.
         const start = new Date();
         start.setDate(start.getDate() - parseInt(dateRange));
         const end = new Date();
@@ -104,8 +167,12 @@ export default function AnalyticsPage() {
             value: parseFloat(modes[key].toFixed(2))
         }));
 
-        return { dailyStats: finalDailyStats, modeStats };
-    }, [transactions, dateRange]);
+        const outletStats = Object.values(outletMap)
+            .filter(o => o.revenue > 0 || o.count > 0)
+            .sort((a, b) => b.revenue - a.revenue);
+
+        return { dailyStats: finalDailyStats, modeStats, totals, outletStats };
+    }, [transactions, dateRange, outlets]);
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -141,10 +208,39 @@ export default function AnalyticsPage() {
                         onChange={(e) => setDateRange(e.target.value)}
                         className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-lg px-4 py-2 text-sm font-medium"
                     >
+                        <option value="0">Today</option>
                         <option value="7">Last 7 Days</option>
                         <option value="30">Last 30 Days</option>
                         <option value="90">Last 3 Months</option>
                     </select>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1">New Sales</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-white">₹{processedData.totals.sales.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1">Sales Return</p>
+                        <p className="text-xl font-bold text-red-600">₹{processedData.totals.sales_return.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1">Purchase</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-white">₹{processedData.totals.purchase.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1">Purchase Return</p>
+                        <p className="text-xl font-bold text-green-600">₹{processedData.totals.purchase_return.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1">Credit Received</p>
+                        <p className="text-xl font-bold text-blue-600">₹{processedData.totals.credit_received.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-800 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1">New Customers</p>
+                        <p className="text-xl font-bold text-purple-600">{newCustomers || 0}</p>
+                    </div>
                 </div>
 
                 {/* Charts Grid */}
@@ -223,7 +319,52 @@ export default function AnalyticsPage() {
                     </div>
 
                 </div>
+
+                {/* Outlet Performance Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border dark:border-slate-800 shadow-sm">
+                        <h3 className="font-bold text-gray-900 dark:text-white mb-6">Outlet Revenue Comparison</h3>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={processedData.outletStats} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
+                                    <XAxis type="number" stroke="#888" fontSize={12} tickFormatter={(value) => '₹' + value} />
+                                    <YAxis dataKey="name" type="category" width={100} stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <Tooltip cursor={{ fill: 'transparent' }} />
+                                    <Bar dataKey="revenue" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Revenue" barSize={20}>
+                                        {/* Label List? */}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border dark:border-slate-800 shadow-sm">
+                        <h3 className="font-bold text-gray-900 dark:text-white mb-6">Outlet Transaction Volume</h3>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={processedData.outletStats} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
+                                    <XAxis type="number" stroke="#888" fontSize={12} />
+                                    <YAxis dataKey="name" type="category" width={100} stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <Tooltip cursor={{ fill: 'transparent' }} />
+                                    <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} name="Transactions" barSize={20} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+
         </div>
+    );
+}
+
+export default function AnalyticsPage() {
+    return (
+        <Suspense fallback={<div className="p-6">Loading analytics...</div>}>
+            <AnalyticsContent />
+        </Suspense>
     );
 }

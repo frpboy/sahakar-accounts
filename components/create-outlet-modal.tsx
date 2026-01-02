@@ -26,6 +26,7 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
         phone: '',
         email: '',
         type: '',
+        is_active: true
     });
     const [outletTypes, setOutletTypes] = useState<OutletType[]>([]);
     const [loading, setLoading] = useState(false);
@@ -42,6 +43,7 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
                     phone: initialData.phone || '',
                     email: initialData.email || '',
                     type: initialData.type || '',
+                    is_active: initialData.is_active !== undefined ? initialData.is_active : true
                 });
             } else {
                 setFormData({
@@ -51,6 +53,7 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
                     phone: '',
                     email: '',
                     type: '',
+                    is_active: true
                 });
             }
             setError('');
@@ -107,7 +110,7 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
@@ -140,9 +143,9 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
                             type="text"
                             required
                             value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                            placeholder="Main Branch"
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value.toUpperCase() })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                            placeholder="MAIN BRANCH"
                         />
                     </div>
 
@@ -190,9 +193,9 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
                         </label>
                         <textarea
                             value={formData.location}
-                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                            placeholder="Street, City, State, PIN"
+                            onChange={(e) => setFormData({ ...formData, location: e.target.value.toUpperCase() })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                            placeholder="STREET, CITY, STATE, PIN"
                             rows={3}
                         />
                     </div>
@@ -204,10 +207,11 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
                         </label>
                         <input
                             type="tel"
+                            inputMode="numeric"
                             value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '') })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                            placeholder="+91 98765 43210"
+                            placeholder="9876543210"
                         />
                     </div>
 
@@ -223,6 +227,22 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                             placeholder="outlet@example.com"
                         />
+                    </div>
+
+
+
+                    {/* Status */}
+                    <div className="flex items-center gap-2 pt-2">
+                        <input
+                            type="checkbox"
+                            id="is_active"
+                            checked={(formData as any).is_active}
+                            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked } as any)}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
+                            Outlet is Active
+                        </label>
                     </div>
 
                     {/* Actions */}
@@ -254,7 +274,7 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

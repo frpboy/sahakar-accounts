@@ -1,17 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/components/providers/app-provider';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
-import { LogOut, Menu, X, Sun, Moon } from 'lucide-react';
+import { LogOut, Menu, X, Sun, Moon, ArrowLeft } from 'lucide-react';
 import { getISTDate, getBusinessDate, formatISTClock } from '@/lib/ist-utils';
+import { useRouter, usePathname } from 'next/navigation';
 
 export function TopBar({ title }: { title: string }) {
     const { isOffline, isMobileMenuOpen, setIsMobileMenuOpen, isDarkMode, toggleDarkMode } = useApp();
     const { user, signOut } = useAuth();
     const [endingDuty, setEndingDuty] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [mounted, setMounted] = useState(false);
+
+    const router = useRouter();
+    const pathname = usePathname();
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const isStaff = user?.profile?.role === 'outlet_staff';
     const supabase = createClientBrowser();
@@ -21,6 +30,49 @@ export function TopBar({ title }: { title: string }) {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
+
+
+
+    const [rank, setRank] = useState<number | null>(null);
+
+    // Fetch Outlet Rank (MTD)
+    useEffect(() => {
+        if (!user?.profile?.outlet_id || !user?.profile?.role.includes('outlet')) return;
+
+        const fetchRank = async () => {
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+            // Get Sales for all outlets this month
+            const { data: txs } = await supabase
+                .from('transactions')
+                .select('outlet_id, amount')
+                .eq('type', 'income')
+                .eq('category', 'sales')
+                .gte('created_at', firstDay);
+
+            if (!txs) return;
+
+            // Group by outlet
+            const revenueByOutlet: Record<string, number> = {};
+            txs.forEach((t: any) => {
+                const amt = typeof t.amount === 'string' ? parseFloat(t.amount) : Number(t.amount || 0);
+                revenueByOutlet[t.outlet_id] = (revenueByOutlet[t.outlet_id] || 0) + amt;
+            });
+
+            // Sort and find rank
+            const sortedOutlets = Object.keys(revenueByOutlet).sort((a, b) => revenueByOutlet[b] - revenueByOutlet[a]);
+            const myRank = sortedOutlets.indexOf(user.profile.outlet_id) + 1;
+
+            // If my outlet has 0 sales but others have sales, I might not be in the keys if I have 0 txs.
+            // If I am not in keys, rank is Last or check active outlets count.
+            // For simplicity, if > 0 sales, show rank.
+            if (myRank > 0) setRank(myRank);
+            else if (sortedOutlets.length > 0) setRank(sortedOutlets.length + 1); // Assume last if no sales
+        };
+
+        fetchRank();
+    }, [user, supabase]);
 
     const { dateStr, timeStr } = formatISTClock(currentTime);
 
@@ -112,6 +164,16 @@ export function TopBar({ title }: { title: string }) {
     return (
         <header className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 h-16 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-10 transition-colors">
             <div className="flex items-center gap-4">
+                {pathname !== '/dashboard' && (
+                    <button
+                        onClick={() => router.back()}
+                        className="p-2 -ml-2 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors hidden lg:flex"
+                        title="Go Back"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                )}
+
                 <button
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     className="p-2 -ml-2 text-gray-600 dark:text-slate-400 lg:hidden hover:bg-gray-100 dark:hover:bg-slate-800 rounded-md transition-colors"
@@ -127,15 +189,31 @@ export function TopBar({ title }: { title: string }) {
                 <div className="hidden md:flex flex-col items-end leading-tight mr-2">
                     <span className="text-[9px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">{dateStr}</span>
                     <div className="flex items-center gap-1.5">
-                        <span className="text-base font-mono font-black text-gray-700 dark:text-slate-200 tabular-nums">
-                            {timeStr.split(' ')[0]}
-                        </span>
-                        <div className="h-3 w-px bg-gray-200 dark:bg-slate-800" />
-                        <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tighter">
-                            {timeStr.split(' ')[1]}
-                        </span>
+                        {mounted ? (
+                            <>
+                                <span className="text-base font-mono font-black text-gray-700 dark:text-slate-200 tabular-nums">
+                                    {timeStr.split(' ')[0]}
+                                </span>
+                                <div className="h-3 w-px bg-gray-200 dark:bg-slate-800" />
+                                <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tighter">
+                                    {timeStr.split(' ')[1]}
+                                </span>
+                            </>
+                        ) : (
+                            <span className="text-sm text-gray-400">...</span>
+                        )}
                     </div>
                 </div>
+
+                {/* Rank Badge */}
+                {rank && (
+                    <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-yellow-200 dark:border-yellow-700/50 rounded-full shadow-sm">
+                        <span className="text-sm">🏆</span>
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                            Rank #{rank}
+                        </span>
+                    </div>
+                )}
 
                 {/* Status Badge */}
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight ${isOffline ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'

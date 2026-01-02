@@ -79,9 +79,10 @@ export default function SettingsPage() {
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Phone</label>
                             <input
-                                type="text"
+                                type="tel"
+                                inputMode="numeric"
                                 value={form.phone}
-                                onChange={e => setForm({ ...form, phone: e.target.value })}
+                                onChange={e => setForm({ ...form, phone: e.target.value.replace(/[^0-9]/g, '') })}
                                 className="mt-1 w-full border rounded-md p-2"
                             />
                         </div>
