@@ -67,7 +67,7 @@ export function HOAccountantDashboard() {
             const { data: credits } = await supabase
                 .from('transactions')
                 .select('amount')
-                .eq('payment_mode', 'Credit' as any);
+                .eq('payment_modes', 'Credit' as any);
 
             const creditsTotal = credits?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
             setTotalCredits(creditsTotal);

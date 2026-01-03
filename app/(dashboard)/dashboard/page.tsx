@@ -7,6 +7,7 @@ import { StaffDashboard } from '@/components/dashboard/staff-view';
 import { StoreManagerDashboard } from '@/components/dashboard/store-manager-view';
 import { AdminDashboard } from '@/components/dashboard/admin-view';
 import { HOAccountantDashboard } from '@/components/dashboard/ho-accountant-view';
+import { AuditorDashboard } from '@/components/dashboard/auditor-view';
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -20,6 +21,8 @@ export default function DashboardPage() {
                     <AdminDashboard />
                 ) : userRole === 'ho_accountant' ? (
                     <HOAccountantDashboard />
+                ) : userRole === 'auditor' ? (
+                    <AuditorDashboard />
                 ) : userRole === 'outlet_manager' ? (
                     <StoreManagerDashboard />
                 ) : (

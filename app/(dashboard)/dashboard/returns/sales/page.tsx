@@ -20,6 +20,7 @@ export default function SalesReturnPage() {
     const [originalTransaction, setOriginalTransaction] = useState<any>(null);
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerName, setCustomerName] = useState('');
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
     // Return Details State
     const [returnAmount, setReturnAmount] = useState('');
@@ -155,6 +156,7 @@ export default function SalesReturnPage() {
 
             setOriginalTransaction(data);
             setCustomerPhone(data.customer_phone || '');
+            setSelectedCustomerId(data.customer_id || null);
             const match = data.description?.match(/Sale to (.*?) \(/);
             setCustomerName(match && match[1] ? match[1] : 'Unknown Customer');
             setReturnAmount(data.amount?.toString() || '');
@@ -295,6 +297,7 @@ export default function SalesReturnPage() {
                     amount: amount,
                     payment_modes: paymentModes.join(','),
                     customer_phone: customerPhone.trim(),
+                    customer_id: selectedCustomerId,
                     created_by: user.id
                 });
 

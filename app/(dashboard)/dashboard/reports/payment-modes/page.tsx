@@ -45,7 +45,7 @@ export default function PaymentModeAnalysisPage() {
 
     // Process data for charts
     const modeBreakdown = paymentData?.reduce((acc: any, t: any) => {
-        const mode = t.payment_mode || 'Unknown';
+        const mode = t.payment_modes || 'Unknown';
         if (!acc[mode]) {
             acc[mode] = { mode, amount: 0, count: 0 };
         }
@@ -68,7 +68,7 @@ export default function PaymentModeAnalysisPage() {
         if (!acc[date]) {
             acc[date] = { date, Cash: 0, UPI: 0, Card: 0, Credit: 0 };
         }
-        const mode = t.payment_mode || 'Unknown';
+        const mode = t.payment_modes || 'Unknown';
         acc[date][mode] = (acc[date][mode] || 0) + t.amount;
         return acc;
     }, {});

@@ -29,7 +29,8 @@ import {
     Scale,
     CreditCard,
     BookOpen,
-    Lock
+    Lock,
+    Landmark
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useApp } from '@/components/providers/app-provider';

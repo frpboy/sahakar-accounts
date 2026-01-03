@@ -112,21 +112,25 @@ export default function AnomalyDashboardPage() {
                             </Card>
                         </div>
 
-                        {/* Rules Engine Quick-Config */}
+                        {/* Rules Engine (View Only for Auditors) */}
                         <div className="space-y-6">
                             <Card className="rounded-3xl border-none shadow-xl bg-white dark:bg-gray-800">
                                 <CardHeader className="border-b">
                                     <CardTitle className="text-sm font-black uppercase tracking-widest text-gray-400">Rules Engine (Thresholds)</CardTitle>
-                                    <CardDescription>Adjust detection sensitivity</CardDescription>
+                                    <CardDescription>
+                                        {user?.profile?.role === 'auditor' ? 'Active detection parameters' : 'Adjust detection sensitivity'}
+                                    </CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-6 space-y-6 font-medium">
                                     <RuleConfigItem label="Cash Sale Spike" value="₹50,000" />
                                     <RuleConfigItem label="Daily Reversal Limit" value="3 Entries" />
                                     <RuleConfigItem label="Midnight Window" value="00:01 - 06:59" />
                                     <RuleConfigItem label="Refund/Sale Ratio" value="> 15%" />
-                                    <Button className="w-full mt-4 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200">
-                                        Update Thresholds
-                                    </Button>
+                                    {user?.profile?.role !== 'auditor' && (
+                                        <Button className="w-full mt-4 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200">
+                                            Update Thresholds
+                                        </Button>
+                                    )}
                                 </CardContent>
                             </Card>
 

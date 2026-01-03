@@ -19,7 +19,7 @@ type DailyRecordDetail = {
 
 type TransactionRow = {
     type: 'income' | 'expense';
-    payment_mode: 'cash' | 'upi';
+    payment_modes: string;
     amount: number | null;
 };
 
@@ -78,16 +78,16 @@ export function SubmitReviewModal({ isOpen, onClose, recordId, date }: SubmitRev
     const expenseTransactions = (transactions ?? []).filter((t) => t.type === 'expense');
 
     const cashIncome = incomeTransactions
-        .filter((t) => t.payment_mode === 'cash')
+        .filter((t) => t.payment_modes === 'cash')
         .reduce((sum, t) => sum + (t.amount || 0), 0);
     const upiIncome = incomeTransactions
-        .filter((t) => t.payment_mode === 'upi')
+        .filter((t) => t.payment_modes === 'upi')
         .reduce((sum, t) => sum + (t.amount || 0), 0);
     const cashExpense = expenseTransactions
-        .filter((t) => t.payment_mode === 'cash')
+        .filter((t) => t.payment_modes === 'cash')
         .reduce((sum, t) => sum + (t.amount || 0), 0);
     const upiExpense = expenseTransactions
-        .filter((t) => t.payment_mode === 'upi')
+        .filter((t) => t.payment_modes === 'upi')
         .reduce((sum, t) => sum + (t.amount || 0), 0);
 
     const expectedCashClosing = openingCash + cashIncome - cashExpense;

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         let role = (profile as Pick<Database['public']['Tables']['users']['Row'], 'role'> | null)?.role;
         if (!role && session) {
             const metaRole = (session.user as any).user_metadata?.role as string | undefined;
-            role = metaRole ?? (session.user.email === 'frpboy12@gmail.com' ? 'superadmin' : undefined);
+            role = (metaRole ?? (session.user.email === 'frpboy12@gmail.com' ? 'superadmin' : undefined)) as any;
         }
 
         if (devBypass || ['superadmin', 'master_admin'].includes(role || '')) {
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         let requesterRole = typedRequester?.role;
         if (!requesterRole) {
             const metaRole = (session.user as any).user_metadata?.role as string | undefined;
-            requesterRole = metaRole ?? (session.user.email === 'frpboy12@gmail.com' ? 'superadmin' : undefined);
+            requesterRole = (metaRole ?? (session.user.email === 'frpboy12@gmail.com' ? 'superadmin' : undefined)) as any;
         }
         if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

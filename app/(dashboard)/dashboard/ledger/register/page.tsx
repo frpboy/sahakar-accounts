@@ -64,11 +64,11 @@ export default function LedgerRegisterPage() {
                 const amt = Number(t.amount);
                 const isIncome = t.type === 'income';
 
-                if (t.payment_mode === 'Cash') {
+                if (t.payment_modes === 'Cash') {
                     cash += isIncome ? amt : -amt;
-                } else if (['UPI', 'Card', 'Bank Transfer'].includes(t.payment_mode)) {
+                } else if (['UPI', 'Card', 'Bank Transfer'].includes(t.payment_modes)) {
                     bank += isIncome ? amt : -amt;
-                } else if (t.payment_mode === 'Credit') {
+                } else if (t.payment_modes === 'Credit') {
                     if (t.category === 'sales') credit += amt;
                 }
             });
@@ -91,13 +91,13 @@ export default function LedgerRegisterPage() {
         if (!user?.profile.outlet_id) return;
         const { data } = await (supabase as any)
             .from('day_locks')
-            .select('date')
+            .select('locked_date')
             .eq('outlet_id', user.profile.outlet_id)
-            .eq('is_locked', true)
-            .order('date', { ascending: false })
+            .eq('status', 'locked')
+            .order('locked_date', { ascending: false })
             .limit(1)
             .maybeSingle();
-        if (data) setAbsoluteLastLocked(data.date);
+        if (data) setAbsoluteLastLocked((data as any).locked_date);
     }, [supabase, user]);
 
     useEffect(() => {

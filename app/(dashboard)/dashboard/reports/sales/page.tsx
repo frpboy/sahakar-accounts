@@ -111,7 +111,7 @@ export default function SalesReportPage() {
             'Bill No': t.bill_number || '-',
             'Customer': t.profiles?.full_name || t.customer_name || 'Walk-in',
             'Amount': t.amount,
-            'Payment Mode': t.payment_mode,
+            'Payment Mode': t.payment_modes,
             'Staff': t.users?.name || 'System'
         }));
     };
@@ -130,7 +130,7 @@ export default function SalesReportPage() {
             t.bill_number || '-',
             t.profiles?.full_name || t.customer_name || 'Walk-in',
             `Rs. ${Number(t.amount).toLocaleString()}`,
-            t.payment_mode,
+            t.payment_modes,
             t.users?.name || '-'
         ]);
 
@@ -177,7 +177,7 @@ export default function SalesReportPage() {
                 <div className="flex flex-col items-end">
                     <span className="font-bold text-gray-900">₹{Number(t.amount).toLocaleString()}</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 mt-1">
-                        {t.payment_mode}
+                        {t.payment_modes}
                     </span>
                 </div>
             ),

@@ -86,8 +86,8 @@ export async function GET(request: NextRequest) {
             .in('daily_record_id', recordIds);
 
         if (txError) {
-             console.error('Error fetching transactions:', txError);
-             return NextResponse.json({ error: txError.message }, { status: 500 });
+            console.error('Error fetching transactions:', txError);
+            return NextResponse.json({ error: txError.message }, { status: 500 });
         }
 
         // Map transactions to daily records
@@ -103,13 +103,13 @@ export async function GET(request: NextRequest) {
             }
             const group = acc[tx.daily_record_id];
             const amount = Number(tx.amount);
-            
+
             if (tx.type === 'income') {
-                if (tx.payment_mode === 'cash') group.cash_in += amount;
-                if (tx.payment_mode === 'upi') group.upi_in += amount;
+                if ((tx.payment_modes || '').toLowerCase() === 'cash') group.cash_in += amount;
+                if ((tx.payment_modes || '').toLowerCase() === 'upi') group.upi_in += amount;
             } else if (tx.type === 'expense') {
-                if (tx.payment_mode === 'cash') group.cash_out += amount;
-                if (tx.payment_mode === 'upi') group.upi_out += amount;
+                if ((tx.payment_modes || '').toLowerCase() === 'cash') group.cash_out += amount;
+                if ((tx.payment_modes || '').toLowerCase() === 'upi') group.upi_out += amount;
             }
             return acc;
         }, {} as Record<string, { cash_in: number, cash_out: number, upi_in: number, upi_out: number }>);

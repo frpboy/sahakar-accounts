@@ -7,7 +7,7 @@ import type { Database } from '@/lib/database.types';
 type PatchTransactionBody = {
     type?: 'income' | 'expense';
     category?: string;
-    paymentMode?: 'cash' | 'upi';
+    paymentMode?: string;
     amount?: number;
     description?: string | null;
 };
@@ -142,7 +142,7 @@ export async function PATCH(
         const updateData: Database['public']['Tables']['transactions']['Update'] = {};
         if (type) updateData.type = type;
         if (category) updateData.category = category;
-        if (paymentMode) updateData.payment_mode = paymentMode;
+        if (paymentMode) updateData.payment_modes = paymentMode;
         if (amount !== undefined) updateData.amount = amount;
         if (description !== undefined) updateData.description = description;
 

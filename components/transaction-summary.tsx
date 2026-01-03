@@ -12,7 +12,7 @@ type Transaction = {
     daily_record_id: string;
     type: 'income' | 'expense';
     category: string;
-    payment_mode: 'cash' | 'upi';
+    payment_modes: string;
     amount: number;
     description: string | null;
     date: string;
@@ -58,16 +58,16 @@ export function TransactionSummary({ dailyRecordId }: TransactionSummaryProps) {
     const expenseTransactions = transactions.filter((t: Transaction) => t.type === 'expense');
 
     const cashIncome = incomeTransactions
-        .filter((t: Transaction) => t.payment_mode === 'cash')
+        .filter((t: Transaction) => t.payment_modes === 'cash')
         .reduce((sum: number, t: Transaction) => sum + (t.amount || 0), 0);
     const upiIncome = incomeTransactions
-        .filter((t: Transaction) => t.payment_mode === 'upi')
+        .filter((t: Transaction) => t.payment_modes === 'upi')
         .reduce((sum: number, t: Transaction) => sum + (t.amount || 0), 0);
     const cashExpense = expenseTransactions
-        .filter((t: Transaction) => t.payment_mode === 'cash')
+        .filter((t: Transaction) => t.payment_modes === 'cash')
         .reduce((sum: number, t: Transaction) => sum + (t.amount || 0), 0);
     const upiExpense = expenseTransactions
-        .filter((t: Transaction) => t.payment_mode === 'upi')
+        .filter((t: Transaction) => t.payment_modes === 'upi')
         .reduce((sum: number, t: Transaction) => sum + (t.amount || 0), 0);
 
     const totalIncome = cashIncome + upiIncome;

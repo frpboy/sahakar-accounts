@@ -92,6 +92,7 @@ export function StoreManagerDashboard() {
         const yesterdayIso = yesterdayStart.toISOString();
 
         const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1, 7, 0, 0).toISOString();
+        const todayStr = businessDate.toISOString().split('T')[0];
 
         try {
             const sb = supabase as any;
@@ -103,7 +104,7 @@ export function StoreManagerDashboard() {
                 .eq('outlet_id', outletId)
                 .eq('type', 'income')
                 .eq('category', 'sales')
-                .gte('created_at', today);
+                .gte('created_at', todayIso);
 
             const todayTotal = todaySales?.reduce((sum: number, t: any) => sum + Number(t.amount), 0) || 0;
             setTodayRevenue(todayTotal);
@@ -128,7 +129,7 @@ export function StoreManagerDashboard() {
                 .eq('outlet_id', outletId)
                 .eq('type', 'income')
                 .eq('category', 'credit_received')
-                .eq('payment_mode', 'Credit');
+                .eq('payment_modes', 'Credit');
 
             const totalCredits = credits?.reduce((sum: number, t: any) => sum + Number(t.amount), 0) || 0;
             setPendingCredits(totalCredits);
@@ -152,7 +153,7 @@ export function StoreManagerDashboard() {
                 .select('created_by, amount, users(name, email)')
                 .eq('outlet_id', outletId)
                 .eq('type', 'income')
-                .gte('created_at', today);
+                .gte('created_at', todayIso);
 
             const staffMap = new Map();
             staffData?.forEach((t: any) => {
@@ -194,14 +195,14 @@ export function StoreManagerDashboard() {
             // 7. Payment Mode Distribution
             const { data: payments } = await sb
                 .from('transactions')
-                .select('payment_mode, amount')
+                .select('payment_modes, amount')
                 .eq('outlet_id', outletId)
                 .eq('type', 'income')
                 .gte('created_at', monthStart);
 
             const modeMap = { Cash: 0, UPI: 0, Card: 0, Credit: 0 };
             payments?.forEach((p: any) => {
-                const mode = p.payment_mode || 'Cash';
+                const mode = p.payment_modes || 'Cash';
                 if (modeMap.hasOwnProperty(mode)) {
                     modeMap[mode as keyof typeof modeMap] += Number(p.amount);
                 }
@@ -225,7 +226,7 @@ export function StoreManagerDashboard() {
                 .from('daily_records')
                 .select('status')
                 .eq('outlet_id', outletId)
-                .eq('date', today)
+                .eq('date', todayStr)
                 .single();
             setDayLocked(dailyRec?.status === 'locked');
 

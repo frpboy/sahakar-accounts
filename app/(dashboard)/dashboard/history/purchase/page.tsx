@@ -97,9 +97,9 @@ export default function PurchaseHistoryPage() {
                     <div>
                         <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300">History Editing Rules</h4>
                         <div className="mt-1 text-xs text-blue-700 dark:text-blue-400 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
-                            <p>• <strong>Staff</strong>: Edit own entries only, before <em>Duty End</em>.</p>
-                            <p>• <strong>Managers</strong>: 30-day editing window for any entry.</p>
-                            <p>• <strong>Admins</strong>: Can delete and edit any historical records.</p>
+                            <p>• <strong>Strict Audit</strong>: Direct edits are prohibited (Rule 5).</p>
+                            <p>• <strong>Corrections</strong>: Use Reversal entries to void and fix records.</p>
+                            <p>• <strong>Admins</strong>: Can delete records in extreme reconciliation cases.</p>
                         </div>
                     </div>
                 </div>
@@ -114,7 +114,6 @@ export default function PurchaseHistoryPage() {
                     currentUser={user ? { id: user.id, role: user.profile?.role || '' } : undefined}
                     dutyLogs={dutyLogs}
                     onViewRow={(row) => console.log('View', row)}
-                    onEditRow={(row) => window.location.href = `/dashboard/purchase?id=${row.id}`}
                     onDeleteRow={handleDelete}
                 />
             </div>

@@ -5,17 +5,17 @@
 UPDATE public.transactions 
 SET ledger_account_id = COALESCE(
     (SELECT id FROM public.ledger_accounts 
-     WHERE code = CASE LOWER(category)
-        WHEN 'sales' THEN '3001'
-        WHEN 'purchase' THEN '4001'
-        WHEN 'operating' THEN '4002'
-        WHEN 'expense' THEN '4002'
-        WHEN 'salary' THEN '4003'
-        WHEN 'customer_credit' THEN '1003'
-        ELSE '4002' 
+     WHERE code = CASE 
+        WHEN LOWER(category) = 'sales' THEN 'SAL'
+        WHEN LOWER(category) = 'purchase' THEN 'PUR'
+        WHEN LOWER(category) IN ('operating', 'expense') THEN 'OPR'
+        WHEN LOWER(category) = 'salary' THEN 'WAG'
+        WHEN LOWER(category) IN ('customer_credit', 'credit_received') THEN 'CUS'
+        WHEN LOWER(category) = 'sales_return' THEN 'SAL'
+        ELSE 'EXP' 
      END
      LIMIT 1),
-    (SELECT id FROM public.ledger_accounts WHERE code = '4002' LIMIT 1)
+    (SELECT id FROM public.ledger_accounts WHERE code = 'EXP' LIMIT 1)
 )
 WHERE ledger_account_id IS NULL;
 

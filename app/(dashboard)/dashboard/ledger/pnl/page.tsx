@@ -7,6 +7,7 @@ import { createClientBrowser } from '@/lib/supabase-client';
 import { Download, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 export default function PnLPage() {
     const { user } = useAuth();

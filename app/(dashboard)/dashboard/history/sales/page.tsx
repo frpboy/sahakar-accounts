@@ -122,7 +122,6 @@ export default function SalesHistoryPage() {
                     currentUser={user ? { id: user.id, role: user.profile?.role || '' } : undefined}
                     dutyLogs={dutyLogs}
                     onViewRow={(row) => console.log('View', row)}
-                    onEditRow={(row) => window.location.href = `/dashboard/sales?id=${row.id}`}
                     onDeleteRow={handleDelete}
                 />
             </div>

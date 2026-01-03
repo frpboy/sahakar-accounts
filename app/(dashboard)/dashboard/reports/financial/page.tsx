@@ -101,7 +101,7 @@ export default function FinancialReportPage() {
             'Category': t.category,
             'Description': t.description || '-',
             'Amount': t.amount,
-            'Payment Mode': t.payment_mode
+            'Payment Mode': t.payment_modes
         }));
     };
 
@@ -119,7 +119,7 @@ export default function FinancialReportPage() {
             t.type,
             t.category?.replace('_', ' '),
             `Rs. ${Number(t.amount).toLocaleString()}`,
-            t.payment_mode
+            t.payment_modes
         ]);
 
         exportUtils.toPDF(

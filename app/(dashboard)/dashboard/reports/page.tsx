@@ -18,6 +18,29 @@ export default function ReportsPage() {
     const [exporting, setExporting] = useState(false);
 
     const isAdmin = ['superadmin', 'master_admin', 'ho_accountant'].includes(user?.profile?.role || '');
+    const [stats, setStats] = useState({ outlets: 0, users: 0 });
+
+    React.useEffect(() => {
+        const loadStats = async () => {
+            try {
+                const { count: outletCount } = await supabase
+                    .from('outlets')
+                    .select('id', { count: 'exact', head: true });
+
+                const { count: userCount } = await supabase
+                    .from('users')
+                    .select('id', { count: 'exact', head: true });
+
+                setStats({
+                    outlets: outletCount || 0,
+                    users: userCount || 0
+                });
+            } catch (err) {
+                console.error('Error loading report stats:', err);
+            }
+        };
+        loadStats();
+    }, [supabase]);
 
     const reportCards = [
         {
@@ -350,24 +373,24 @@ export default function ReportsPage() {
                     </div>
 
                     {/* Quick Stats */}
-                    <div className="bg-white rounded-lg shadow-sm border p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Statistics</h3>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Statistics</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-blue-600">{reportCards.length}</div>
-                                <div className="text-sm text-gray-600">Total Reports</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Total Reports</div>
                             </div>
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-green-600">23</div>
-                                <div className="text-sm text-gray-600">Active Screens</div>
+                                <div className="text-2xl font-bold text-green-600">Sync Active</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">G-Sheet Status</div>
                             </div>
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-purple-600">4</div>
-                                <div className="text-sm text-gray-600">Active Outlets</div>
+                                <div className="text-2xl font-bold text-purple-600">{stats.outlets}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Active Outlets</div>
                             </div>
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-orange-600">11</div>
-                                <div className="text-sm text-gray-600">Active Users</div>
+                                <div className="text-2xl font-bold text-orange-600">{stats.users}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">System Users</div>
                             </div>
                         </div>
                     </div>

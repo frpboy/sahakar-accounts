@@ -49,17 +49,17 @@ export function StoreUserDashboard() {
 
             const { data: txs } = await supabase
                 .from('transactions')
-                .select('amount,type,payment_mode')
+                .select('amount,type,payment_modes')
                 .eq('daily_record_id', dailyRecordId)
                 .limit(1000);
-            const list = (txs || []) as Array<{ amount: number; type: 'income' | 'expense'; payment_mode?: 'cash' | 'upi' | 'card' | 'credit' }>;
+            const list = (txs || []) as Array<{ amount: number; type: 'income' | 'expense'; payment_modes?: 'cash' | 'upi' | 'card' | 'credit' }>;
 
             const incomes = list.filter(t => t.type === 'income');
             const count = incomes.length;
             const total = incomes.reduce((sum, t) => sum + Number(t.amount || 0), 0);
             const groups: Record<string, number> = { upi: 0, cash: 0, card: 0, credit: 0 };
             for (const t of incomes) {
-                const mode = (t.payment_mode || 'cash') as keyof typeof groups;
+                const mode = (t.payment_modes || 'cash') as keyof typeof groups;
                 if (groups[mode] !== undefined) groups[mode] += Number(t.amount || 0);
             }
 

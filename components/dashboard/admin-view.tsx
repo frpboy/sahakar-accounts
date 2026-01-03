@@ -152,7 +152,7 @@ export function AdminDashboard() {
         try {
             const { data, error } = await (supabase as any)
                 .from('transactions')
-                .select('internal_entry_id, category, amount, payment_mode, created_at')
+                .select('internal_entry_id, category, amount, payment_modes, created_at')
                 .eq('category', 'sales');
 
             if (error) throw error;

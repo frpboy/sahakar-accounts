@@ -58,15 +58,10 @@ export default function TrialBalancePage() {
 
             setBalances(Array.from(map.values()));
 
-            // Run Diagnostics Panel Logic (Blueprint Item 3)
+            // Diagnostics (Rule 15 Verification)
             const dia: any[] = [];
-            // Check for transactions without ledger_accounts
             const orphanCount = txs?.filter((t: any) => !t.ledger_accounts).length || 0;
-            if (orphanCount > 0) dia.push({ type: 'error', msg: `${orphanCount} Orphan transactions found (missing account mapping)` });
-
-            // Check for manual entries tracking
-            const manualCount = 0; // Simulated
-            if (manualCount > 0) dia.push({ type: 'info', msg: `${manualCount} Manual adjustments in this period` });
+            if (orphanCount > 0) dia.push({ type: 'error', count: orphanCount, msg: `${orphanCount} transactions missing Ledger Account mapping.` });
 
             setDiagnostics(dia);
 
@@ -213,11 +208,19 @@ export default function TrialBalancePage() {
                                         ))
                                     )}
                                     <div className="pt-6 border-t mt-4">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-4">Verification Logs</p>
                                         <ul className="space-y-3 text-xs font-medium text-gray-500">
-                                            <li className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-green-500" /> Orphans: Zero</li>
-                                            <li className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-green-500" /> Locked Postings: Zero</li>
-                                            <li className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-green-500" /> Manual Entries: {diagnostics.filter(x => x.type === 'info').length}</li>
+                                            <li className="flex items-center gap-2">
+                                                {diagnostics.some(d => d.type === 'error') ? (
+                                                    <AlertCircle className="w-3 h-3 text-red-500" />
+                                                ) : (
+                                                    <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                                )}
+                                                Orphans: {diagnostics.find(d => d.type === 'error')?.count || 0}
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                                Append-Only Mode: Active
+                                            </li>
                                         </ul>
                                     </div>
                                 </CardContent>

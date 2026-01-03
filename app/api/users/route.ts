@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
                     requesterRole = 'superadmin';
                 } else {
                     const metaRole = (session?.user as any)?.user_metadata?.role as string | undefined;
-                    requesterRole = metaRole || undefined;
+                    requesterRole = (metaRole || undefined) as any;
                 }
             }
             if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
             } else {
                 // Fallback to session metadata when profile row missing
                 const metaRole = (session.user as any).user_metadata?.role as string | undefined;
-                requesterRole = metaRole || undefined;
+                requesterRole = (metaRole || undefined) as any;
             }
         }
 

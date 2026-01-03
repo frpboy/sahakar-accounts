@@ -98,6 +98,7 @@ export function CreateOutletModal({ isOpen, onClose, onSuccess, initialData }: C
                     phone: '',
                     email: '',
                     type: '',
+                    is_active: true,
                 });
             }
         } catch (err: any) {

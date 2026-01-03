@@ -59,12 +59,12 @@ export type Database = {
                     auditor_id: string
                     outlet_id: string | null
                     action:
-                        | 'view_dashboard'
-                        | 'view_record'
-                        | 'view_transaction'
-                        | 'export_excel'
-                        | 'export_pdf'
-                        | 'filter_data'
+                    | 'view_dashboard'
+                    | 'view_record'
+                    | 'view_transaction'
+                    | 'export_excel'
+                    | 'export_pdf'
+                    | 'filter_data'
                     entity_type: string | null
                     entity_id: string | null
                     accessed_at: string
@@ -76,12 +76,12 @@ export type Database = {
                     auditor_id: string
                     outlet_id?: string | null
                     action:
-                        | 'view_dashboard'
-                        | 'view_record'
-                        | 'view_transaction'
-                        | 'export_excel'
-                        | 'export_pdf'
-                        | 'filter_data'
+                    | 'view_dashboard'
+                    | 'view_record'
+                    | 'view_transaction'
+                    | 'export_excel'
+                    | 'export_pdf'
+                    | 'filter_data'
                     entity_type?: string | null
                     entity_id?: string | null
                     accessed_at?: string
@@ -92,12 +92,12 @@ export type Database = {
                     auditor_id?: string
                     outlet_id?: string | null
                     action?:
-                        | 'view_dashboard'
-                        | 'view_record'
-                        | 'view_transaction'
-                        | 'export_excel'
-                        | 'export_pdf'
-                        | 'filter_data'
+                    | 'view_dashboard'
+                    | 'view_record'
+                    | 'view_transaction'
+                    | 'export_excel'
+                    | 'export_pdf'
+                    | 'filter_data'
                     entity_type?: string | null
                     entity_id?: string | null
                     accessed_at?: string
@@ -267,37 +267,73 @@ export type Database = {
                     daily_record_id: string | null
                     type: 'income' | 'expense'
                     category: string
-                    payment_mode: 'cash' | 'upi'
+                    payment_modes: string
                     amount: number
                     description: string | null
                     created_by: string | null
                     created_at: string
                     updated_at: string
                     idempotency_key: string | null
+                    internal_entry_id: string | null
+                    outlet_id: string | null
+                    entry_number: string | null
+                    customer_phone: string | null
+                    source_type: 'sale' | 'purchase' | 'return' | 'manual' | 'adjustment' | 'system' | null
+                    source_id: string | null
+                    ledger_date: string
+                    is_manual: boolean
+                    is_reversal: boolean
+                    parent_transaction_id: string | null
+                    ledger_account_id: string
+                    customer_id: string | null
                 }
                 Insert: {
                     id?: string
                     daily_record_id?: string | null
                     type: 'income' | 'expense'
                     category: string
-                    payment_mode: 'cash' | 'upi'
+                    payment_modes: string
                     amount: number
                     description?: string | null
                     created_by?: string | null
                     created_at?: string
                     updated_at?: string
                     idempotency_key?: string | null
+                    internal_entry_id?: string | null
+                    outlet_id?: string | null
+                    entry_number?: string | null
+                    customer_phone?: string | null
+                    source_type?: 'sale' | 'purchase' | 'return' | 'manual' | 'adjustment' | 'system' | null
+                    source_id?: string | null
+                    ledger_date?: string
+                    is_manual?: boolean
+                    is_reversal?: boolean
+                    parent_transaction_id?: string | null
+                    ledger_account_id: string
+                    customer_id?: string | null
                 }
                 Update: {
                     daily_record_id?: string | null
                     type?: 'income' | 'expense'
                     category?: string
-                    payment_mode?: 'cash' | 'upi'
+                    payment_modes?: string
                     amount?: number
                     description?: string | null
                     created_by?: string | null
                     updated_at?: string
                     idempotency_key?: string | null
+                    internal_entry_id?: string | null
+                    outlet_id?: string | null
+                    entry_number?: string | null
+                    customer_phone?: string | null
+                    source_type?: 'sale' | 'purchase' | 'return' | 'manual' | 'adjustment' | 'system' | null
+                    source_id?: string | null
+                    ledger_date?: string
+                    is_manual?: boolean
+                    is_reversal?: boolean
+                    parent_transaction_id?: string | null
+                    ledger_account_id?: string
+                    customer_id?: string | null
                 }
                 Relationships: [
                     {
@@ -312,6 +348,34 @@ export type Database = {
                         columns: ["created_by"]
                         isOneToOne: false
                         referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "transactions_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "transactions_parent_transaction_id_fkey"
+                        columns: ["parent_transaction_id"]
+                        isOneToOne: false
+                        referencedRelation: "transactions"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "transactions_ledger_account_id_fkey"
+                        columns: ["ledger_account_id"]
+                        isOneToOne: false
+                        referencedRelation: "ledger_accounts"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "transactions_customer_id_fkey"
+                        columns: ["customer_id"]
+                        isOneToOne: false
+                        referencedRelation: "customers"
                         referencedColumns: ["id"]
                     }
                 ]
@@ -340,6 +404,76 @@ export type Database = {
                     is_active?: boolean
                 }
                 Relationships: []
+            }
+            customers: {
+                Row: {
+                    id: string
+                    outlet_id: string
+                    name: string
+                    phone: string | null
+                    email: string | null
+                    address: string | null
+                    notes: string | null
+                    credit_limit: number
+                    outstanding_balance: number
+                    is_active: boolean
+                    created_at: string
+                    updated_at: string
+                    created_by: string | null
+                    referred_by: string | null
+                    internal_customer_id: string | null
+                    customer_code: string | null
+                }
+                Insert: {
+                    id?: string
+                    outlet_id: string
+                    name: string
+                    phone?: string | null
+                    email?: string | null
+                    address?: string | null
+                    notes?: string | null
+                    credit_limit?: number
+                    outstanding_balance?: number
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                    created_by?: string | null
+                    referred_by?: string | null
+                    internal_customer_id?: string | null
+                    customer_code?: string | null
+                }
+                Update: {
+                    outlet_id?: string
+                    name?: string
+                    phone?: string | null
+                    email?: string | null
+                    address?: string | null
+                    notes?: string | null
+                    credit_limit?: number
+                    outstanding_balance?: number
+                    is_active?: boolean
+                    updated_at?: string
+                    created_by?: string | null
+                    referred_by?: string | null
+                    internal_customer_id?: string | null
+                    customer_code?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "customers_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "customers_created_by_fkey"
+                        columns: ["created_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
             monthly_closure_snapshots: {
                 Row: {
@@ -574,6 +708,113 @@ export type Database = {
                 }
                 Relationships: []
             }
+            ledger_accounts: {
+                Row: {
+                    id: string
+                    code: string
+                    name: string
+                    type: 'asset' | 'liability' | 'equity' | 'income' | 'expense'
+                    parent_id: string | null
+                    status: 'active' | 'disabled'
+                    is_system: boolean
+                    is_locked: boolean
+                    created_at: string
+                    updated_at: string
+                    outlet_id: string | null
+                    level: number
+                    is_leaf: boolean
+                }
+                Insert: {
+                    id?: string
+                    code: string
+                    name: string
+                    type: 'asset' | 'liability' | 'equity' | 'income' | 'expense'
+                    parent_id?: string | null
+                    status?: 'active' | 'disabled'
+                    is_system?: boolean
+                    is_locked?: boolean
+                    created_at?: string
+                    updated_at?: string
+                    outlet_id?: string | null
+                    level?: number
+                    is_leaf?: boolean
+                }
+                Update: {
+                    code?: string
+                    name?: string
+                    type?: 'asset' | 'liability' | 'equity' | 'income' | 'expense'
+                    parent_id?: string | null
+                    status?: 'active' | 'disabled'
+                    is_system?: boolean
+                    is_locked?: boolean
+                    updated_at?: string
+                    outlet_id?: string | null
+                    level?: number
+                    is_leaf?: boolean
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "ledger_accounts_parent_id_fkey"
+                        columns: ["parent_id"]
+                        isOneToOne: false
+                        referencedRelation: "ledger_accounts"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "ledger_accounts_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            day_locks: {
+                Row: {
+                    id: string
+                    outlet_id: string
+                    locked_date: string
+                    status: 'locked' | 'unlocked'
+                    reason: string | null
+                    locked_by: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    outlet_id: string
+                    locked_date: string
+                    status?: 'locked' | 'unlocked'
+                    reason?: string | null
+                    locked_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    outlet_id?: string
+                    locked_date?: string
+                    status?: 'locked' | 'unlocked'
+                    reason?: string | null
+                    locked_by?: string | null
+                    updated_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "day_locks_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "day_locks_locked_by_fkey"
+                        columns: ["locked_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             roles: {
                 Row: {
                     id: string
@@ -647,26 +888,44 @@ export type Database = {
                 Row: {
                     id: string
                     email: string
-                    role: string
+                    name: string
+                    role: 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff' | 'auditor' | 'superadmin'
                     outlet_id: string | null
                     created_at: string
-                    updated_at: string
+                    access_start_date: string | null
+                    access_end_date: string | null
+                    auditor_access_granted_at: string | null
+                    auditor_access_expires_at: string | null
+                    auditor_access_granted_by: string | null
+                    full_name: string | null
                     profile: Json | null
                 }
                 Insert: {
                     id?: string
                     email: string
-                    role: string
+                    name: string
+                    role: 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff' | 'auditor' | 'superadmin'
                     outlet_id?: string | null
                     created_at?: string
-                    updated_at?: string
+                    access_start_date?: string | null
+                    access_end_date?: string | null
+                    auditor_access_granted_at?: string | null
+                    auditor_access_expires_at?: string | null
+                    auditor_access_granted_by?: string | null
+                    full_name?: string | null
                     profile?: Json | null
                 }
                 Update: {
                     email?: string
-                    role?: string
+                    name?: string
+                    role?: 'master_admin' | 'ho_accountant' | 'outlet_manager' | 'outlet_staff' | 'auditor' | 'superadmin'
                     outlet_id?: string | null
-                    updated_at?: string
+                    access_start_date?: string | null
+                    access_end_date?: string | null
+                    auditor_access_granted_at?: string | null
+                    auditor_access_expires_at?: string | null
+                    auditor_access_granted_by?: string | null
+                    full_name?: string | null
                     profile?: Json | null
                 }
                 Relationships: [
@@ -675,6 +934,13 @@ export type Database = {
                         columns: ["outlet_id"]
                         isOneToOne: false
                         referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "users_auditor_access_granted_by_fkey"
+                        columns: ["auditor_access_granted_by"]
+                        isOneToOne: false
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     }
                 ]

@@ -41,7 +41,7 @@ export default function LedgerDashboardPage() {
 
             const { data, error } = await (supabase as any)
                 .from('transactions')
-                .select('type, amount, payment_mode')
+                .select('type, amount, payment_modes')
                 .eq('outlet_id', user.profile.outlet_id)
                 .gte('created_at', startStr);
 
@@ -54,15 +54,15 @@ export default function LedgerDashboardPage() {
                 else dr += amt;
 
                 const isIncome = t.type === 'income';
-                if (t.payment_mode === 'Cash') cash += isIncome ? amt : -amt;
-                else if (['UPI', 'Card', 'Bank Transfer'].includes(t.payment_mode)) bank += isIncome ? amt : -amt;
+                if (t.payment_modes === 'Cash') cash += isIncome ? amt : -amt;
+                else if (['UPI', 'Card', 'Bank Transfer'].includes(t.payment_modes)) bank += isIncome ? amt : -amt;
             });
 
             const { count: lockedCount } = await (supabase as any)
                 .from('day_locks')
                 .select('*', { count: 'exact', head: true })
                 .eq('outlet_id', user.profile.outlet_id)
-                .eq('is_locked', true);
+                .eq('status', 'locked');
 
             setStats({
                 totalDebit: dr,

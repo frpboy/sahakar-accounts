@@ -11,7 +11,7 @@ interface Transaction {
     id: string;
     type: 'income' | 'expense';
     category: string;
-    payment_mode: 'cash' | 'upi';
+    payment_modes: string;
     amount: number;
     description: string | null;
     created_at: string;
@@ -70,19 +70,19 @@ export function TransactionList({ dailyRecordId }: TransactionListProps) {
                                 <div className="flex items-center gap-2 mb-1">
                                     <span
                                         className={`px-2 py-0.5 rounded text-xs font-medium ${transaction.type === 'income'
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-red-100 text-red-800'
+                                            ? 'bg-green-100 text-green-800'
+                                            : 'bg-red-100 text-red-800'
                                             }`}
                                     >
                                         {transaction.type.toUpperCase()}
                                     </span>
                                     <span
-                                        className={`px-2 py-0.5 rounded text-xs font-medium ${transaction.payment_mode === 'cash'
-                                                ? 'bg-blue-100 text-blue-800'
-                                                : 'bg-purple-100 text-purple-800'
+                                        className={`px-2 py-0.5 rounded text-xs font-medium ${transaction.payment_modes === 'cash'
+                                            ? 'bg-blue-100 text-blue-800'
+                                            : 'bg-purple-100 text-purple-800'
                                             }`}
                                     >
-                                        {transaction.payment_mode === 'cash' ? '💵 Cash' : '📱 UPI'}
+                                        {transaction.payment_modes === 'cash' ? '💵 Cash' : '📱 UPI'}
                                     </span>
                                 </div>
                                 <p className="font-medium text-gray-900">

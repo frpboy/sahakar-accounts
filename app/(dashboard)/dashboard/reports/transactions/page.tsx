@@ -168,7 +168,7 @@ export default function TransactionReportPage() {
                                                     {(tx.category || 'general').replace('_', ' ')}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-500 text-xs">{tx.payment_mode || '-'}</td>
+                                            <td className="px-6 py-4 text-gray-500 text-xs">{tx.payment_modes || '-'}</td>
                                             <td className={`px-6 py-4 text-right font-bold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'
                                                 }`}>
                                                 {tx.type === 'income' ? '+' : '-'}₹{tx.amount?.toLocaleString()}

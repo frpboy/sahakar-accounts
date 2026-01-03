@@ -9,4 +9,4 @@ DROP CONSTRAINT IF EXISTS daily_records_status_check;
 
 ALTER TABLE public.daily_records
 ADD CONSTRAINT daily_records_status_check 
-CHECK (status IN ('open', 'submitted', 'locked', 'reopened'));
+CHECK (status IN ('draft', 'open', 'submitted', 'locked', 'reopened'));

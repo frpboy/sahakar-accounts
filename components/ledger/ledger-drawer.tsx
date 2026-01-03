@@ -65,7 +65,7 @@ export function LedgerDrawer({ entry, role, canEdit, lockReason, actionType, ope
                         </div>
                         <div>
                             <span className="text-gray-500 block text-xs uppercase">Payment Mode</span>
-                            <span className="font-medium">{entry.payment_mode}</span>
+                            <span className="font-medium">{entry.payment_modes}</span>
                         </div>
                     </div>
 
@@ -73,7 +73,7 @@ export function LedgerDrawer({ entry, role, canEdit, lockReason, actionType, ope
                     <div className="space-y-2">
                         <h4 className="text-sm font-semibold uppercase text-gray-500">Financial Impact</h4>
                         <div className="flex justify-between items-center bg-white border p-3 rounded">
-                            <span>Debit Account ({entry.type === 'expense' || entry.type === 'income' ? entry.payment_mode : 'Unknown'})</span>
+                            <span>Debit Account ({entry.type === 'expense' || entry.type === 'income' ? entry.payment_modes : 'Unknown'})</span>
                             <span className="font-mono font-bold text-red-600">
                                 {entry.type === 'expense' ? `₹${Number(entry.amount).toLocaleString()}` : '-'}
                             </span>
