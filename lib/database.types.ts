@@ -286,6 +286,14 @@ export type Database = {
                     parent_transaction_id: string | null
                     ledger_account_id: string
                     customer_id: string | null
+                    supplier_name: string | null
+                    erp_id: string | null
+                    external_bill_number: string | null
+                    other_charges: number | null
+                    bank_tx_id: string | null
+                    remarks: string | null
+                    refill_days: number | null
+                    is_verified: boolean
                 }
                 Insert: {
                     id?: string
@@ -311,6 +319,14 @@ export type Database = {
                     parent_transaction_id?: string | null
                     ledger_account_id: string
                     customer_id?: string | null
+                    supplier_name?: string | null
+                    erp_id?: string | null
+                    external_bill_number?: string | null
+                    other_charges?: number | null
+                    bank_tx_id?: string | null
+                    remarks?: string | null
+                    refill_days?: number | null
+                    is_verified?: boolean
                 }
                 Update: {
                     daily_record_id?: string | null
@@ -334,6 +350,14 @@ export type Database = {
                     parent_transaction_id?: string | null
                     ledger_account_id?: string
                     customer_id?: string | null
+                    supplier_name?: string | null
+                    erp_id?: string | null
+                    external_bill_number?: string | null
+                    other_charges?: number | null
+                    bank_tx_id?: string | null
+                    remarks?: string | null
+                    refill_days?: number | null
+                    is_verified?: boolean
                 }
                 Relationships: [
                     {
@@ -423,6 +447,10 @@ export type Database = {
                     referred_by: string | null
                     internal_customer_id: string | null
                     customer_code: string | null
+                    referred_by_user_id: string | null
+                    assigned_to_user_id: string | null
+                    visit_count: number
+                    total_spend: number
                 }
                 Insert: {
                     id?: string
@@ -441,6 +469,10 @@ export type Database = {
                     referred_by?: string | null
                     internal_customer_id?: string | null
                     customer_code?: string | null
+                    referred_by_user_id?: string | null
+                    assigned_to_user_id?: string | null
+                    visit_count?: number
+                    total_spend?: number
                 }
                 Update: {
                     outlet_id?: string
@@ -457,6 +489,10 @@ export type Database = {
                     referred_by?: string | null
                     internal_customer_id?: string | null
                     customer_code?: string | null
+                    referred_by_user_id?: string | null
+                    assigned_to_user_id?: string | null
+                    visit_count?: number
+                    total_spend?: number
                 }
                 Relationships: [
                     {

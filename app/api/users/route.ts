@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
                     requesterRole = (metaRole || undefined) as any;
                 }
             }
-            if (!requesterRole || !['master_admin', 'superadmin'].includes(requesterRole)) {
+            const allowedViewers = ['master_admin', 'superadmin', 'ho_accountant', 'outlet_manager', 'outlet_staff', 'auditor'];
+            if (!requesterRole || !allowedViewers.includes(requesterRole)) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
         }
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
             .from('users')
             .select('*, outlet:outlets(name)')
             .order('name', { ascending: true })
-            .limit(100); // Limit to 100 users
+            .limit(1000); // Increased limit for global search
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });

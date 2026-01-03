@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
-import { Clock } from 'lucide-react';
+import { Clock, Upload } from 'lucide-react';
 import { RecentTransactions } from '@/components/history/recent-transactions';
 
 export default function PurchasePage() {
@@ -12,12 +12,23 @@ export default function PurchasePage() {
     const { user } = useAuth();
 
     // Form state
-    const [particulars, setParticulars] = useState('');
-    const [voucherNumber, setVoucherNumber] = useState('');
+    const [supplierName, setSupplierName] = useState('');
+    const [erpId, setErpId] = useState('');
     const [invoiceNumber, setInvoiceNumber] = useState('');
+    const [voucherNumber, setVoucherNumber] = useState('');
+
+    // Amounts
+    const [purchaseAmount, setPurchaseAmount] = useState('');
+    const [otherCharges, setOtherCharges] = useState('');
+
+    const [bankTxId, setBankTxId] = useState('');
+    const [remarks, setRemarks] = useState('');
+
     const [cashAmount, setCashAmount] = useState('');
     const [upiAmount, setUpiAmount] = useState('');
     const [creditAmount, setCreditAmount] = useState('');
+    const [bankAmount, setBankAmount] = useState('');
+
     const [submitting, setSubmitting] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
     const [checkingLock, setCheckingLock] = useState(true);
@@ -53,7 +64,7 @@ export default function PurchasePage() {
     // Auto-generate Voucher Number on mount
     useEffect(() => {
         if (!voucherNumber && user?.profile?.outlet_id) {
-            // Generate format: OUTLET-VCH-YYYYMMDD-HHMMSS
+            // Generate format: PUR-YYYYMMDD-HHMMSS
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -62,9 +73,8 @@ export default function PurchasePage() {
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
 
-            // Get outlet prefix from localStorage or default
-            const outletPrefix = localStorage.getItem('outlet_prefix') || 'SAH';
-            const generatedVoucher = `${outletPrefix}-VCH-${year}${month}${day}-${hours}${minutes}${seconds}`;
+            // PUR prefix for Inventory Purchase
+            const generatedVoucher = `PUR-${year}${month}${day}-${hours}${minutes}${seconds}`;
             setVoucherNumber(generatedVoucher);
         }
     }, [user, voucherNumber]);
@@ -75,23 +85,33 @@ export default function PurchasePage() {
             return;
         }
         // Validation
-        if (!particulars.trim()) {
-            alert('Please enter purchase particulars');
+        if (!supplierName.trim()) {
+            alert('Please enter Supplier Name');
             return;
         }
-        // Relaxed validation: at least one of Voucher or Invoice required
-        if (!voucherNumber.trim() && !invoiceNumber.trim()) {
-            alert('Please enter either Voucher Number OR Invoice Number');
+        if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) {
+            alert('Please enter Purchase Amount');
             return;
         }
+
+        const pAmount = parseFloat(purchaseAmount) || 0;
+        const oCharges = parseFloat(otherCharges) || 0;
+        const totalExpected = pAmount + oCharges;
 
         const cash = parseFloat(cashAmount) || 0;
         const upi = parseFloat(upiAmount) || 0;
         const credit = parseFloat(creditAmount) || 0;
-        const totalAmount = cash + upi + credit;
+        const bank = parseFloat(bankAmount) || 0;
 
-        if (totalAmount <= 0) {
-            alert('Please enter at least one payment amount');
+        const totalPayment = cash + upi + credit + bank;
+
+        if (Math.abs(totalPayment - totalExpected) > 0.01) {
+            alert(`Payment mismatch! Total: ₹${totalExpected.toFixed(2)}, Paid: ₹${totalPayment.toFixed(2)}`);
+            return;
+        }
+
+        if (selectedModes.includes('Bank') && !bankTxId.trim()) {
+            alert('Please enter Bank Transaction ID');
             return;
         }
 
@@ -138,30 +158,83 @@ export default function PurchasePage() {
             if (cash > 0) modes.push('Cash');
             if (upi > 0) modes.push('UPI');
             if (credit > 0) modes.push('Credit');
+            if (bank > 0) modes.push('Bank');
 
-            const { error } = await (supabase as any)
+            // Prepare Payload
+            const baseDescription = `Inventory Purchase from ${supplierName} (Inv: ${invoiceNumber || 'N/A'})`;
+            let finalDescription = baseDescription;
+
+            const payload: any = {
+                daily_record_id: dailyRecordId,
+                outlet_id: user.profile.outlet_id,
+                entry_number: voucherNumber,
+                // These columns might be missing
+                external_bill_number: invoiceNumber || null,
+                erp_id: erpId || null,
+                supplier_name: supplierName,
+                type: 'expense',
+                category: 'purchase',
+                description: finalDescription,
+                amount: totalExpected,
+                payment_modes: modes.join(','),
+                created_by: user.id,
+                other_charges: oCharges,
+                bank_tx_id: bankTxId || null,
+                remarks: remarks || null
+            };
+
+            let { error } = await (supabase as any)
                 .from('transactions')
-                .insert({
-                    daily_record_id: dailyRecordId,
-                    outlet_id: user.profile.outlet_id,
-                    entry_number: voucherNumber || invoiceNumber,
-                    type: 'expense',
-                    category: 'purchase',
-                    description: `Purchase from ${particulars} (VCH: ${voucherNumber || 'N/A'}, INV: ${invoiceNumber || 'N/A'})`,
-                    amount: totalAmount,
-                    payment_modes: modes.join(','),
-                    created_by: user.id
-                });
+                .insert(payload);
+
+            // Fallback
+            if (error && (error.code === '42703' || error.message?.includes('column'))) {
+                console.warn('Fallback: Inserting purchase without new columns...');
+
+                // Append all extra info to description
+                if (invoiceNumber) finalDescription += ` | Bill: ${invoiceNumber}`;
+                if (erpId) finalDescription += ` | ERP: ${erpId}`;
+                if (supplierName) finalDescription += ` | Supplier: ${supplierName}`;
+                if (oCharges) finalDescription += ` | Other Charges: ${oCharges}`;
+                if (bankTxId) finalDescription += ` | Bank Ref: ${bankTxId}`;
+                if (remarks) finalDescription += ` | Remarks: ${remarks}`;
+
+                const fallbackPayload = { ...payload };
+                // Delete potential missing columns
+                delete fallbackPayload.external_bill_number;
+                delete fallbackPayload.erp_id;
+                delete fallbackPayload.supplier_name;
+                delete fallbackPayload.other_charges;
+                delete fallbackPayload.bank_tx_id;
+                delete fallbackPayload.remarks;
+
+                fallbackPayload.description = finalDescription;
+
+                const retry = await (supabase as any)
+                    .from('transactions')
+                    .insert(fallbackPayload);
+                error = retry.error;
+
+                if (!error) {
+                    alert('⚠️ Warning: Saved, but DB migration missing. Extra details appended to description.');
+                }
+            }
 
             if (error) throw error;
 
             alert('✅ Purchase entry saved!');
-            setParticulars('');
-            setVoucherNumber('');
+            setSupplierName('');
+            setErpId('');
             setInvoiceNumber('');
+            setVoucherNumber(''); // Trigger auto-gen
+            setPurchaseAmount('');
+            setOtherCharges('');
+            setBankTxId('');
+            setRemarks('');
             setCashAmount('');
             setUpiAmount('');
             setCreditAmount('');
+            setBankAmount('');
             setSelectedModes([]);
 
         } catch (e: any) {
@@ -184,7 +257,7 @@ export default function PurchasePage() {
 
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950">
-            <TopBar title="Purchase Entry" />
+            <TopBar title="Inventory Purchase" />
             <div className="p-6">
                 <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
                     <div className="flex-1">
@@ -202,52 +275,95 @@ export default function PurchasePage() {
                         )}
 
                         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border dark:border-slate-800 p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Purchases/Expenses</h2>
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Inventory Purchase Details</h2>
 
                             <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Particulars <span className="text-red-500">*</span></label>
-                                    <input
-                                        type="text"
-                                        placeholder="Enter purchase details"
-                                        value={particulars}
-                                        onChange={(e) => setParticulars(e.target.value.toUpperCase())}
-                                        disabled={isLocked}
-                                        className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed uppercase"
-                                    />
-                                </div>
-
+                                {/* Row 1: Supplier & Voucher */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Voucher Number</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Supplier Name <span className="text-red-500">*</span></label>
                                         <input
                                             type="text"
-                                            placeholder="e.g., VCH-001"
+                                            placeholder="Enter Supplier Name"
+                                            value={supplierName}
+                                            onChange={(e) => setSupplierName(e.target.value.toUpperCase())}
+                                            disabled={isLocked}
+                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Voucher Number (Internal)</label>
+                                        <input
+                                            type="text"
                                             value={voucherNumber}
                                             onChange={(e) => setVoucherNumber(e.target.value.toUpperCase())}
                                             disabled={isLocked}
-                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed uppercase"
+                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono text-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Row 2: ERP & Invoice */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">ERP Entry Number</label>
+                                        <input
+                                            type="text"
+                                            placeholder="From HO ERP"
+                                            value={erpId}
+                                            onChange={(e) => setErpId(e.target.value)}
+                                            disabled={isLocked}
+                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Invoice Number</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Bill / Invoice Number</label>
                                         <input
                                             type="text"
-                                            placeholder="e.g., INV-001"
+                                            placeholder="From Supplier Bill"
                                             value={invoiceNumber}
                                             onChange={(e) => setInvoiceNumber(e.target.value.toUpperCase())}
                                             disabled={isLocked}
-                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:cursor-not-allowed uppercase"
+                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">Provide at least one of Voucher or Invoice No.</p>
                                     </div>
                                 </div>
+
+                                {/* Row 3: Totals */}
+                                <div className="p-4 bg-gray-50 dark:bg-slate-950 rounded-lg border dark:border-slate-800">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Purchase Amount (₹) <span className="text-red-500">*</span></label>
+                                            <input
+                                                type="number"
+                                                placeholder="0.00"
+                                                value={purchaseAmount}
+                                                onChange={(e) => setPurchaseAmount(e.target.value)}
+                                                disabled={isLocked}
+                                                className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Other Charges (₹)</label>
+                                            <input
+                                                type="number"
+                                                placeholder="0.00"
+                                                value={otherCharges}
+                                                onChange={(e) => setOtherCharges(e.target.value)}
+                                                disabled={isLocked}
+                                                className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Extra freight, loading, etc. not in bill amount</p>
+                                        </div>
+                                    </div>
+                                </div>
+
 
                                 {/* Payment Modes Selection */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-2">Select Payment Mode(s) <span className="text-red-500">*</span></label>
-                                    <div className="flex gap-4 mb-4">
-                                        {['Cash', 'UPI', 'Credit'].map((mode) => (
+                                    <div className="flex gap-4 mb-4 flex-wrap">
+                                        {['Cash', 'UPI', 'Credit', 'Bank'].map((mode) => (
                                             <label key={mode} className="flex items-center gap-2 cursor-pointer">
                                                 <input
                                                     type="checkbox"
@@ -261,62 +377,89 @@ export default function PurchasePage() {
                                         ))}
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                         {selectedModes.includes('Cash') && (
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Cash Amount (₹)</label>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">Cash (₹)</label>
                                                 <input
                                                     type="number"
-                                                    placeholder="0.00"
                                                     value={cashAmount}
                                                     onChange={(e) => setCashAmount(e.target.value)}
-                                                    step="0.01"
-                                                    min="0"
-                                                    disabled={isLocked}
-                                                    className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-3 py-2 border rounded-md"
                                                 />
                                             </div>
                                         )}
                                         {selectedModes.includes('UPI') && (
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">UPI Amount (₹)</label>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">UPI (₹)</label>
                                                 <input
                                                     type="number"
-                                                    placeholder="0.00"
                                                     value={upiAmount}
                                                     onChange={(e) => setUpiAmount(e.target.value)}
-                                                    step="0.01"
-                                                    min="0"
-                                                    disabled={isLocked}
-                                                    className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-3 py-2 border rounded-md"
                                                 />
                                             </div>
                                         )}
                                         {selectedModes.includes('Credit') && (
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Credit Amount (₹)</label>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">Credit (₹)</label>
                                                 <input
                                                     type="number"
-                                                    placeholder="0.00"
                                                     value={creditAmount}
                                                     onChange={(e) => setCreditAmount(e.target.value)}
-                                                    step="0.01"
-                                                    min="0"
-                                                    disabled={isLocked}
-                                                    className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-3 py-2 border rounded-md"
+                                                />
+                                            </div>
+                                        )}
+                                        {selectedModes.includes('Bank') && (
+                                            <div className="md:col-span-2 lg:col-span-1">
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">Bank Transfer (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    value={bankAmount}
+                                                    onChange={(e) => setBankAmount(e.target.value)}
+                                                    className="w-full px-3 py-2 border rounded-md"
                                                 />
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Bank TX Details */}
+                                    {selectedModes.includes('Bank') && (
+                                        <div className="mt-4">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Reference / Transaction ID <span className="text-red-500">*</span></label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. UTR Number, Cheque No"
+                                                value={bankTxId}
+                                                onChange={(e) => setBankTxId(e.target.value)}
+                                                className="w-full px-3 py-2 border rounded-md bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
+
+                                {/* Remarks */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Remarks</label>
+                                    <textarea
+                                        rows={2}
+                                        placeholder="Any additional notes..."
+                                        value={remarks}
+                                        onChange={(e) => setRemarks(e.target.value)}
+                                        disabled={isLocked}
+                                        className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
 
                                 {!isLocked && (
                                     <button
                                         onClick={handleSubmit}
                                         disabled={submitting}
-                                        className="w-full bg-gray-900 dark:bg-blue-600 text-white py-3 rounded-lg hover:bg-gray-800 dark:hover:bg-blue-500 transition-colors font-medium mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium mt-4 shadow-lg shadow-blue-200 dark:shadow-none"
                                     >
-                                        {submitting ? 'Submitting...' : 'Submit Purchase'}
+                                        {submitting ? 'Submitting...' : 'Submit Inventory Purchase'}
                                     </button>
                                 )}
                                 {isLocked && (
@@ -332,17 +475,17 @@ export default function PurchasePage() {
                         <RecentTransactions
                             outletId={user?.profile?.outlet_id || ''}
                             category="purchase"
-                            title="Recent Purchases"
+                            title="Recent Inventory"
                         />
-
-                        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4 transition-colors">
-                            <h4 className="text-[10px] font-black text-blue-900 dark:text-blue-300 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                <Clock className="w-3 h-3" />
-                                Policy Reminder
+                        <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-900/30 rounded-xl p-4 transition-colors">
+                            <h4 className="text-[10px] font-black text-purple-900 dark:text-purple-300 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <Upload className="w-3 h-3" />
+                                Stock Policy
                             </h4>
-                            <div className="space-y-2 text-[10px] text-blue-700 dark:text-blue-400">
-                                <p>• <strong>Staff</strong>: Edit own entries only, until Shift End.</p>
-                                <p>• <strong>Managers</strong>: 30-day editing window.</p>
+                            <div className="space-y-2 text-[10px] text-purple-700 dark:text-purple-400">
+                                <p>• <strong>Strict Entry</strong>: All inventory bills must be entered same-day.</p>
+                                <p>• <strong>Verification</strong>: Upload photo of bill if required.</p>
+                                <p>• <strong>Bank Payments</strong>: Must include UTR/Reference No.</p>
                             </div>
                         </div>
                     </div>

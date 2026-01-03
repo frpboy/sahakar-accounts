@@ -126,9 +126,15 @@ CREATE TABLE public.customers (
   referred_by text,
   internal_customer_id text UNIQUE,
   customer_code text UNIQUE,
+  assigned_to_user_id uuid,
+  referred_by_user_id uuid,
+  visit_count integer DEFAULT 0,
+  total_spend numeric DEFAULT 0,
   CONSTRAINT customers_pkey PRIMARY KEY (id),
   CONSTRAINT customers_outlet_id_fkey FOREIGN KEY (outlet_id) REFERENCES public.outlets(id),
-  CONSTRAINT customers_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+  CONSTRAINT customers_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
+  CONSTRAINT customers_assigned_to_user_id_fkey FOREIGN KEY (assigned_to_user_id) REFERENCES public.users(id),
+  CONSTRAINT customers_referred_by_user_id_fkey FOREIGN KEY (referred_by_user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.daily_records (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -400,6 +406,14 @@ CREATE TABLE public.transactions (
   parent_transaction_id uuid,
   ledger_account_id uuid NOT NULL,
   customer_id uuid,
+  refill_days integer,
+  other_charges numeric DEFAULT 0,
+  remarks text,
+  bank_tx_id text,
+  erp_id text,
+  external_bill_number text,
+  supplier_name text,
+  is_verified boolean DEFAULT false,
   CONSTRAINT transactions_pkey PRIMARY KEY (id),
   CONSTRAINT transactions_daily_record_id_fkey FOREIGN KEY (daily_record_id) REFERENCES public.daily_records(id),
   CONSTRAINT transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),

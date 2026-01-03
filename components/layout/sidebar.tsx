@@ -46,6 +46,7 @@ export function Sidebar({ className }: { className?: string }) {
     const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
     const [isReportsOpen, setIsReportsOpen] = React.useState(false);
     const [isAccountingOpen, setIsAccountingOpen] = React.useState(false);
+    const [isAccountsSectionOpen, setIsAccountsSectionOpen] = React.useState(true);
     const [isManagementOpen, setIsManagementOpen] = React.useState(false);
     const [isLoaded, setIsLoaded] = React.useState(false);
 
@@ -61,6 +62,7 @@ export function Sidebar({ className }: { className?: string }) {
         if (savedTx !== null) setIsTransactionsOpen(savedTx === 'true');
         if (savedReports !== null) setIsReportsOpen(savedReports === 'true');
         if (savedAcct !== null) setIsAccountingOpen(savedAcct === 'true');
+        if (localStorage.getItem('sidebar_accounts_section_open') !== null) setIsAccountsSectionOpen(localStorage.getItem('sidebar_accounts_section_open') === 'true');
         if (savedMgmt !== null) setIsManagementOpen(savedMgmt === 'true');
 
         setIsLoaded(true);
@@ -72,6 +74,7 @@ export function Sidebar({ className }: { className?: string }) {
             localStorage.setItem('sidebar_transactions_open', isTransactionsOpen.toString());
             localStorage.setItem('sidebar_reports_open', isReportsOpen.toString());
             localStorage.setItem('sidebar_accounting_open', isAccountingOpen.toString());
+            localStorage.setItem('sidebar_accounts_section_open', isAccountsSectionOpen.toString());
             localStorage.setItem('sidebar_management_open', isManagementOpen.toString());
         }
     }, [isCollapsed, isTransactionsOpen, isReportsOpen, isManagementOpen, isLoaded]);
@@ -84,136 +87,155 @@ export function Sidebar({ className }: { className?: string }) {
     const isManager = userRole === 'outlet_manager';
     const isAuditor = userRole === 'auditor';
 
-    // Build navigation items based on role
-    const navItems = [];
+    // Build navigation items based on role (Memoized for performance)
+    const navItems = React.useMemo(() => {
+        const items = [];
 
-    // Base navigation (all users)
-    navItems.push(
-        { label: 'Navigation', type: 'label' },
-        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }
-    );
-
-    // Transactions (staff & managers only, not auditors)
-    if (!isAuditor) {
-        navItems.push({
-            label: 'Transactions',
-            icon: ShoppingCart,
-            type: 'group',
-            isOpen: isTransactionsOpen,
-            setOpen: setIsTransactionsOpen,
-            items: [
-                { label: 'New Sales', href: '/dashboard/sales', icon: ShoppingCart },
-                { label: 'Sales Return', href: '/dashboard/returns/sales', icon: Undo2 },
-                { label: 'Purchase', href: '/dashboard/purchase', icon: Package },
-                { label: 'Purchase Return', href: '/dashboard/returns/purchase', icon: Undo2 },
-            ]
-        });
-        navItems.push(
-            { label: 'Credit Received', href: '/dashboard/credit', icon: IndianRupee },
-            { label: 'Customers', href: '/dashboard/customers', icon: Users },
-            { label: 'Draft Entries', href: '/dashboard/drafts', icon: FileText, badge: '0' }
+        // Base navigation (all users)
+        items.push(
+            { label: 'Navigation', type: 'label' },
+            { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }
         );
-    }
 
-    // History (all users)
-    navItems.push({
-        label: 'History',
-        icon: History,
-        type: 'group',
-        isOpen: isHistoryOpen,
-        setOpen: setIsHistoryOpen,
-        items: [
-            { label: 'Sales History', href: '/dashboard/history/sales', icon: History },
-            { label: 'Return History', href: '/dashboard/history/returns', icon: Undo2 },
-            { label: 'Purchase History', href: '/dashboard/history/purchase', icon: Package },
-            { label: 'Credit History', href: '/dashboard/history/credit', icon: IndianRupee },
-            { label: 'Customer History', href: '/dashboard/history/customers', icon: Users },
-        ]
-    });
-
-    // Reports & Analytics (HO + Managers)
-    if (isAdmin || isManager) {
-        const reportItems = [
-            { label: 'All Reports', href: '/dashboard/reports', icon: Download },
-            { label: 'Sales Report', href: '/dashboard/reports/sales', icon: ShoppingCart },
-            { label: 'Financial Report', href: '/dashboard/reports/financial', icon: IndianRupee },
-        ];
-
-        // Only HO sees Outlet Performance (comparisons)
-        if (isAdmin) {
-            reportItems.push({ label: 'Outlet Performance', href: '/dashboard/reports/outlets', icon: Building2 });
-            reportItems.push({ label: 'Trends & Analytics', href: '/dashboard/reports/analytics', icon: TrendingUp });
-            reportItems.push({ label: 'User Activity', href: '/dashboard/reports/users', icon: Users });
+        // Transactions (staff & managers only, not auditors)
+        if (!isAuditor) {
+            items.push({
+                label: 'Transactions',
+                icon: ShoppingCart,
+                type: 'group',
+                isOpen: isTransactionsOpen,
+                setOpen: setIsTransactionsOpen,
+                items: [
+                    { label: 'New Sales', href: '/dashboard/sales', icon: ShoppingCart },
+                    { label: 'Sales Return', href: '/dashboard/returns/sales', icon: Undo2 },
+                    { label: 'Purchase', href: '/dashboard/purchase', icon: Package },
+                    { label: 'Purchase Return', href: '/dashboard/returns/purchase', icon: Undo2 },
+                ]
+            });
+            items.push(
+                { label: 'Credit Received', href: '/dashboard/credit', icon: IndianRupee },
+                { label: 'Customers', href: '/dashboard/customers', icon: Users },
+                { label: 'Draft Entries', href: '/dashboard/drafts', icon: FileText, badge: '0' }
+            );
         }
 
-        navItems.push(
-            { label: 'Analytics', type: 'label' },
-            {
-                label: 'Reports',
-                icon: BarChart3,
-                type: 'group',
-                isOpen: isReportsOpen,
-                setOpen: setIsReportsOpen,
-                items: reportItems
+        // Accounts Section (Expenses)
+        items.push({
+            label: 'Accounts',
+            icon: IndianRupee,
+            type: 'group',
+            isOpen: isAccountsSectionOpen,
+            setOpen: setIsAccountsSectionOpen,
+            items: [
+                { label: 'Expenses', href: '/dashboard/expenses', icon: Tag },
+            ]
+        });
+
+        // History (all users)
+        items.push({
+            label: 'History',
+            icon: History,
+            type: 'group',
+            isOpen: isHistoryOpen,
+            setOpen: setIsHistoryOpen,
+            items: [
+                { label: 'Sales History', href: '/dashboard/history/sales', icon: History },
+                { label: 'Return History', href: '/dashboard/history/returns', icon: Undo2 },
+                { label: 'Purchase History', href: '/dashboard/history/purchase', icon: Package },
+                { label: 'Credit History', href: '/dashboard/history/credit', icon: IndianRupee },
+                { label: 'Customer History', href: '/dashboard/history/customers', icon: Users },
+            ]
+        });
+
+        // Reports & Analytics (HO + Managers)
+        if (isAdmin || isManager) {
+            const reportItems = [
+                { label: 'All Reports', href: '/dashboard/reports', icon: Download },
+                { label: 'Sales Report', href: '/dashboard/reports/sales', icon: ShoppingCart },
+                { label: 'Financial Report', href: '/dashboard/reports/financial', icon: IndianRupee },
+            ];
+
+            // Only HO sees Outlet Performance (comparisons)
+            if (isAdmin) {
+                reportItems.push({ label: 'Outlet Performance', href: '/dashboard/reports/outlets', icon: Building2 });
+                reportItems.push({ label: 'Trends & Analytics', href: '/dashboard/reports/analytics', icon: TrendingUp });
+                reportItems.push({ label: 'User Activity', href: '/dashboard/reports/users', icon: Users });
             }
-        );
-    }
 
-    // Ledger Module (Visible to all except maybe pure auditors if they have their own view)
-    // We filter sub-items inside the group based on role
-    const ledgerItems = [
-        { label: 'Overview', href: '/dashboard/ledger', icon: LayoutDashboard },
-        { label: 'Register', href: '/dashboard/ledger/register', icon: FileText },
-        { label: 'Day Book', href: '/dashboard/ledger/day-book', icon: History },
-        { label: 'Cash Book', href: '/dashboard/ledger/cash-book', icon: IndianRupee },
-        { label: 'Bank / UPI', href: '/dashboard/ledger/bank-book', icon: CreditCard },
-        { label: 'Customers', href: '/dashboard/ledger/customers', icon: Users },
-        { label: 'Expenses', href: '/dashboard/ledger/expenses', icon: Tag },
-    ];
+            items.push(
+                { label: 'Analytics', type: 'label' },
+                {
+                    label: 'Reports',
+                    icon: BarChart3,
+                    type: 'group',
+                    isOpen: isReportsOpen,
+                    setOpen: setIsReportsOpen,
+                    items: reportItems
+                }
+            );
+        }
 
-    if (isAdmin || isManager || isAuditor) {
-        ledgerItems.push({ label: 'Chart of Accounts', href: '/dashboard/ledger/accounts', icon: BookOpen });
-        ledgerItems.push({ label: 'Trial Balance', href: '/dashboard/ledger/trial-balance', icon: Scale });
-        ledgerItems.push({ label: 'Balance Sheet', href: '/dashboard/ledger/balance-sheet', icon: Landmark });
-    }
+        // Ledger Module
+        const ledgerItems = [
+            { label: 'Overview', href: '/dashboard/ledger', icon: LayoutDashboard },
+            { label: 'Register', href: '/dashboard/ledger/register', icon: FileText },
+            { label: 'Day Book', href: '/dashboard/ledger/day-book', icon: History },
+            { label: 'Cash Book', href: '/dashboard/ledger/cash-book', icon: IndianRupee },
+            { label: 'Bank / UPI', href: '/dashboard/ledger/bank-book', icon: CreditCard },
+            { label: 'Customers', href: '/dashboard/ledger/customers', icon: Users },
+            { label: 'Expenses', href: '/dashboard/ledger/expenses', icon: Tag },
+        ];
 
-    if (isAdmin || isManager) {
-        ledgerItems.push({ label: 'Profit & Loss', href: '/dashboard/ledger/pnl', icon: TrendingUp });
-        ledgerItems.push({ label: 'Month-End Close', href: '/dashboard/ledger/close', icon: Lock });
-    }
+        if (isAdmin || isManager || isAuditor) {
+            ledgerItems.push({ label: 'Chart of Accounts', href: '/dashboard/ledger/accounts', icon: BookOpen });
+            ledgerItems.push({ label: 'Trial Balance', href: '/dashboard/ledger/trial-balance', icon: Scale });
+            ledgerItems.push({ label: 'Balance Sheet', href: '/dashboard/ledger/balance-sheet', icon: Landmark });
+        }
 
-    if (isAdmin || isManager || isAuditor) {
-        ledgerItems.push({ label: 'Audit Export', href: '/dashboard/ledger/export', icon: Download });
-    }
+        if (isAdmin || isManager) {
+            ledgerItems.push({ label: 'Profit & Loss', href: '/dashboard/ledger/pnl', icon: TrendingUp });
+            ledgerItems.push({ label: 'Month-End Close', href: '/dashboard/ledger/close', icon: Lock });
+        }
 
-    navItems.push({
-        label: 'Ledger',
-        icon: Calculator,
-        type: 'group',
-        isOpen: isAccountingOpen,
-        setOpen: setIsAccountingOpen,
-        items: ledgerItems
-    });
+        if (isAdmin || isManager || isAuditor) {
+            ledgerItems.push({ label: 'Audit Export', href: '/dashboard/ledger/export', icon: Download });
+        }
 
-    // Admin-only Management
-    if (isAdmin) {
-        navItems.push(
-            { label: 'Administration', type: 'label' },
-            {
-                label: 'Management',
-                icon: Settings,
-                type: 'group',
-                isOpen: isManagementOpen,
-                setOpen: setIsManagementOpen,
-                items: [
-                    { label: 'User Management', href: '/dashboard/management/users', icon: UserCog },
-                    { label: 'Outlet Management', href: '/dashboard/management/outlets', icon: Building2 },
-                    { label: 'Outlet Metadata', href: '/dashboard/admin/outlet-metadata', icon: Tag },
-                    { label: 'Fraud Signals', href: '/dashboard/ledger/anomalies', icon: AlertTriangle },
-                ]
-            }
-        );
-    }
+        items.push({
+            label: 'Ledger',
+            icon: Calculator,
+            type: 'group',
+            isOpen: isAccountingOpen,
+            setOpen: setIsAccountingOpen,
+            items: ledgerItems
+        });
+
+        // Admin-only Management
+        if (isAdmin) {
+            items.push(
+                { label: 'Administration', type: 'label' },
+                {
+                    label: 'Management',
+                    icon: Settings,
+                    type: 'group',
+                    isOpen: isManagementOpen,
+                    setOpen: setIsManagementOpen,
+                    items: [
+                        { label: 'User Management', href: '/dashboard/management/users', icon: UserCog },
+                        { label: 'Outlet Management', href: '/dashboard/management/outlets', icon: Building2 },
+                        { label: 'Outlet Metadata', href: '/dashboard/admin/outlet-metadata', icon: Tag },
+                        { label: 'Fraud Signals', href: '/dashboard/ledger/anomalies', icon: AlertTriangle },
+                    ]
+                }
+            );
+        }
+
+        return items;
+    }, [
+        isAdmin, isManager, isAuditor,
+        isTransactionsOpen, isAccountsSectionOpen, isHistoryOpen,
+        isReportsOpen, isAccountingOpen, isManagementOpen
+    ]);
 
     return (
         <>
