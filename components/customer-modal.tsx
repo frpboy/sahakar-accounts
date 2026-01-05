@@ -26,6 +26,7 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
     const [outstandingBalance, setOutstandingBalance] = useState('0');
     const [isActive, setIsActive] = useState(true);
     const [referredBy, setReferredBy] = useState('');
+    const [refillReminder, setRefillReminder] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     // Staff selection
@@ -43,6 +44,7 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
             setOutstandingBalance(customer.outstanding_balance?.toString() || '0');
             setIsActive(customer.is_active !== false);
             setReferredBy(customer.referred_by || '');
+            setRefillReminder(!!customer.assigned_to_user_id);
         } else {
             // Reset form for new customer
             setCustomerName('');
@@ -54,6 +56,7 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
             setOutstandingBalance('0');
             setIsActive(true);
             setReferredBy('');
+            setRefillReminder(false);
         }
     }, [customer, isOpen]);
 
@@ -99,7 +102,8 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
                 is_active: isActive,
                 referred_by: referredBy || null,
                 outlet_id: user.profile.outlet_id,
-                created_by: user.id
+                created_by: user.id,
+                assigned_to_user_id: refillReminder ? user.id : (customer?.assigned_to_user_id || null)
             };
 
             if (customer) {
@@ -306,6 +310,19 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
                         />
                         <label htmlFor="isActive" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             Active Customer
+                        </label>
+                    </div>
+
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg">
+                        <input
+                            type="checkbox"
+                            id="refillReminder"
+                            checked={refillReminder}
+                            onChange={(e) => setRefillReminder(e.target.checked)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 dark:border-slate-600 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="refillReminder" className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                            Set Refill Reminder (Assign tracking to me)
                         </label>
                     </div>
                 </div>

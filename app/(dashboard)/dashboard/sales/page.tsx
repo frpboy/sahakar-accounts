@@ -495,10 +495,7 @@ function SalesPageContent() {
             alert('Please enter customer name');
             return;
         }
-        if (!assignedTo) {
-            alert('Please select Assigned Staff');
-            return;
-        }
+
         if (!billNumber.trim()) {
             alert('Please enter bill/entry number');
             return;
@@ -542,7 +539,7 @@ function SalesPageContent() {
                     name: customerName.trim(),
                     is_active: true,
                     created_by: user.id,
-                    assigned_to_user_id: assignedTo,
+                    assigned_to_user_id: refillReminder ? user.id : null,
                     referred_by_user_id: referredBy || null
                 };
 
@@ -768,19 +765,7 @@ function SalesPageContent() {
                                             />
                                         </div>
 
-                                        {/* Assignments Searchable */}
-                                        <div title={!canEditAssignment ? "Only Managers can change staff assignment for existing customers." : ""}>
-                                            <SearchableSelect
-                                                label="Assigned To (Staff)"
-                                                options={staffList}
-                                                value={assignedTo}
-                                                onChange={setAssignedTo}
-                                                filterOutletId={user?.profile?.outlet_id}
-                                                required
-                                                disabled={!canEditAssignment || isLocked}
-                                                placeholder="Search Staff..."
-                                            />
-                                        </div>
+
 
                                         <div title={!canEditAssignment ? "Only Managers can change referral for existing customers." : ""}>
                                             <SearchableSelect

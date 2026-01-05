@@ -25,7 +25,6 @@ export default function PurchasePage() {
     const [remarks, setRemarks] = useState('');
 
     const [cashAmount, setCashAmount] = useState('');
-    const [upiAmount, setUpiAmount] = useState('');
     const [creditAmount, setCreditAmount] = useState('');
     const [bankAmount, setBankAmount] = useState('');
 
@@ -99,11 +98,10 @@ export default function PurchasePage() {
         const totalExpected = pAmount + oCharges;
 
         const cash = parseFloat(cashAmount) || 0;
-        const upi = parseFloat(upiAmount) || 0;
         const credit = parseFloat(creditAmount) || 0;
         const bank = parseFloat(bankAmount) || 0;
 
-        const totalPayment = cash + upi + credit + bank;
+        const totalPayment = cash + credit + bank;
 
         if (Math.abs(totalPayment - totalExpected) > 0.01) {
             alert(`Payment mismatch! Total: ₹${totalExpected.toFixed(2)}, Paid: ₹${totalPayment.toFixed(2)}`);
@@ -156,7 +154,6 @@ export default function PurchasePage() {
 
             const modes = [];
             if (cash > 0) modes.push('Cash');
-            if (upi > 0) modes.push('UPI');
             if (credit > 0) modes.push('Credit');
             if (bank > 0) modes.push('Bank');
 
@@ -232,7 +229,6 @@ export default function PurchasePage() {
             setBankTxId('');
             setRemarks('');
             setCashAmount('');
-            setUpiAmount('');
             setCreditAmount('');
             setBankAmount('');
             setSelectedModes([]);
@@ -363,7 +359,7 @@ export default function PurchasePage() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-2">Select Payment Mode(s) <span className="text-red-500">*</span></label>
                                     <div className="flex gap-4 mb-4 flex-wrap">
-                                        {['Cash', 'UPI', 'Credit', 'Bank'].map((mode) => (
+                                        {['Cash', 'Credit', 'Bank'].map((mode) => (
                                             <label key={mode} className="flex items-center gap-2 cursor-pointer">
                                                 <input
                                                     type="checkbox"
@@ -389,17 +385,7 @@ export default function PurchasePage() {
                                                 />
                                             </div>
                                         )}
-                                        {selectedModes.includes('UPI') && (
-                                            <div>
-                                                <label className="block text-xs font-medium text-gray-500 mb-1">UPI (₹)</label>
-                                                <input
-                                                    type="number"
-                                                    value={upiAmount}
-                                                    onChange={(e) => setUpiAmount(e.target.value)}
-                                                    className="w-full px-3 py-2 border rounded-md"
-                                                />
-                                            </div>
-                                        )}
+
                                         {selectedModes.includes('Credit') && (
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-500 mb-1">Credit (₹)</label>
