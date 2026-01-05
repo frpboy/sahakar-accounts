@@ -217,6 +217,16 @@ export function CustomerHistorySheet({ customer, open, onClose }: CustomerHistor
                             )}
                         </div>
                     )}
+
+                    <div className="mt-6 border-t dark:border-slate-800 pt-6">
+                        <button
+                            onClick={() => window.location.href = `/dashboard/ledger/customers?search=${customer?.phone || customer?.name || ''}`}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
+                        >
+                            <Wallet className="w-5 h-5" />
+                            View Full History & Balances
+                        </button>
+                    </div>
                 </div>
             </SheetContent>
         </Sheet>
