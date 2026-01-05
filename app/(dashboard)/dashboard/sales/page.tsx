@@ -177,6 +177,7 @@ function SalesPageContent() {
     const [assignedTo, setAssignedTo] = useState<string>('');
     const [referredBy, setReferredBy] = useState<string>('');
     const [staffList, setStaffList] = useState<UserOption[]>([]);
+    const [salesLedgerId, setSalesLedgerId] = useState<string | null>(null);
 
     // Feature Extension: Refill Reminder
     const [refillReminder, setRefillReminder] = useState(false);
@@ -223,6 +224,23 @@ function SalesPageContent() {
                 }
             } catch (e) {
                 console.error("Failed to fetch staff list", e);
+            }
+
+            // Fetch Default Sales Ledger (Fallback)
+            try {
+                const { data: ledger } = await supabase
+                    .from('ledger_accounts')
+                    .select('id')
+                    .eq('name', 'Sales Revenue')
+                    .single();
+
+                if (ledger) {
+                    setSalesLedgerId(ledger.id);
+                } else {
+                    console.error("Critical: 'Sales Revenue' ledger account not found. Transactions may fail.");
+                }
+            } catch (e) {
+                console.error("Failed to fetch sales ledger", e);
             }
 
             // Check Lock
@@ -543,20 +561,23 @@ function SalesPageContent() {
                     referred_by_user_id: referredBy || null
                 };
 
-                // Insert Customer with Fallback
+                // Upsert Customer (Insert or Update if phone exists)
+                // Note: The unique constraint on 'phone' must be active for this to work correctly as an upsert.
                 let { data: newCust, error: customerError } = await (supabase as any)
                     .from('customers')
-                    .insert(newCustomerPayload)
+                    .upsert(newCustomerPayload, { onConflict: 'phone' })
                     .select()
                     .single();
 
                 if (customerError && (customerError.code === '42703' || customerError.message?.includes('column'))) {
-                    console.warn('Fallback: Inserting customer without new columns...');
-                    delete newCustomerPayload.assigned_to_user_id;
-                    delete newCustomerPayload.referred_by_user_id;
+                    console.warn('Fallback: Upserting customer without new columns...');
+                    const fallbackPayload = { ...newCustomerPayload };
+                    delete fallbackPayload.assigned_to_user_id;
+                    delete fallbackPayload.referred_by_user_id;
+
                     const res = await (supabase as any)
                         .from('customers')
-                        .insert(newCustomerPayload)
+                        .upsert(fallbackPayload, { onConflict: 'phone' })
                         .select()
                         .single();
                     newCust = res.data;
@@ -564,16 +585,7 @@ function SalesPageContent() {
                 }
 
                 if (customerError) {
-                    if (customerError.message.includes('duplicate')) {
-                        const { data: existing } = await (supabase as any)
-                            .from('customers')
-                            .select('id')
-                            .eq('phone', customerPhone.trim())
-                            .single();
-                        finalCustomerId = existing?.id;
-                    } else {
-                        throw customerError;
-                    }
+                    throw customerError;
                 } else {
                     finalCustomerId = newCust.id;
                 }
@@ -623,7 +635,8 @@ function SalesPageContent() {
                 customer_phone: customerPhone.trim(),
                 customer_id: finalCustomerId,
                 created_by: user.id,
-                refill_days: refillReminder ? parseInt(refillDays) : null
+                refill_days: refillReminder ? parseInt(refillDays) : null,
+                ledger_account_id: salesLedgerId // Required field
             };
 
             let { data: transData, error: transError } = await (supabase as any)

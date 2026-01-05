@@ -27,6 +27,7 @@ export default function PurchasePage() {
     const [cashAmount, setCashAmount] = useState('');
     const [creditAmount, setCreditAmount] = useState('');
     const [bankAmount, setBankAmount] = useState('');
+    const [purchaseLedgerId, setPurchaseLedgerId] = useState<string | null>(null);
 
     const [submitting, setSubmitting] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
@@ -59,6 +60,23 @@ export default function PurchasePage() {
         }
         checkLock();
     }, [user, supabase]);
+
+    // Fetch Default Purchase Ledger
+    useEffect(() => {
+        async function fetchLedger() {
+            try {
+                const { data } = await supabase
+                    .from('ledger_accounts')
+                    .select('id')
+                    .eq('name', 'Purchases')
+                    .single();
+                if (data) setPurchaseLedgerId(data.id);
+            } catch (e) {
+                console.error("Failed to fetch purchase ledger", e);
+            }
+        }
+        fetchLedger();
+    }, [supabase]);
 
     // Auto-generate Voucher Number on mount
     useEffect(() => {
@@ -177,7 +195,8 @@ export default function PurchasePage() {
                 created_by: user.id,
                 other_charges: oCharges,
                 bank_tx_id: bankTxId || null,
-                remarks: remarks || null
+                remarks: remarks || null,
+                ledger_account_id: purchaseLedgerId // Required field
             };
 
             let { error } = await (supabase as any)

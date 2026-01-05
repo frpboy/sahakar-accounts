@@ -30,6 +30,7 @@ export default function PurchaseReturnPage() {
     const [submitting, setSubmitting] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
     const [checkingLock, setCheckingLock] = useState(true);
+    const [purchaseLedgerId, setPurchaseLedgerId] = useState<string | null>(null);
 
     // Check for Locked Day status
     useEffect(() => {
@@ -57,7 +58,25 @@ export default function PurchaseReturnPage() {
             }
         }
         checkLock();
+        checkLock();
     }, [user, supabase]);
+
+    // Fetch Default Purchase Ledger
+    useEffect(() => {
+        async function fetchLedger() {
+            try {
+                const { data } = await supabase
+                    .from('ledger_accounts')
+                    .select('id')
+                    .eq('name', 'Purchases')
+                    .single();
+                if (data) setPurchaseLedgerId(data.id);
+            } catch (e) {
+                console.error("Failed to fetch purchase ledger", e);
+            }
+        }
+        fetchLedger();
+    }, [supabase]);
 
     // Auto-fill payment amount logic
     useEffect(() => {
@@ -312,7 +331,8 @@ export default function PurchaseReturnPage() {
                     description: `Purchase return: ${supplierName || 'Supplier'} (Ref: ${billNumber}) | Reason: ${returnReason.trim()}`,
                     amount: amount,
                     payment_modes: paymentModes.join(','),
-                    created_by: user.id
+                    created_by: user.id,
+                    ledger_account_id: purchaseLedgerId // Required field
                 });
 
             if (error) throw error;

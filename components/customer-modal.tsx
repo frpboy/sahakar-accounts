@@ -115,12 +115,13 @@ export function CustomerModal({ isOpen, onClose, customer, onSuccess }: Customer
                 if (updateError) throw updateError;
                 alert('✅ Customer updated successfully');
             } else {
+                // Use Upsert to handle potential duplicate phone numbers gracefully
                 const { error } = await (supabase as any)
                     .from('customers')
-                    .insert(insertData);
+                    .upsert(insertData, { onConflict: 'phone' });
 
                 if (error) throw error;
-                alert('✅ Customer added successfully');
+                alert('✅ Customer saved successfully');
             }
 
             onSuccess?.();

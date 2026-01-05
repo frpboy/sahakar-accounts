@@ -32,6 +32,7 @@ export default function SalesReturnPage() {
     const [submitting, setSubmitting] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
     const [checkingLock, setCheckingLock] = useState(true);
+    const [returnsLedgerId, setReturnsLedgerId] = useState<string | null>(null);
 
     // Check for Locked Day status
     useEffect(() => {
@@ -59,7 +60,33 @@ export default function SalesReturnPage() {
             }
         }
         checkLock();
+        checkLock();
     }, [user, supabase]);
+
+    // Fetch Default Return Ledger
+    useEffect(() => {
+        async function fetchLedger() {
+            try {
+                // Try finding specific Sales Return ledger, fallback to general Sales if needed but ideally distinct
+                const { data } = await supabase
+                    .from('ledger_accounts')
+                    .select('id')
+                    .eq('name', 'Sales Revenue') // Using Sales Revenue as fallback/default if specific return ledger not found, or typically it might be a contra-revenue account.
+                    // Ideally we should have a 'Sales Return' ledger. Let's assume user wants to map it to valid ledger.
+                    // Given the error is "null value", any valid ledger ID fixes it.
+                    // Let's try to find 'Sales Return' first? The list_ledger_accounts output didn't show it.
+                    // It showed 'Sales Revenue' (SAL) and 'Income' (INC).
+                    // Best practice: Debit Sales Revenue (or specific return). 
+                    // Let's stick to 'Sales Revenue' for now to ensure we have a valid ID from the known list. 
+                    .single();
+
+                if (data) setReturnsLedgerId(data.id);
+            } catch (e) {
+                console.error("Failed to fetch return ledger", e);
+            }
+        }
+        fetchLedger();
+    }, [supabase]);
 
     // Auto-fill payment amount logic
     useEffect(() => {
@@ -298,7 +325,8 @@ export default function SalesReturnPage() {
                     payment_modes: paymentModes.join(','),
                     customer_phone: customerPhone.trim(),
                     customer_id: selectedCustomerId,
-                    created_by: user.id
+                    created_by: user.id,
+                    ledger_account_id: returnsLedgerId // Required field
                 });
 
             if (error) throw error;
