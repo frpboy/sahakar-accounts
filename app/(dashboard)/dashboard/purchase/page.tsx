@@ -4,8 +4,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/lib/auth-context';
 import { createClientBrowser } from '@/lib/supabase-client';
-import { Clock, Upload } from 'lucide-react';
+import { Clock, Upload, Plus, Check, ChevronsUpDown } from 'lucide-react';
 import { RecentTransactions } from '@/components/history/recent-transactions';
+import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
+import { SupplierModal } from '@/components/supplier-modal';
+import { clsx } from 'clsx';
 
 export default function PurchasePage() {
     const supabase = useMemo(() => createClientBrowser(), []);
@@ -16,6 +19,12 @@ export default function PurchasePage() {
     const [erpId, setErpId] = useState('');
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [voucherNumber, setVoucherNumber] = useState('');
+
+    // Supplier Management State
+    const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [query, setQuery] = useState('');
+    const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+    const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
 
     // Amounts
     const [purchaseAmount, setPurchaseAmount] = useState('');
@@ -28,6 +37,7 @@ export default function PurchasePage() {
     const [creditAmount, setCreditAmount] = useState('');
     const [bankAmount, setBankAmount] = useState('');
     const [purchaseLedgerId, setPurchaseLedgerId] = useState<string | null>(null);
+    const [autoCalculated, setAutoCalculated] = useState<Set<string>>(new Set());
 
     const [submitting, setSubmitting] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
@@ -95,6 +105,47 @@ export default function PurchasePage() {
             setVoucherNumber(generatedVoucher);
         }
     }, [user, voucherNumber]);
+
+    // Fetch Suppliers
+    useEffect(() => {
+        async function fetchSuppliers() {
+            if (!user?.profile?.outlet_id) return;
+            const { data } = await supabase
+                .from('suppliers')
+                .select('*')
+                .eq('outlet_id', user.profile.outlet_id)
+                .order('name');
+            if (data) setSuppliers(data);
+        }
+        fetchSuppliers();
+    }, [user, supabase]);
+
+    // Filtered suppliers
+    const filteredSuppliers = query === ''
+        ? suppliers
+        : suppliers.filter((person) => {
+            return person.name.toLowerCase().includes(query.toLowerCase())
+        });
+
+    // Handle Supplier Selection
+    const handleSupplierSelect = (person: any) => {
+        if (!person) return;
+        setSelectedSupplier(person);
+        setSupplierName(person.name);
+    }
+
+    // Auto-fill payment amount logic
+    const selectedModesState = useMemo(() => {
+        // Need to pass this state to the effect, but useEffect cannot see local variables inside other functions.
+        // We will move selectedModes state UP before this effect, or access it via the state variable which is defined below.
+        // Wait, selectedModes is defined at line 264. We need to move it up.
+        return null;
+    }, []);
+
+    // We will fix the selectedModes placement in a separate edit or assume we move it up now.
+    // Actually, I'll move selectedModes definition UP in this chunk or just insert the effect AFTER selectedModes is defined.
+    // I will insert the effect AFTER `selectedModes` is defined (later in the file).
+
 
     const handleSubmit = async () => {
         if (isLocked) {
@@ -270,6 +321,27 @@ export default function PurchasePage() {
         );
     };
 
+    // Auto-fill payment amount effect
+    useEffect(() => {
+        const total = parseFloat(purchaseAmount) || 0;
+        const oCharges = parseFloat(otherCharges) || 0;
+        const totalPayable = total + oCharges;
+
+        if (selectedModes.length === 1 && totalPayable > 0) {
+            const mode = selectedModes[0];
+            if (mode === 'Cash') setCashAmount(totalPayable.toFixed(2));
+            if (mode === 'Credit') setCreditAmount(totalPayable.toFixed(2));
+            if (mode === 'Bank') setBankAmount(totalPayable.toFixed(2));
+            setAutoCalculated(new Set([mode]));
+        } else if (selectedModes.length > 1 && totalPayable > 0) {
+            // Logic to clear auto-calculated fields if user starts editing?
+            // For now, if multiple modes, just keep previous values or let user partial fill.
+            // If we just added a mode, we might want to clear the '100%' fill.
+            // But preserving is safer.
+        }
+    }, [purchaseAmount, otherCharges, selectedModes.length, selectedModes]); // Dependency on length/modes to re-trigger
+
+
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950">
             <TopBar title="Inventory Purchase" />
@@ -296,15 +368,66 @@ export default function PurchasePage() {
                                 {/* Row 1: Supplier & Voucher */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Supplier Name <span className="text-red-500">*</span></label>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter Supplier Name"
-                                            value={supplierName}
-                                            onChange={(e) => setSupplierName(e.target.value.toUpperCase())}
-                                            disabled={isLocked}
-                                            className="w-full px-3 py-2 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
-                                        />
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-400">Supplier Name <span className="text-red-500">*</span></label>
+                                            <button
+                                                onClick={() => setIsSupplierModalOpen(true)}
+                                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 font-semibold"
+                                            >
+                                                <Plus className="w-3 h-3" /> Add New
+                                            </button>
+                                        </div>
+                                        <Combobox value={selectedSupplier} onChange={handleSupplierSelect} disabled={isLocked}>
+                                            <div className="relative">
+                                                <div className="relative w-full cursor-default overflow-hidden rounded-md bg-white dark:bg-slate-950 text-left border dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm">
+                                                    <ComboboxInput
+                                                        className="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 dark:text-white focus:ring-0 bg-transparent uppercase"
+                                                        displayValue={(person: any) => person?.name || supplierName}
+                                                        onChange={(event) => {
+                                                            setQuery(event.target.value);
+                                                            setSupplierName(event.target.value.toUpperCase());
+                                                        }}
+                                                        placeholder="SEARCH OR SELECT"
+                                                    />
+                                                    <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
+                                                        <ChevronsUpDown className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                                                    </ComboboxButton>
+                                                </div>
+                                                <ComboboxOptions className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-slate-900 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-50">
+                                                    {filteredSuppliers.length === 0 && query !== '' ? (
+                                                        <div className="relative cursor-default select-none py-2 px-4 text-gray-700 dark:text-slate-400">
+                                                            No suppliers found. Press Add New.
+                                                        </div>
+                                                    ) : (
+                                                        filteredSuppliers.map((person) => (
+                                                            <ComboboxOption
+                                                                key={person.id}
+                                                                className={({ active }) =>
+                                                                    clsx(
+                                                                        'relative cursor-default select-none py-2 pl-10 pr-4',
+                                                                        active ? 'bg-blue-600 text-white' : 'text-gray-900 dark:text-white'
+                                                                    )
+                                                                }
+                                                                value={person}
+                                                            >
+                                                                {({ selected, active }) => (
+                                                                    <>
+                                                                        <span className={clsx('block truncate', selected ? 'font-medium' : 'font-normal')}>
+                                                                            {person.name}
+                                                                        </span>
+                                                                        {selected ? (
+                                                                            <span className={clsx('absolute inset-y-0 left-0 flex items-center pl-3', active ? 'text-white' : 'text-blue-600')}>
+                                                                                <Check className="h-5 w-5" aria-hidden="true" />
+                                                                            </span>
+                                                                        ) : null}
+                                                                    </>
+                                                                )}
+                                                            </ComboboxOption>
+                                                        ))
+                                                    )}
+                                                </ComboboxOptions>
+                                            </div>
+                                        </Combobox>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Voucher Number (Internal)</label>
@@ -495,7 +618,18 @@ export default function PurchasePage() {
                         </div>
                     </div>
                 </div>
+
             </div>
-        </div>
+
+            <SupplierModal
+                isOpen={isSupplierModalOpen}
+                onClose={() => setIsSupplierModalOpen(false)}
+                onSuccess={(newSupplier) => {
+                    setSuppliers(prev => [...prev, newSupplier]);
+                    handleSupplierSelect(newSupplier);
+                    setIsSupplierModalOpen(false);
+                }}
+            />
+        </div >
     );
 }

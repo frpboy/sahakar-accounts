@@ -113,7 +113,7 @@ CREATE TABLE public.customers (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   outlet_id uuid NOT NULL,
   name text NOT NULL,
-  phone character varying,
+  phone character varying UNIQUE,
   email character varying,
   address text,
   notes text,
