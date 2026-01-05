@@ -12,7 +12,9 @@ import { CustomerModal } from '@/components/customer-modal';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { CustomerHistorySheet } from '@/components/customer-history-sheet';
 
 export default function CustomersPage() {
     const supabase = useMemo(() => createClientBrowser(), []);
@@ -28,6 +30,7 @@ export default function CustomersPage() {
     const [rows, setRows] = useState<Array<{ id: string; name: string; phone?: string | null; customer_code?: string | null; internal_customer_id?: string | null; created_at?: string | null; is_active?: boolean | null; referred_by?: string | null; }>>([]);
     const [error, setError] = useState<string | null>(null);
     const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+    const [historyCustomer, setHistoryCustomer] = useState<any | null>(null);
     const [exporting, setExporting] = useState(false);
     const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -304,7 +307,7 @@ export default function CustomersPage() {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                         <button
-                                            onClick={() => window.location.href = `/dashboard/ledger/customers?search=${customer.phone || customer.name}`}
+                                            onClick={() => setHistoryCustomer(customer)}
                                             className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded-full hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
                                             title="View Transaction History"
                                         >
@@ -354,6 +357,12 @@ export default function CustomersPage() {
                     }}
                 />
             )}
+
+            <CustomerHistorySheet
+                customer={historyCustomer}
+                open={!!historyCustomer}
+                onClose={() => setHistoryCustomer(null)}
+            />
         </div>
     );
 }
