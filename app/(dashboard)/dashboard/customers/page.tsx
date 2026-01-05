@@ -12,7 +12,6 @@ import { CustomerModal } from '@/components/customer-modal';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import autoTable from 'jspdf-autotable';
 import { Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { CustomerHistorySheet } from '@/components/customer-history-sheet';
 
