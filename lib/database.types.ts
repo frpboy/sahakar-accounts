@@ -1125,6 +1125,51 @@ export type Database = {
                         referencedColumns: ["id"]
                     }
                 ]
+            },
+            suppliers: {
+                Row: {
+                    id: string
+                    outlet_id: string
+                    name: string
+                    phone: string | null
+                    email: string | null
+                    gstin: string | null
+                    address: string | null
+                    is_active: boolean
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    outlet_id: string
+                    name: string
+                    phone?: string | null
+                    email?: string | null
+                    gstin?: string | null
+                    address?: string | null
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    outlet_id?: string
+                    name?: string
+                    phone?: string | null
+                    email?: string | null
+                    gstin?: string | null
+                    address?: string | null
+                    is_active?: boolean
+                    updated_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "suppliers_outlet_id_fkey"
+                        columns: ["outlet_id"]
+                        isOneToOne: false
+                        referencedRelation: "outlets"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
         }
         Views: {}
