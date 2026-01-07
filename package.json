@@ -90,7 +90,7 @@
     "globals": "^16.0.0",
     "husky": "^9.1.0",
     "jsdom": "^27.4.0",
-    "npm-check-updates": "^17.1.11",
+    "npm-check-updates": "^19.3.1",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
