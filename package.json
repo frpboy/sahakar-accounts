@@ -48,7 +48,7 @@
     "idb": "^8.0.3",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
-    "lucide-react": "^0.511.0",
+    "lucide-react": "^0.562.0",
     "next": "^16.1.1",
     "postgres": "^3.4.7",
     "psql": "^0.0.1",
